@@ -1,0 +1,137 @@
+@{
+    ViewData["Title"] = "Dashboard Overview";
+}
+
+<!-- Page Header Row matching sample design -->
+<div class="page-header-row">
+    <div>
+        <h1 class="page-title">Dashboard Overview</h1>
+        <p class="page-subtitle">Manage your team members and their account details here.</p>
+    </div>
+
+    <button type="button" class="btn-add-emp" id="btn-add-employee">
+        <i class="bi bi-plus-lg"></i>
+        <span>Add Employee</span>
+    </button>
+</div>
+
+<!-- Metrics Cards Grid matching sample design -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-icon-box metric-icon-blue">
+            <i class="bi bi-person-fill"></i>
+        </div>
+        <div class="metric-info">
+            <div class="metric-label">Total<br>Employees</div>
+            <div class="metric-value" id="metric-total-emp">142</div>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-box metric-icon-green">
+            <i class="bi bi-plus-lg"></i>
+        </div>
+        <div class="metric-info">
+            <div class="metric-label">New Hires<br>(This Month)</div>
+            <div class="metric-value" id="metric-new-hires">12</div>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-box metric-icon-amber">
+            <i class="bi bi-building-fill"></i>
+        </div>
+        <div class="metric-info">
+            <div class="metric-label">Open<br>Roles</div>
+            <div class="metric-value" id="metric-open-roles">8</div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Directory Panel matching sample design -->
+<div class="directory-panel">
+    <h2 class="directory-title">Employee Directory</h2>
+
+    <div class="table-responsive">
+        <table class="directory-table">
+            <thead>
+                <tr>
+                    <th>EMPLOYEE NAME</th>
+                    <th>JOB TITLE</th>
+                    <th>DEPARTMENT</th>
+                </tr>
+            </thead>
+            <tbody id="directory-tbody">
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="emp-initials-avatar">JC</div>
+                            <div>
+                                <div class="emp-name-text">Jane Cooper</div>
+                                <div class="emp-email-text">jane.cooper@example.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>Regional Paradigm Technician</td>
+                    <td>Optimization</td>
+                </tr>
+
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="emp-initials-avatar" style="background-color: #dbeafe; color: #1e40af;">CF</div>
+                            <div>
+                                <div class="emp-name-text">Cody Fisher</div>
+                                <div class="emp-email-text">cody.fisher@example.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>Product Directives Officer</td>
+                    <td>Intranet</td>
+                </tr>
+
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="emp-initials-avatar" style="background-color: #fef3c7; color: #92400e;">EH</div>
+                            <div>
+                                <div class="emp-name-text">Esther Howard</div>
+                                <div class="emp-email-text">esther.howard@example.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>Forward Response Lead</td>
+                    <td>Directives</td>
+                </tr>
+
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="emp-initials-avatar" style="background-color: #fce7f3; color: #9d174d;">JW</div>
+                            <div>
+                                <div class="emp-name-text">Jenny Wilson</div>
+                                <div class="emp-email-text">jenny.wilson@example.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>Central Security Executive</td>
+                    <td>Security</td>
+                </tr>
+
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="emp-initials-avatar" style="background-color: #ccfbf1; color: #115e59;">KW</div>
+                            <div>
+                                <div class="emp-name-text">Kristin Watson</div>
+                                <div class="emp-email-text">kristin.watson@example.com</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>Lead Implementation Consultant</td>
+                    <td>Mobility</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
