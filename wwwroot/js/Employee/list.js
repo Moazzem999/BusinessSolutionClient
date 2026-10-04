@@ -470,7 +470,7 @@ function exportToPDF() {
             emp.email || 'N/A',
             emp.mobile || 'N/A',
             emp.nidNo || 'N/A',
-            emp.salary ? `৳ ${Number(emp.salary).toLocaleString('en-BD')}` : 'N/A',
+            emp.salary ? Number(emp.salary).toLocaleString('en-US') : 'N/A',
             emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString('en-GB') : 'N/A'
         ]);
 
