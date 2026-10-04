@@ -4,10 +4,20 @@
 }
 
 <!-- Page Header Row -->
-<div class="page-header-row mb-4">
+<div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
     <div>
         <h1 class="page-title">Employee Management</h1>
-        <p class="page-subtitle">View, search, and manage all employee records in your organization.</p>
+        <p class="page-subtitle mb-0">View, search, and manage all employee records in your organization.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <button type="button" id="btn-export-pdf" class="btn btn-outline-danger rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+            <i class="bi bi-file-earmark-pdf-fill fs-6 text-danger"></i>
+            <span>Download PDF</span>
+        </button>
+        <button type="button" id="btn-export-excel" class="btn btn-outline-success rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+            <i class="bi bi-file-earmark-excel-fill fs-6 text-success"></i>
+            <span>Download Excel</span>
+        </button>
     </div>
 </div>
 
@@ -124,5 +134,10 @@
     <script>
         const API_BASE_URL = "@apiBaseUrl";
     </script>
+    <!-- jsPDF & AutoTable for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="~/js/Employee/list.js" asp-append-version="true"></script>
 }

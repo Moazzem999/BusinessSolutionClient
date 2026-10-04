@@ -44,6 +44,21 @@ function initEmployeeListPage() {
         });
     }
 
+    const pdfBtn = document.getElementById('btn-export-pdf');
+    const excelBtn = document.getElementById('btn-export-excel');
+
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', () => {
+            exportToPDF();
+        });
+    }
+
+    if (excelBtn) {
+        excelBtn.addEventListener('click', () => {
+            exportToExcel();
+        });
+    }
+
     // Initial load
     fetchEmployees();
 }
@@ -369,5 +384,121 @@ function showApiError(msg) {
     if (errorAlert && errorMsg) {
         errorMsg.innerText = msg;
         errorAlert.classList.remove('d-none');
+    }
+}
+
+/**
+ * Exports currently loaded employee records to an Excel (.xlsx) file
+ */
+function exportToExcel() {
+    if (!currentEmployeesList || currentEmployeesList.length === 0) {
+        alert('No employee data available to export.');
+        return;
+    }
+
+    const exportData = currentEmployeesList.map((emp, index) => {
+        const maritalStatusStr = emp.maritalStatus === 1 ? 'Single' : (emp.maritalStatus === 2 ? 'Married' : 'Other');
+        const religionStr = emp.religion === 1 ? 'Islam' : (emp.religion === 2 ? 'Hinduism' : (emp.religion === 3 ? 'Buddhism' : 'Christianity / Other'));
+        const formattedDob = emp.dateOfBirth ? new Date(emp.dateOfBirth).toLocaleDateString('en-GB') : '';
+        const formattedJoining = emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString('en-GB') : '';
+
+        return {
+            "SL": index + 1,
+            "Employee Name": emp.name || '',
+            "Father Name": emp.fatherName || '',
+            "Email": emp.email || '',
+            "Mobile": emp.mobile || '',
+            "NID Number": emp.nidNo || '',
+            "Designation": emp.designation || '',
+            "Academic Qualification": emp.academicQualification || '',
+            "Date of Birth": formattedDob,
+            "Marital Status": maritalStatusStr,
+            "Religion": religionStr,
+            "Joining Date": formattedJoining,
+            "Salary (BDT)": emp.salary || 0,
+            "Present Address": emp.presentAddress || '',
+            "Permanent Address": emp.permanentAddress || ''
+        };
+    });
+
+    if (typeof XLSX !== 'undefined') {
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+        // Set column widths
+        const colWidths = Object.keys(exportData[0]).map(key => ({
+            wch: Math.max(key.length + 3, 14)
+        }));
+        worksheet['!cols'] = colWidths;
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Employee Directory");
+
+        const fileName = `Employee_List_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
+    } else {
+        alert('Excel library is loading. Please try again.');
+    }
+}
+
+/**
+ * Exports currently loaded employee records to a PDF report
+ */
+function exportToPDF() {
+    if (!currentEmployeesList || currentEmployeesList.length === 0) {
+        alert('No employee data available to export.');
+        return;
+    }
+
+    if (window.jspdf && window.jspdf.jsPDF) {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+
+        // Header Title & Meta Info
+        doc.setFontSize(16);
+        doc.setTextColor(37, 99, 235); // Primary blue
+        doc.text("Business Solution - Employee Directory Report", 40, 40);
+
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139); // Muted gray
+        doc.text(`Generated on: ${new Date().toLocaleString()} | Total Records: ${currentEmployeesList.length}`, 40, 56);
+
+        const tableColumn = ["SL", "Name", "Designation", "Email", "Mobile", "NID No", "Salary (BDT)", "Joining Date"];
+        const tableRows = currentEmployeesList.map((emp, index) => [
+            index + 1,
+            emp.name || 'N/A',
+            emp.designation || 'N/A',
+            emp.email || 'N/A',
+            emp.mobile || 'N/A',
+            emp.nidNo || 'N/A',
+            emp.salary ? `৳ ${Number(emp.salary).toLocaleString('en-BD')}` : 'N/A',
+            emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString('en-GB') : 'N/A'
+        ]);
+
+        doc.autoTable({
+            head: [tableColumn],
+            body: tableRows,
+            startY: 70,
+            theme: 'grid',
+            headStyles: {
+                fillColor: [37, 99, 235],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 9,
+                halign: 'left'
+            },
+            bodyStyles: {
+                fontSize: 8.5,
+                textColor: [30, 41, 59]
+            },
+            alternateRowStyles: {
+                fillColor: [248, 250, 252]
+            },
+            margin: { left: 40, right: 40 }
+        });
+
+        const fileName = `Employee_List_${new Date().toISOString().slice(0, 10)}.pdf`;
+        doc.save(fileName);
+    } else {
+        window.print();
     }
 }
