@@ -53,18 +53,13 @@
                     <div class="col-md-6 col-lg-4">
                         <label for="MaritalStatus" class="form-label text-dark small fw-semibold">Marital Status</label>
                         <select class="form-select rounded-3" id="MaritalStatus" name="MaritalStatus">
-                            <option value="1" selected>Single</option>
-                            <option value="2">Married</option>
-                            <option value="3">Other</option>
+                            <option value="" disabled selected>Loading options...</option>
                         </select>
                     </div>
                     <div class="col-md-6 col-lg-4">
                         <label for="Religion" class="form-label text-dark small fw-semibold">Religion</label>
                         <select class="form-select rounded-3" id="Religion" name="Religion">
-                            <option value="1" selected>Islam</option>
-                            <option value="2">Hinduism</option>
-                            <option value="3">Buddhism</option>
-                            <option value="4">Christianity / Other</option>
+                            <option value="" disabled selected>Loading options...</option>
                         </select>
                     </div>
                 </div>
@@ -158,7 +153,7 @@
                     Cancel
                 </a>
                 <button type="submit" id="btn-save-employee" class="btn btn-primary rounded-3 px-5 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
-                    <span id="btn-save-text">Save Employee</span>
+                    <span id="btn-save-text">Save</span>
                     <div id="save-spinner" class="spinner-border spinner-border-sm d-none" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>

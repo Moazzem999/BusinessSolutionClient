@@ -237,7 +237,7 @@ function openEmployeeModal(empId) {
     }
 
     const maritalStatusStr = emp.maritalStatus === 1 ? 'Single' : (emp.maritalStatus === 2 ? 'Married' : 'Other');
-    const religionStr = emp.religion === 1 ? 'Islam' : (emp.religion === 2 ? 'Hinduism' : (emp.religion === 3 ? 'Buddhism' : 'Christianity / Other'));
+    const religionStr = emp.religion === 1 ? 'Islam' : (emp.religion === 2 ? 'Hinduism' : (emp.religion === 3 ? 'Christianity' : (emp.religion === 4 ? 'Buddhism' : 'Others')));
     const formattedDob = emp.dateOfBirth ? new Date(emp.dateOfBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A';
     const formattedJoining = emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A';
     const formattedSalary = emp.salary ? `৳ ${Number(emp.salary).toLocaleString('en-BD')}` : 'N/A';
@@ -398,7 +398,7 @@ function exportToExcel() {
 
     const exportData = currentEmployeesList.map((emp, index) => {
         const maritalStatusStr = emp.maritalStatus === 1 ? 'Single' : (emp.maritalStatus === 2 ? 'Married' : 'Other');
-        const religionStr = emp.religion === 1 ? 'Islam' : (emp.religion === 2 ? 'Hinduism' : (emp.religion === 3 ? 'Buddhism' : 'Christianity / Other'));
+        const religionStr = emp.religion === 1 ? 'Islam' : (emp.religion === 2 ? 'Hinduism' : (emp.religion === 3 ? 'Christianity' : (emp.religion === 4 ? 'Buddhism' : 'Others')));
         const formattedDob = emp.dateOfBirth ? new Date(emp.dateOfBirth).toLocaleDateString('en-GB') : '';
         const formattedJoining = emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString('en-GB') : '';
 

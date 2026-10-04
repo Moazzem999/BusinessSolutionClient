@@ -4,7 +4,79 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     initCreateEmployeePage();
+    loadMaritalStatusDropdown();
+    loadReligionDropdown();
 });
+
+/**
+ * Fetches Marital Status options dynamically from API: /api/Dropdown/GetAllMaritalStatus
+ */
+async function loadMaritalStatusDropdown() {
+    const selectEl = document.getElementById('MaritalStatus');
+    if (!selectEl) return;
+
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/Dropdown/GetAllMaritalStatus`;
+
+    try {
+        const response = await fetch(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            const res = await response.json();
+            if (res && res.succeeded && Array.isArray(res.data) && res.data.length > 0) {
+                selectEl.innerHTML = res.data.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load Marital Status dropdown from API:', e);
+    }
+
+    // Fallback options matching API schema if offline
+    selectEl.innerHTML = `
+        <option value="1">Single</option>
+        <option value="2">Married</option>
+        <option value="3">Divorced</option>
+    `;
+}
+
+/**
+ * Fetches Religion options dynamically from API: /api/Dropdown/GetAllReligion
+ */
+async function loadReligionDropdown() {
+    const selectEl = document.getElementById('Religion');
+    if (!selectEl) return;
+
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/Dropdown/GetAllReligion`;
+
+    try {
+        const response = await fetch(endpoint, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            const res = await response.json();
+            if (res && res.succeeded && Array.isArray(res.data) && res.data.length > 0) {
+                selectEl.innerHTML = res.data.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load Religion dropdown from API:', e);
+    }
+
+    // Fallback options matching API schema if offline
+    selectEl.innerHTML = `
+        <option value="1">Islam</option>
+        <option value="2">Hinduism</option>
+        <option value="3">Christianity</option>
+        <option value="4">Buddhism</option>
+        <option value="5">Others</option>
+    `;
+}
 
 function initCreateEmployeePage() {
     const createForm = document.getElementById('create-employee-form');
