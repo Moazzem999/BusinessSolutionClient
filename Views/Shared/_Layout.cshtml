@@ -21,15 +21,38 @@
                 <span class="brand-text-sync">Solution</span>
             </div>
 
+@{
+    var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["Action"]?.ToString();
+    var isDashboardActive = currentController == "Dashboard";
+    var isEmployeeActive = currentController == "Employee";
+}
+
             <nav class="sidebar-nav">
-                <a asp-controller="Dashboard" asp-action="Index" class="sidebar-link active">
+                <a asp-controller="Dashboard" asp-action="Index" class="sidebar-link @(isDashboardActive ? "active" : "")">
                     <i class="bi bi-grid-fill"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="#" class="sidebar-link">
-                    <i class="bi bi-people-fill"></i>
-                    <span>Employees</span>
-                </a>
+
+                <!-- Employees Group with Submenu -->
+                <div class="sidebar-group">
+                    <a href="#employeesSubmenu" class="sidebar-link d-flex align-items-center justify-content-between @(isEmployeeActive ? "active" : "")" data-bs-toggle="collapse" aria-expanded="@(isEmployeeActive ? "true" : "false")" role="button">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="bi bi-people-fill"></i>
+                            <span>Employees</span>
+                        </div>
+                        <i class="bi bi-chevron-down sidebar-chevron"></i>
+                    </a>
+                    <div class="collapse @(isEmployeeActive ? "show" : "")" id="employeesSubmenu">
+                        <div class="sidebar-submenu">
+                            <a asp-controller="Employee" asp-action="List" class="sidebar-sublink @(isEmployeeActive && currentAction == "List" ? "active" : "")">
+                                <i class="bi bi-list-ul"></i>
+                                <span>List</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <a href="#" class="sidebar-link">
                     <i class="bi bi-building"></i>
                     <span>Departments</span>

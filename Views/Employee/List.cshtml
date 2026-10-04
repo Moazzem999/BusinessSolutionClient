@@ -1,0 +1,128 @@
+@{
+    ViewData["Title"] = "Employee List";
+    var apiBaseUrl = ViewBag.ApiBaseUrl ?? "https://localhost:7148/api";
+}
+
+<!-- Page Header Row -->
+<div class="page-header-row mb-4">
+    <div>
+        <h1 class="page-title">Employee Management</h1>
+        <p class="page-subtitle">View, search, and manage all employee records in your organization.</p>
+    </div>
+</div>
+
+<!-- Search & Filter Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" style="background: #ffffff;">
+    <div class="card-body p-3 p-md-4">
+        <form id="employee-search-form" class="row g-3 align-items-center">
+            <div class="col-md-6 col-lg-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted ps-3">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" id="search-input" class="form-control bg-light border-start-0 ps-1" placeholder="Search by name, email, mobile, or designation..." autocomplete="off">
+                </div>
+            </div>
+            <div class="col-auto">
+                <button type="submit" id="btn-search" class="btn btn-primary rounded-3 px-4 fw-medium d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-filter"></i> Search
+                </button>
+            </div>
+            <div class="col-auto">
+                <button type="button" id="btn-reset" class="btn btn-outline-secondary rounded-3 px-3 fw-medium d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </button>
+            </div>
+            <div class="col-auto ms-auto d-flex align-items-center gap-2">
+                <label for="page-size-select" class="form-label text-muted small mb-0 fw-medium">Rows per page:</label>
+                <select id="page-size-select" class="form-select form-select-sm rounded-3" style="width: 75px;">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Alert Box for API connection errors -->
+<div id="api-error-alert" class="alert alert-danger d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <span id="api-error-message">Failed to connect to backend server.</span>
+</div>
+
+<!-- Employee Table Card -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: #ffffff;">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 emp-list-table">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Employee</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Contact & NID</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Designation</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Joining & Salary</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Present Address</th>
+                    <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="emp-table-body">
+                <!-- Loading Skeleton -->
+                <tr id="emp-loading-row">
+                    <td colspan="6" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="text-muted small mt-2">Fetching employees list...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Empty State Container -->
+    <div id="emp-empty-state" class="text-center py-5 d-none">
+        <div class="mb-3 text-muted" style="font-size: 3rem;">
+            <i class="bi bi-person-slash"></i>
+        </div>
+        <h5 class="fw-semibold text-dark mb-1">No Employees Found</h5>
+        <p class="text-muted small mb-0">Try changing your search query or clear filters.</p>
+    </div>
+
+    <!-- Table Footer / Pagination -->
+    <div class="card-footer bg-white border-top-0 p-3 p-md-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+        <div id="pagination-info" class="text-muted small">
+            Showing 0 to 0 of 0 entries
+        </div>
+        <nav aria-label="Employee List Pagination">
+            <ul id="pagination-list" class="pagination pagination-sm mb-0 gap-1">
+                <!-- Dynamic Pagination Buttons -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Employee Details Modal -->
+<div class="modal fade" id="employeeDetailsModal" tabindex="-1" aria-labelledby="employeeDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark" id="employeeDetailsModalLabel">Employee Profile Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="modal-employee-content">
+                <!-- Dynamic Modal Content -->
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary rounded-3 px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_BASE_URL = "@apiBaseUrl";
+    </script>
+    <script src="~/js/Employee/list.js" asp-append-version="true"></script>
+}
