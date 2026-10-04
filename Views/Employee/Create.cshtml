@@ -1,0 +1,176 @@
+@{
+    ViewData["Title"] = "Create Employee";
+    var apiBaseUrl = ViewBag.ApiBaseUrl ?? "https://localhost:7148/api";
+}
+
+<!-- Page Header Row -->
+<div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+    <div>
+        <h1 class="page-title">Create New Employee</h1>
+        <p class="page-subtitle mb-0">Fill in the employee details below to add a new team member.</p>
+    </div>
+    <div>
+        <a asp-controller="Employee" asp-action="List" class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-medium d-inline-flex align-items-center gap-2">
+            <i class="bi bi-arrow-left"></i> Back to Employee List
+        </a>
+    </div>
+</div>
+
+<!-- Alert Boxes -->
+<div id="create-error-alert" class="alert alert-danger d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <span id="create-error-message">Error saving employee data.</span>
+</div>
+
+<div id="create-success-alert" class="alert alert-success d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-check-circle-fill fs-5"></i>
+    <span id="create-success-message">Employee created successfully! Redirecting...</span>
+</div>
+
+<!-- Main Create Form Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-5" style="background: #ffffff;">
+    <div class="card-body p-4 p-md-5">
+        <form id="create-employee-form" enctype="multipart/form-data">
+
+            <!-- Section 1: Personal Information -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-person-lines-fill text-primary"></i> Personal Information
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Name" class="form-label text-dark small fw-semibold">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="Name" name="Name" placeholder="e.g. Asif Mahmud" required>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="FatherName" class="form-label text-dark small fw-semibold">Father's Name</label>
+                        <input type="text" class="form-control rounded-3" id="FatherName" name="FatherName" placeholder="e.g. Md Alauddin Molla">
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="DateOfBirth" class="form-label text-dark small fw-semibold">Date of Birth</label>
+                        <input type="date" class="form-control rounded-3" id="DateOfBirth" name="DateOfBirth">
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="MaritalStatus" class="form-label text-dark small fw-semibold">Marital Status</label>
+                        <select class="form-select rounded-3" id="MaritalStatus" name="MaritalStatus">
+                            <option value="1" selected>Single</option>
+                            <option value="2">Married</option>
+                            <option value="3">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Religion" class="form-label text-dark small fw-semibold">Religion</label>
+                        <select class="form-select rounded-3" id="Religion" name="Religion">
+                            <option value="1" selected>Islam</option>
+                            <option value="2">Hinduism</option>
+                            <option value="3">Buddhism</option>
+                            <option value="4">Christianity / Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Contact & Identification -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-card-heading text-primary"></i> Contact & Identification
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Email" class="form-label text-dark small fw-semibold">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control rounded-3" id="Email" name="Email" placeholder="e.g. Asif@gmail.com" required>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Mobile" class="form-label text-dark small fw-semibold">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control rounded-3" id="Mobile" name="Mobile" placeholder="e.g. 01711296157" required>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="NidNo" class="form-label text-dark small fw-semibold">NID Number</label>
+                        <input type="text" class="form-control rounded-3" id="NidNo" name="NidNo" placeholder="e.g. 4672502139">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Job & Compensation -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-briefcase-fill text-primary"></i> Job & Compensation
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Designation" class="form-label text-dark small fw-semibold">Designation <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="Designation" name="Designation" placeholder="e.g. Sales Executive" required>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="AcademicQualification" class="form-label text-dark small fw-semibold">Academic Qualification</label>
+                        <input type="text" class="form-control rounded-3" id="AcademicQualification" name="AcademicQualification" placeholder="e.g. Bachelor / SSC / HSC">
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="JoiningDate" class="form-label text-dark small fw-semibold">Joining Date</label>
+                        <input type="date" class="form-control rounded-3" id="JoiningDate" name="JoiningDate">
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Salary" class="form-label text-dark small fw-semibold">Monthly Salary (BDT)</label>
+                        <input type="number" step="0.01" min="0" class="form-control rounded-3" id="Salary" name="Salary" placeholder="e.g. 15000">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Address Information -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-geo-alt-fill text-primary"></i> Address Details
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="PresentAddress" class="form-label text-dark small fw-semibold">Present Address</label>
+                        <textarea class="form-control rounded-3" id="PresentAddress" name="PresentAddress" rows="3" placeholder="Enter present street, thana, district address..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="PermanentAddress" class="form-label text-dark small fw-semibold">Permanent Address</label>
+                        <textarea class="form-control rounded-3" id="PermanentAddress" name="PermanentAddress" rows="3" placeholder="Enter permanent address..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: Photo & Document Uploads -->
+            <div class="mb-4">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-arrow-up-fill text-primary"></i> Documents & Photo Upload
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="Image" class="form-label text-dark small fw-semibold">Profile Photo (Image File)</label>
+                        <input type="file" class="form-control rounded-3" id="Image" name="Image" accept="image/*">
+                        <div class="form-text small text-muted">Upload employee headshot photo (.png, .jpg, .jpeg)</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="NidImage" class="form-label text-dark small fw-semibold">NID Document Photo</label>
+                        <input type="file" class="form-control rounded-3" id="NidImage" name="NidImage" accept="image/*">
+                        <div class="form-text small text-muted">Upload NID card document image (.png, .jpg, .jpeg)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Submit Controls -->
+            <div class="d-flex align-items-center justify-content-end gap-3 pt-3 border-top">
+                <a asp-controller="Employee" asp-action="List" class="btn btn-outline-secondary rounded-3 px-4 py-2">
+                    Cancel
+                </a>
+                <button type="submit" id="btn-save-employee" class="btn btn-primary rounded-3 px-5 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+                    <span id="btn-save-text">Save Employee</span>
+                    <div id="save-spinner" class="spinner-border spinner-border-sm d-none" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_BASE_URL = "@apiBaseUrl";
+    </script>
+    <script src="~/js/Employee/create.js" asp-append-version="true"></script>
+}

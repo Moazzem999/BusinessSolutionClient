@@ -49,6 +49,10 @@
                                 <i class="bi bi-list-ul"></i>
                                 <span>List</span>
                             </a>
+                            <a asp-controller="Employee" asp-action="Create" class="sidebar-sublink @(isEmployeeActive && currentAction == "Create" ? "active" : "")">
+                                <i class="bi bi-person-plus-fill"></i>
+                                <span>Create</span>
+                            </a>
                         </div>
                     </div>
                 </div>

@@ -10,6 +10,10 @@
         <p class="page-subtitle mb-0">View, search, and manage all employee records in your organization.</p>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
+        <a asp-controller="Employee" asp-action="Create" class="btn btn-primary rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+            <i class="bi bi-person-plus-fill fs-6"></i>
+            <span>Create Employee</span>
+        </a>
         <button type="button" id="btn-export-pdf" class="btn btn-outline-danger rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
             <i class="bi bi-file-earmark-pdf-fill fs-6 text-danger"></i>
             <span>Download PDF</span>
