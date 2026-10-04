@@ -262,7 +262,7 @@ body {
 /* Metric Cards Grid matching sample image */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
@@ -450,12 +450,111 @@ body {
   margin-top: 0.25rem;
 }
 
-/* Media Queries */
-@media (max-width: 992px) {
-  .app-sidebar { transform: translateX(-100%); }
-  .app-main { margin-left: 0; }
-  .metrics-grid { grid-template-columns: 1fr; }
+/* Sidebar Mobile Toggle Button */
+.sidebar-toggle-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-dark);
+  font-size: 1.5rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
 }
+
+.sidebar-toggle-btn:hover {
+  background-color: #f1f5f9;
+}
+
+/* Sidebar Backdrop Overlay */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  z-index: 1040;
+  backdrop-filter: blur(2px);
+  transition: opacity 0.2s ease;
+}
+
+.sidebar-backdrop.show {
+  display: block;
+}
+
+/* Media Queries for Responsive Design */
+@media (max-width: 992px) {
+  .sidebar-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .app-sidebar {
+    transform: translateX(-100%);
+    z-index: 1050;
+    box-shadow: none;
+  }
+
+  .app-sidebar.show-sidebar {
+    transform: translateX(0);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .app-main {
+    margin-left: 0;
+  }
+
+  .top-navbar {
+    padding: 0 1.25rem;
+  }
+
+  .page-content {
+    padding: 1.5rem 1.25rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .top-navbar {
+    height: 60px;
+    padding: 0 1rem;
+  }
+
+  .page-content {
+    padding: 1rem 0.85rem;
+  }
+
+  .page-title {
+    font-size: 1.35rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .login-card {
+    padding: 1.75rem 1.25rem;
+    border-radius: 16px;
+  }
+
+  .metric-card {
+    padding: 1.15rem;
+  }
+
+  .metric-icon-box {
+    width: 46px;
+    height: 46px;
+    font-size: 1.25rem;
+  }
+
+  .metric-info .metric-value {
+    font-size: 1.4rem;
+  }
+}
+
 
 /* Sidebar Submenu Styling */
 .sidebar-group {

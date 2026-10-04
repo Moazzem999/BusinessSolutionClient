@@ -35,6 +35,9 @@ window.BSApp = window.BSApp || {
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize user details in header (Avatar initials & Name)
     initGlobalUserHeader();
+    
+    // 2. Initialize mobile sidebar toggle & backdrop
+    initMobileSidebar();
 });
 
 /**
@@ -59,5 +62,36 @@ function initGlobalUserHeader() {
             initials = nameParts[0].substring(0, 2).toUpperCase();
         }
         userAvatarBtn.innerText = initials;
+    }
+}
+
+/**
+ * Initializes mobile responsive sidebar toggle behavior and overlay handling.
+ */
+function initMobileSidebar() {
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
+    const sidebar = document.querySelector('.app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const navLinks = document.querySelectorAll('.sidebar-link:not([data-bs-toggle]), .sidebar-sublink');
+
+    if (toggleBtn && sidebar && backdrop) {
+        toggleBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('show-sidebar');
+            backdrop.classList.toggle('show');
+        });
+
+        backdrop.addEventListener('click', () => {
+            sidebar.classList.remove('show-sidebar');
+            backdrop.classList.remove('show');
+        });
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 992) {
+                    sidebar.classList.remove('show-sidebar');
+                    backdrop.classList.remove('show');
+                }
+            });
+        });
     }
 }
