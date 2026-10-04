@@ -10,6 +10,14 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- Custom Theme CSS -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('bs_app_theme');
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-app-theme', savedTheme);
+            }
+        })();
+    </script>
 </head>
 <body>
 
@@ -82,6 +90,60 @@
                 </button>
 
                 <div class="user-nav-actions ms-auto">
+                    <!-- Navbar Theme Color Palette Dropdown -->
+                    <div class="dropdown">
+                        <button type="button" class="nav-icon-btn me-1" id="navbar-theme-dropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Navigation Theme Color">
+                            <i class="bi bi-palette-fill"></i>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-3" style="width: 260px; border-radius: 14px; margin-top: 0.5rem;" aria-labelledby="navbar-theme-dropdown">
+                            <h6 class="dropdown-header px-0 text-uppercase fw-bold text-muted small mb-2">Navigation Theme</h6>
+                            <div class="d-flex flex-column gap-2 app-color-picker">
+                                <button type="button" class="btn btn-sm text-start d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border-0 active-theme-btn" data-app-theme="default">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="color-dot border" style="background: linear-gradient(135deg, #ffffff 50%, #0b1329 50%);"></span>
+                                        <span class="fw-medium">Classic Navy</span>
+                                    </div>
+                                    <i class="bi bi-check-lg theme-check-icon"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm text-start d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border-0" data-app-theme="dark">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="color-dot" style="background: linear-gradient(135deg, #18181b 50%, #090d16 50%);"></span>
+                                        <span class="fw-medium">Dark Slate</span>
+                                    </div>
+                                    <i class="bi bi-check-lg theme-check-icon d-none"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm text-start d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border-0" data-app-theme="blue">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="color-dot" style="background: linear-gradient(135deg, #2563eb 50%, #1e3a8a 50%);"></span>
+                                        <span class="fw-medium">Royal Blue</span>
+                                    </div>
+                                    <i class="bi bi-check-lg theme-check-icon d-none"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm text-start d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border-0" data-app-theme="emerald">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="color-dot" style="background: linear-gradient(135deg, #059669 50%, #064e3b 50%);"></span>
+                                        <span class="fw-medium">Emerald Green</span>
+                                    </div>
+                                    <i class="bi bi-check-lg theme-check-icon d-none"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm text-start d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border-0" data-app-theme="purple">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="color-dot" style="background: linear-gradient(135deg, #7c3aed 50%, #4c1d95 50%);"></span>
+                                        <span class="fw-medium">Deep Purple</span>
+                                    </div>
+                                    <i class="bi bi-check-lg theme-check-icon d-none"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm text-start d-flex align-items-center justify-content-between px-3 py-2 rounded-3 border-0" data-app-theme="crimson">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="color-dot" style="background: linear-gradient(135deg, #be123c 50%, #881337 50%);"></span>
+                                        <span class="fw-medium">Crimson Rose</span>
+                                    </div>
+                                    <i class="bi bi-check-lg theme-check-icon d-none"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <button type="button" class="nav-icon-btn" title="Notifications">
                         <i class="bi bi-bell"></i>
                     </button>

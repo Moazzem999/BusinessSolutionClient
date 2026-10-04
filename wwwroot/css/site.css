@@ -137,8 +137,9 @@ html, body {
 /* Top Navigation Bar */
 .top-navbar {
   height: 68px;
-  background-color: #ffffff;
-  border-bottom: 1px solid var(--border-color);
+  background-color: var(--navbar-bg, #ffffff);
+  border-bottom: 1px solid var(--navbar-border, var(--border-color));
+  color: var(--navbar-text, var(--text-dark));
   padding: 0 2rem;
   display: flex;
   align-items: center;
@@ -146,6 +147,7 @@ html, body {
   position: sticky;
   top: 0;
   z-index: 90;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .search-input-group {
@@ -186,21 +188,23 @@ html, body {
   gap: 1.25rem;
 }
 
-.nav-icon-btn {
+.nav-icon-btn,
+.sidebar-toggle-btn {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--navbar-icon-color, #64748b);
   font-size: 1.25rem;
   cursor: pointer;
   position: relative;
   padding: 0.35rem;
   border-radius: 50%;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-.nav-icon-btn:hover {
-  background-color: #f1f5f9;
-  color: var(--text-dark);
+.nav-icon-btn:hover,
+.sidebar-toggle-btn:hover {
+  background-color: var(--navbar-hover-bg, #f1f5f9);
+  color: var(--navbar-text, var(--text-dark));
 }
 
 .avatar-circle {
@@ -637,3 +641,75 @@ html, body {
   padding-bottom: 0.85rem;
   border-bottom: 1px solid #f1f5f9;
 }
+
+/* Color Picker Dot & Dropdown Styling */
+.color-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.app-color-picker button {
+  background-color: #f8fafc;
+  color: #334155;
+  transition: all 0.2s ease;
+}
+
+.app-color-picker button:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.app-color-picker button.active-theme-btn {
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+/* Navigation Theme Color Presets (Top Navbar + Left Sidebar) */
+[data-app-theme="dark"] {
+  --sidebar-bg: #090d16;
+  --navbar-bg: #18181b;
+  --navbar-border: #27272a;
+  --navbar-text: #ffffff;
+  --navbar-icon-color: #a1a1aa;
+  --navbar-hover-bg: rgba(255, 255, 255, 0.12);
+}
+
+[data-app-theme="blue"] {
+  --sidebar-bg: #1e3a8a;
+  --navbar-bg: #2563eb;
+  --navbar-border: #1d4ed8;
+  --navbar-text: #ffffff;
+  --navbar-icon-color: #dbeafe;
+  --navbar-hover-bg: rgba(255, 255, 255, 0.18);
+}
+
+[data-app-theme="emerald"] {
+  --sidebar-bg: #064e3b;
+  --navbar-bg: #059669;
+  --navbar-border: #047857;
+  --navbar-text: #ffffff;
+  --navbar-icon-color: #d1fae5;
+  --navbar-hover-bg: rgba(255, 255, 255, 0.18);
+}
+
+[data-app-theme="purple"] {
+  --sidebar-bg: #4c1d95;
+  --navbar-bg: #7c3aed;
+  --navbar-border: #6d28d9;
+  --navbar-text: #ffffff;
+  --navbar-icon-color: #ede9fe;
+  --navbar-hover-bg: rgba(255, 255, 255, 0.18);
+}
+
+[data-app-theme="crimson"] {
+  --sidebar-bg: #881337;
+  --navbar-bg: #be123c;
+  --navbar-border: #9f1239;
+  --navbar-text: #ffffff;
+  --navbar-icon-color: #fecdd3;
+  --navbar-hover-bg: rgba(255, 255, 255, 0.18);
+}

@@ -38,6 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // 2. Initialize mobile sidebar toggle & backdrop
     initMobileSidebar();
+
+    // 3. Initialize Navigation Theme Color Manager (Navbar & Sidebar)
+    initAppThemeManager();
 });
 
 /**
@@ -92,6 +95,46 @@ function initMobileSidebar() {
                     backdrop.classList.remove('show');
                 }
             });
+        });
+    }
+}
+
+/**
+ * Initializes navigation color theme manager (Navbar + Sidebar) with persistent storage.
+ */
+function initAppThemeManager() {
+    const themeButtons = document.querySelectorAll('.app-color-picker button[data-app-theme]');
+    if (!themeButtons || themeButtons.length === 0) return;
+
+    const savedTheme = localStorage.getItem('bs_app_theme') || 'default';
+    applyAppTheme(savedTheme);
+
+    themeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const themeName = btn.getAttribute('data-app-theme');
+            applyAppTheme(themeName);
+            localStorage.setItem('bs_app_theme', themeName);
+        });
+    });
+
+    function applyAppTheme(themeName) {
+        if (themeName && themeName !== 'default') {
+            document.documentElement.setAttribute('data-app-theme', themeName);
+        } else {
+            document.documentElement.removeAttribute('data-app-theme');
+        }
+
+        // Update active checkmarks in dropdown
+        themeButtons.forEach(btn => {
+            const btnTheme = btn.getAttribute('data-app-theme');
+            const checkIcon = btn.querySelector('.theme-check-icon');
+            if (btnTheme === themeName) {
+                btn.classList.add('active-theme-btn');
+                if (checkIcon) checkIcon.classList.remove('d-none');
+            } else {
+                btn.classList.remove('active-theme-btn');
+                if (checkIcon) checkIcon.classList.add('d-none');
+            }
         });
     }
 }
