@@ -199,6 +199,9 @@ function renderEmployeeRows(items, rootUrl) {
  * Displays detailed information of an employee in a Bootstrap modal
  */
 function openEmployeeModal(empId) {
+    if (window.scrollX !== 0) {
+        window.scrollTo({ left: 0, behavior: 'instant' });
+    }
     const emp = currentEmployeesList.find(e => e.id === empId);
     if (!emp) return;
 
