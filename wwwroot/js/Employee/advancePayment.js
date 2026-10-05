@@ -723,6 +723,7 @@ function initCreateEmployeeAutocomplete() {
 
         if (val.length < 3) {
             menu.classList.add('d-none');
+            menu.style.display = 'none';
             if (val.length === 0) {
                 hiddenInput.value = '';
                 if (clearBtn) clearBtn.classList.add('d-none');
@@ -743,6 +744,7 @@ function initCreateEmployeeAutocomplete() {
             searchInput.removeAttribute('data-selected-name');
             clearBtn.classList.add('d-none');
             menu.classList.add('d-none');
+            menu.style.display = 'none';
         });
     }
 
@@ -751,6 +753,7 @@ function initCreateEmployeeAutocomplete() {
         const container = document.getElementById('create-employee-search-container');
         if (container && !container.contains(e.target)) {
             menu.classList.add('d-none');
+            menu.style.display = 'none';
         }
     });
 }
@@ -775,6 +778,7 @@ async function searchCreateModalEmployees(nameQuery) {
         </div>
     `;
     menu.classList.remove('d-none');
+    menu.style.display = 'block';
 
     try {
         const response = await fetch(endpoint, {
@@ -823,11 +827,14 @@ async function searchCreateModalEmployees(nameQuery) {
             }).join('');
 
             list.querySelectorAll('.create-employee-suggestion-item').forEach(btn => {
-                btn.addEventListener('click', () => {
+                const handleSelection = (e) => {
+                    e.preventDefault();
                     const empId = btn.getAttribute('data-id');
                     const empName = btn.getAttribute('data-name');
                     selectCreateModalEmployee(empId, empName);
-                });
+                };
+                btn.addEventListener('mousedown', handleSelection);
+                btn.addEventListener('click', handleSelection);
             });
 
         } else {
@@ -858,7 +865,10 @@ function selectCreateModalEmployee(empId, empName) {
     }
 
     if (clearBtn) clearBtn.classList.remove('d-none');
-    if (menu) menu.classList.add('d-none');
+    if (menu) {
+        menu.classList.add('d-none');
+        menu.style.display = 'none';
+    }
 }
 
 /**
@@ -967,7 +977,7 @@ async function executeCreateAdvancePayment(e) {
     } finally {
         if (saveBtn && saveBtnText && saveSpinner) {
             saveBtn.disabled = false;
-            saveBtnText.innerText = 'Save Advance Payment';
+            saveBtnText.innerText = 'Save';
             saveSpinner.classList.add('d-none');
         }
     }

@@ -135,7 +135,7 @@
 <!-- Create Advance Payment Modal -->
 <div class="modal fade" id="createAdvancePaymentModal" tabindex="-1" aria-labelledby="createAdvancePaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
                 <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="createAdvancePaymentModalLabel">
                     <i class="bi bi-plus-circle-fill text-primary"></i> Create Advance Payment
@@ -159,13 +159,13 @@
                                     <i class="bi bi-person-search"></i>
                                 </span>
                                 <input type="text" id="create-employee-search-input" class="form-control bg-light border-start-0 ps-1" placeholder="Type employee name (min 3 chars to search)..." autocomplete="off" required>
-                                <input type="hidden" id="create-employee-id" name="employeeId" required>
+                                <input type="hidden" id="create-employee-id" name="employeeId">
                                 <button type="button" id="create-btn-clear-employee" class="btn btn-light border border-start-0 text-muted d-none" title="Clear Employee Selection">
                                     <i class="bi bi-x-circle-fill"></i>
                                 </button>
                             </div>
                             <!-- Autocomplete Dropdown Suggestions -->
-                            <div id="create-employee-suggestions-menu" class="dropdown-menu w-100 shadow-lg border border-light-subtle rounded-3 p-0 mt-1 overflow-auto d-none" style="max-height: 250px; z-index: 1055;">
+                            <div id="create-employee-suggestions-menu" class="position-absolute start-0 w-100 shadow-lg border border-secondary-subtle rounded-3 p-0 mt-1 overflow-auto bg-white d-none" style="max-height: 250px; z-index: 1060; top: 100%;">
                                 <div id="create-employee-suggestions-list" class="list-group list-group-flush small">
                                     <!-- Dynamic suggestion items -->
                                 </div>
