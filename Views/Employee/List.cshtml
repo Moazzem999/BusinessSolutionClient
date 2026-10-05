@@ -134,6 +134,49 @@
     </div>
 </div>
 
+<!-- Employee Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="deleteConfirmationModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i> Delete Employee
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="mb-2 text-dark">Are you sure you want to delete employee <strong id="delete-employee-name" class="text-danger"></strong>?</p>
+                <p class="text-muted small mb-0">This action cannot be undone and will permanently remove the record from the system.</p>
+                
+                <div id="delete-modal-error" class="alert alert-danger d-none mt-3 mb-0 rounded-3 py-2 px-3 small align-items-center gap-2" role="alert">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span id="delete-modal-error-text">Failed to delete employee.</span>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light border rounded-3 px-3" data-bs-dismiss="modal" id="btn-cancel-delete">Cancel</button>
+                <button type="button" class="btn btn-danger rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2" id="btn-confirm-delete">
+                    <i class="bi bi-trash-fill"></i>
+                    <span id="btn-confirm-delete-text">Delete</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+    <div id="app-toast" class="toast align-items-center text-white border-0 rounded-3 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2 py-3 px-3 fs-6">
+                <i id="toast-icon" class="bi fs-5"></i>
+                <span id="toast-message"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         const API_BASE_URL = "@apiBaseUrl";

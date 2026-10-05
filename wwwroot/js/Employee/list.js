@@ -7,6 +7,8 @@ let pageSize = 10;
 let searchTerm = '';
 let totalPages = 1;
 let currentEmployeesList = [];
+let employeeToDeleteId = null;
+let deleteModalInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initEmployeeListPage();
@@ -57,6 +59,11 @@ function initEmployeeListPage() {
         excelBtn.addEventListener('click', () => {
             exportToExcel();
         });
+    }
+
+    const confirmDeleteBtn = document.getElementById('btn-confirm-delete');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', executeDeleteEmployee);
     }
 
     // Initial load
@@ -201,9 +208,14 @@ function renderEmployeeRows(items, rootUrl) {
                     </div>
                 </td>
                 <td class="pe-4 text-end">
-                    <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-3 fw-medium" onclick="openEmployeeModal(${emp.id})">
-                        <i class="bi bi-eye me-1"></i> Details
-                    </button>
+                    <div class="d-inline-flex gap-1 justify-content-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5 fw-medium d-inline-flex align-items-center gap-1" onclick="openEmployeeModal(${emp.id})" title="View Details">
+                            <i class="bi bi-eye"></i> Details
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5 fw-medium d-inline-flex align-items-center gap-1" onclick="confirmDeleteEmployee(${emp.id})" title="Delete Employee">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -502,3 +514,156 @@ function exportToPDF() {
         window.print();
     }
 }
+
+/**
+ * Opens confirmation modal for deleting an employee
+ */
+function confirmDeleteEmployee(empId) {
+    const emp = currentEmployeesList.find(e => e.id === empId);
+    if (!emp) return;
+
+    employeeToDeleteId = empId;
+    const nameEl = document.getElementById('delete-employee-name');
+    if (nameEl) {
+        nameEl.innerText = emp.name || `ID #${empId}`;
+    }
+
+    const errorAlert = document.getElementById('delete-modal-error');
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+        errorAlert.classList.remove('d-flex');
+    }
+
+    // Reset button state
+    const confirmBtn = document.getElementById('btn-confirm-delete');
+    const confirmBtnText = document.getElementById('btn-confirm-delete-text');
+    const cancelBtn = document.getElementById('btn-cancel-delete');
+    if (confirmBtn && confirmBtnText) {
+        confirmBtn.disabled = false;
+        confirmBtnText.innerText = 'Delete';
+    }
+    if (cancelBtn) {
+        cancelBtn.disabled = false;
+    }
+
+    const modalEl = document.getElementById('deleteConfirmationModal');
+    if (modalEl) {
+        deleteModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        deleteModalInstance.show();
+    }
+}
+
+/**
+ * Sends DELETE request to API endpoint https://localhost:7148/api/Employees/{id}
+ */
+async function executeDeleteEmployee() {
+    if (!employeeToDeleteId) return;
+
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/Employees/${employeeToDeleteId}`;
+
+    const confirmBtn = document.getElementById('btn-confirm-delete');
+    const confirmBtnText = document.getElementById('btn-confirm-delete-text');
+    const cancelBtn = document.getElementById('btn-cancel-delete');
+    const errorAlert = document.getElementById('delete-modal-error');
+    const errorText = document.getElementById('delete-modal-error-text');
+
+    // UI Loading state
+    if (confirmBtn && confirmBtnText) {
+        confirmBtn.disabled = true;
+        if (cancelBtn) cancelBtn.disabled = true;
+        confirmBtnText.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Deleting...`;
+    }
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+        errorAlert.classList.remove('d-flex');
+    }
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const resData = await response.json();
+        console.log('Delete Employee API Response:', resData);
+
+        if (response.ok && resData && resData.succeeded) {
+            // Hide delete modal
+            if (deleteModalInstance) {
+                deleteModalInstance.hide();
+            }
+
+            // Show Toast notification
+            showToast(resData.message || 'Employee successfully deleted.', 'success');
+
+            // If last record on current page was deleted and page > 1, go back 1 page
+            if (currentEmployeesList.length === 1 && currentPage > 1) {
+                currentPage--;
+            }
+
+            employeeToDeleteId = null;
+            // Refresh employee table
+            fetchEmployees();
+        } else {
+            const errorMsg = resData?.message || 'Failed to delete employee.';
+            if (errorAlert && errorText) {
+                errorText.innerText = errorMsg;
+                errorAlert.classList.remove('d-none');
+                errorAlert.classList.add('d-flex');
+            }
+            if (confirmBtn && confirmBtnText) {
+                confirmBtn.disabled = false;
+                if (cancelBtn) cancelBtn.disabled = false;
+                confirmBtnText.innerText = 'Delete';
+            }
+        }
+    } catch (error) {
+        console.error('Error deleting employee:', error);
+        if (errorAlert && errorText) {
+            errorText.innerText = 'Network error: Unable to connect to server.';
+            errorAlert.classList.remove('d-none');
+            errorAlert.classList.add('d-flex');
+        }
+        if (confirmBtn && confirmBtnText) {
+            confirmBtn.disabled = false;
+            if (cancelBtn) cancelBtn.disabled = false;
+            confirmBtnText.innerText = 'Delete';
+        }
+    }
+}
+
+/**
+ * Displays a modern Toast notification
+ */
+function showToast(message, type = 'success') {
+    const toastEl = document.getElementById('app-toast');
+    const toastMessage = document.getElementById('toast-message');
+    const toastIcon = document.getElementById('toast-icon');
+
+    if (!toastEl || !toastMessage || !toastIcon) return;
+
+    toastMessage.innerText = message;
+
+    toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-info');
+    toastIcon.className = 'bi fs-5';
+
+    if (type === 'success') {
+        toastEl.classList.add('bg-success');
+        toastIcon.classList.add('bi-check-circle-fill');
+    } else if (type === 'danger' || type === 'error') {
+        toastEl.classList.add('bg-danger');
+        toastIcon.classList.add('bi-x-circle-fill');
+    } else {
+        toastEl.classList.add('bg-primary');
+        toastIcon.classList.add('bi-info-circle-fill');
+    }
+
+    const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 });
+    toast.show();
+}
+
