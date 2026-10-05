@@ -144,7 +144,7 @@ async function fetchAdvancePayments() {
     // Show loading skeleton inside table
     tbody.innerHTML = `
         <tr id="payment-loading-row">
-            <td colspan="8" class="text-center py-5">
+            <td colspan="6" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -217,14 +217,10 @@ function renderPaymentRows(items) {
         const formattedAmount = item.amount ? `৳ ${Number(item.amount).toLocaleString('en-BD', { minimumFractionDigits: 2 })}` : '৳ 0.00';
         const formattedPaymentDate = item.paymentDate ? new Date(item.paymentDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
         const formattedCreatedOn = item.createdOn ? new Date(item.createdOn).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-        const statusBadge = item.status === 1
-            ? `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-medium"><i class="bi bi-check-circle me-1"></i>Approved</span>`
-            : `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-2.5 py-1 fw-medium">Status #${item.status}</span>`;
 
         return `
             <tr>
-                <td class="ps-4 fw-semibold text-muted">#${item.id}</td>
-                <td>
+                <td class="ps-4">
                     <div class="fw-semibold text-dark">${item.employeeName || 'Employee #' + item.employeeId}</div>
                     <div class="text-muted small">Emp ID: #${item.employeeId}</div>
                 </td>
@@ -239,13 +235,12 @@ function renderPaymentRows(items) {
                         ${item.description || 'No description'}
                     </div>
                 </td>
-                <td>${statusBadge}</td>
                 <td>
                     <div class="text-muted small"><i class="bi bi-clock me-1"></i>${formattedCreatedOn}</div>
                 </td>
                 <td class="pe-4 text-end">
                     <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5" onclick="openPaymentDetailsModal(${item.id})" title="View Details">
-                        <i class="bi bi-eye me-1"></i> Details
+                        <i class="bi bi-eye"></i>
                     </button>
                 </td>
             </tr>
@@ -454,15 +449,13 @@ function exportToPDF() {
         doc.setTextColor(100, 116, 139);
         doc.text(`Generated on: ${new Date().toLocaleString()} | Total Records: ${currentPaymentsList.length}`, 40, 56);
 
-        const tableColumn = ["SL", "ID", "Employee Name", "Amount (BDT)", "Payment Date", "Description", "Status"];
+        const tableColumn = ["SL", "Employee Name", "Amount (BDT)", "Payment Date", "Description"];
         const tableRows = currentPaymentsList.map((item, index) => [
             index + 1,
-            item.id,
             item.employeeName || 'N/A',
             item.amount ? Number(item.amount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00',
             item.paymentDate ? new Date(item.paymentDate).toLocaleDateString('en-GB') : 'N/A',
-            item.description || 'N/A',
-            item.status === 1 ? 'Approved' : item.status
+            item.description || 'N/A'
         ]);
 
         doc.autoTable({
