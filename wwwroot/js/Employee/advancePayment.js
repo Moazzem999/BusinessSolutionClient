@@ -10,6 +10,7 @@ let fromDate = '';
 let toDate = '';
 let totalPages = 1;
 let currentPaymentsList = [];
+let employeeMap = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     initAdvancePaymentPage();
@@ -77,7 +78,7 @@ function initAdvancePaymentPage() {
 }
 
 /**
- * Loads employee list into filter dropdown
+ * Loads employee list into filter dropdown & populates employeeMap
  */
 async function loadEmployeeDropdownOptions() {
     const employeeSelect = document.getElementById('employee-select');
@@ -100,9 +101,15 @@ async function loadEmployeeDropdownOptions() {
             if (resData && resData.succeeded && resData.data && Array.isArray(resData.data.items)) {
                 let optionsHtml = '<option value="">All Employees</option>';
                 resData.data.items.forEach(emp => {
+                    employeeMap[emp.id] = emp;
                     optionsHtml += `<option value="${emp.id}">${emp.name} (${emp.designation || 'ID: #' + emp.id})</option>`;
                 });
                 employeeSelect.innerHTML = optionsHtml;
+                
+                // Re-render table if data was already loaded before dropdown finished
+                if (currentPaymentsList && currentPaymentsList.length > 0) {
+                    renderPaymentRows(currentPaymentsList);
+                }
             }
         }
     } catch (e) {
@@ -208,12 +215,26 @@ async function fetchAdvancePayments() {
 }
 
 /**
- * Renders table rows for advance payments
+ * Renders table rows for advance payments with Employee Image & Details
  */
 function renderPaymentRows(items) {
     const tbody = document.getElementById('payment-table-body');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const rootUrl = baseUrl.replace(/\/api\/?$/, '');
 
     tbody.innerHTML = items.map(item => {
+        const empFromMap = employeeMap[item.employeeId] || {};
+        const employeeName = item.employeeName || empFromMap.name || `Employee #${item.employeeId}`;
+        const imagePath = item.imagePath || item.employeeImagePath || item.employeeImage || empFromMap.imagePath;
+
+        const initials = employeeName ? employeeName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
+        
+        let imgTag = `<div class="emp-initials-avatar fs-6 fw-bold">${initials}</div>`;
+        if (imagePath && imagePath.trim() !== '') {
+            const fullImgUrl = imagePath.startsWith('http') ? imagePath : `${rootUrl}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+            imgTag = `<img src="${fullImgUrl}" alt="${employeeName}" class="rounded-circle object-fit-cover shadow-sm" style="width: 42px; height: 42px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-6 fw-bold\\'>${initials}</div>';">`;
+        }
+
         const formattedAmount = item.amount ? `৳ ${Number(item.amount).toLocaleString('en-BD', { minimumFractionDigits: 2 })}` : '৳ 0.00';
         const formattedPaymentDate = item.paymentDate ? new Date(item.paymentDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
         const formattedCreatedOn = item.createdOn ? new Date(item.createdOn).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
@@ -221,8 +242,13 @@ function renderPaymentRows(items) {
         return `
             <tr>
                 <td class="ps-4">
-                    <div class="fw-semibold text-dark">${item.employeeName || 'Employee #' + item.employeeId}</div>
-                    <div class="text-muted small">Emp ID: #${item.employeeId}</div>
+                    <div class="d-flex align-items-center gap-3">
+                        ${imgTag}
+                        <div>
+                            <div class="fw-semibold text-dark">${employeeName}</div>
+                            <div class="text-muted small">Emp ID: #${item.employeeId}</div>
+                        </div>
+                    </div>
                 </td>
                 <td>
                     <div class="fw-bold text-success fs-6">${formattedAmount}</div>
@@ -255,6 +281,20 @@ function openPaymentDetailsModal(paymentId) {
     const item = currentPaymentsList.find(p => p.id === paymentId);
     if (!item) return;
 
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const rootUrl = baseUrl.replace(/\/api\/?$/, '');
+
+    const empFromMap = employeeMap[item.employeeId] || {};
+    const employeeName = item.employeeName || empFromMap.name || `Employee #${item.employeeId}`;
+    const imagePath = item.imagePath || item.employeeImagePath || item.employeeImage || empFromMap.imagePath;
+    const initials = employeeName ? employeeName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
+
+    let modalImgHtml = `<div class="emp-initials-avatar fs-5 fw-bold" style="width: 54px; height: 54px;">${initials}</div>`;
+    if (imagePath && imagePath.trim() !== '') {
+        const fullImgUrl = imagePath.startsWith('http') ? imagePath : `${rootUrl}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+        modalImgHtml = `<img src="${fullImgUrl}" alt="${employeeName}" class="rounded-circle object-fit-cover shadow" style="width: 54px; height: 54px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-5 fw-bold\\' style=\\'width: 54px; height: 54px;\\'>${initials}</div>';">`;
+    }
+
     const formattedAmount = item.amount ? `৳ ${Number(item.amount).toLocaleString('en-BD', { minimumFractionDigits: 2 })}` : '৳ 0.00';
     const formattedPaymentDate = item.paymentDate ? new Date(item.paymentDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A';
     const formattedCreatedOn = item.createdOn ? new Date(item.createdOn).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
@@ -262,12 +302,12 @@ function openPaymentDetailsModal(paymentId) {
 
     const modalContent = document.getElementById('modal-payment-content');
     modalContent.innerHTML = `
-        <div class="p-3 rounded-3 bg-light border mb-3">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-                <span class="text-muted small fw-semibold text-uppercase">Employee</span>
-                <span class="badge bg-primary rounded-pill px-3">ID: #${item.employeeId}</span>
+        <div class="d-flex align-items-center gap-3 p-3 rounded-3 bg-light border mb-3">
+            ${modalImgHtml}
+            <div>
+                <h5 class="fw-bold text-dark mb-1">${employeeName}</h5>
+                <div class="badge bg-primary rounded-pill px-3">Emp ID: #${item.employeeId}</div>
             </div>
-            <h5 class="fw-bold text-dark mb-0">${item.employeeName || 'Employee #' + item.employeeId}</h5>
         </div>
 
         <div class="row g-3">
