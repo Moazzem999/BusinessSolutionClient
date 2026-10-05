@@ -32,7 +32,7 @@
                     <span class="input-group-text bg-light border-end-0 text-muted ps-3">
                         <i class="bi bi-search"></i>
                     </span>
-                    <input type="text" id="search-input" class="form-control bg-light border-start-0 ps-1" placeholder="Search by description, employee name..." autocomplete="off">
+                    <input type="text" id="search-input" class="form-control bg-light border-start-0 ps-1" placeholder="Search by employee name, description..." autocomplete="off">
                 </div>
             </div>
 
@@ -143,6 +143,36 @@
             </div>
             <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
                 <button type="button" class="btn btn-secondary rounded-3 px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="deleteConfirmationModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i> Delete Advance Payment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="mb-2 text-dark">Are you sure you want to delete this advance payment record for <strong id="delete-employee-name" class="text-danger"></strong>?</p>
+                <p class="text-muted small mb-0">This action cannot be undone and will permanently remove the record from the system.</p>
+                
+                <div id="delete-modal-error" class="alert alert-danger d-none mt-3 mb-0 rounded-3 py-2 px-3 small align-items-center gap-2" role="alert">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span id="delete-modal-error-text">Failed to delete advance payment.</span>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light border rounded-3 px-3" data-bs-dismiss="modal" id="btn-cancel-delete">Cancel</button>
+                <button type="button" class="btn btn-danger rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2" id="btn-confirm-delete">
+                    <i class="bi bi-trash-fill"></i>
+                    <span id="btn-confirm-delete-text">Delete</span>
+                </button>
             </div>
         </div>
     </div>
