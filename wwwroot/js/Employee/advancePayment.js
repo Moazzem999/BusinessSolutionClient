@@ -666,6 +666,7 @@ function showToast(message, type = 'success') {
 }
 
 let createSearchDebounceTimer = null;
+let currentFocusedSuggestionIndex = -1;
 
 /**
  * Initializes Create Advance Payment Modal & Form Handlers
@@ -695,6 +696,7 @@ function initCreateModalAndForm() {
             if (paymentDateInput && !paymentDateInput.value) {
                 paymentDateInput.value = new Date().toISOString().substring(0, 10);
             }
+            currentFocusedSuggestionIndex = -1;
         });
     }
 
@@ -702,7 +704,7 @@ function initCreateModalAndForm() {
 }
 
 /**
- * Initializes Employee Searchable Combobox inside Create Modal (min 3 chars trigger)
+ * Initializes Employee Searchable Combobox inside Create Modal (min 3 chars trigger + keyboard navigation)
  */
 function initCreateEmployeeAutocomplete() {
     const searchInput = document.getElementById('create-employee-search-input');
@@ -712,8 +714,48 @@ function initCreateEmployeeAutocomplete() {
 
     if (!searchInput || !menu) return;
 
+    // Handle Keyboard Navigation (ArrowUp, ArrowDown, Enter, Escape)
+    searchInput.addEventListener('keydown', (e) => {
+        const list = document.getElementById('create-employee-suggestions-list');
+        if (!list) return;
+
+        const items = list.querySelectorAll('.create-employee-suggestion-item');
+        if (!items || items.length === 0 || menu.classList.contains('d-none') || menu.style.display === 'none') {
+            return;
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentFocusedSuggestionIndex++;
+            if (currentFocusedSuggestionIndex >= items.length) {
+                currentFocusedSuggestionIndex = 0; // Wrap around to top
+            }
+            updateSuggestionFocus(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentFocusedSuggestionIndex--;
+            if (currentFocusedSuggestionIndex < 0) {
+                currentFocusedSuggestionIndex = items.length - 1; // Wrap around to bottom
+            }
+            updateSuggestionFocus(items);
+        } else if (e.key === 'Enter') {
+            if (currentFocusedSuggestionIndex >= 0 && currentFocusedSuggestionIndex < items.length) {
+                e.preventDefault(); // Prevent form submission
+                const selectedBtn = items[currentFocusedSuggestionIndex];
+                const empId = selectedBtn.getAttribute('data-id');
+                const empName = selectedBtn.getAttribute('data-name');
+                selectCreateModalEmployee(empId, empName);
+            }
+        } else if (e.key === 'Escape') {
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            currentFocusedSuggestionIndex = -1;
+        }
+    });
+
     searchInput.addEventListener('input', (e) => {
         const val = e.target.value.trim();
+        currentFocusedSuggestionIndex = -1;
 
         // If user changed input, reset hidden ID unless matches selected
         if (hiddenInput.value && val !== searchInput.getAttribute('data-selected-name')) {
@@ -745,6 +787,7 @@ function initCreateEmployeeAutocomplete() {
             clearBtn.classList.add('d-none');
             menu.classList.add('d-none');
             menu.style.display = 'none';
+            currentFocusedSuggestionIndex = -1;
         });
     }
 
@@ -754,6 +797,29 @@ function initCreateEmployeeAutocomplete() {
         if (container && !container.contains(e.target)) {
             menu.classList.add('d-none');
             menu.style.display = 'none';
+            currentFocusedSuggestionIndex = -1;
+        }
+    });
+}
+
+/**
+ * Updates visual highlight & scrolling for keyboard navigation
+ */
+function updateSuggestionFocus(items) {
+    items.forEach((item, index) => {
+        const empNameDiv = item.querySelector('.fw-semibold');
+        const badgeSpan = item.querySelector('.badge');
+
+        if (index === currentFocusedSuggestionIndex) {
+            item.classList.add('active', 'bg-primary', 'text-white');
+            item.classList.remove('bg-white');
+            if (empNameDiv) empNameDiv.classList.add('text-white');
+            if (badgeSpan) badgeSpan.classList.add('bg-white', 'text-primary');
+            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+            if (empNameDiv) empNameDiv.classList.remove('text-white');
+            if (badgeSpan) badgeSpan.classList.remove('bg-white', 'text-primary');
         }
     });
 }
@@ -766,6 +832,7 @@ async function searchCreateModalEmployees(nameQuery) {
     const menu = document.getElementById('create-employee-suggestions-menu');
     if (!list || !menu) return;
 
+    currentFocusedSuggestionIndex = -1;
     const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
     const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
     const rootUrl = baseUrl.replace(/\/api\/?$/, '');
@@ -869,6 +936,7 @@ function selectCreateModalEmployee(empId, empName) {
         menu.classList.add('d-none');
         menu.style.display = 'none';
     }
+    currentFocusedSuggestionIndex = -1;
 }
 
 /**
