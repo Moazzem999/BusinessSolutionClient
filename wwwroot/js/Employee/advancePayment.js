@@ -76,6 +76,9 @@ function initAdvancePaymentPage() {
     // Initialize Create Modal & Form
     initCreateModalAndForm();
 
+    // Initialize Update Modal & Form
+    initUpdateModalAndForm();
+
     // Load initial employee dataset for image map
     preloadEmployeeMap();
 
@@ -263,6 +266,9 @@ function renderPaymentRows(items) {
                     <div class="d-inline-flex gap-1 justify-content-end">
                         <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5" onclick="openPaymentDetailsModal(${item.id})" title="View Details">
                             <i class="bi bi-eye"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-3 px-2.5 py-1.5" onclick="openUpdateAdvancePaymentModal(${item.id})" title="Edit Advance Payment">
+                            <i class="bi bi-pencil-square"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5" onclick="confirmDeleteAdvancePayment(${item.id})" title="Delete Advance Payment">
                             <i class="bi bi-trash"></i>
@@ -1054,6 +1060,419 @@ async function executeCreateAdvancePayment(e) {
 function showCreateModalError(msg) {
     const errorAlert = document.getElementById('create-modal-error');
     const errorText = document.getElementById('create-modal-error-text');
+    if (errorAlert && errorText) {
+        errorText.innerText = msg;
+        errorAlert.classList.remove('d-none');
+        errorAlert.classList.add('d-flex');
+    }
+}
+
+let updateSearchDebounceTimer = null;
+let currentUpdateFocusedSuggestionIndex = -1;
+
+/**
+ * Opens Edit Modal for an Advance Payment record
+ */
+function openUpdateAdvancePaymentModal(paymentId) {
+    const item = currentPaymentsList.find(p => p.id === paymentId);
+    if (!item) return;
+
+    const errorAlert = document.getElementById('update-modal-error');
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+        errorAlert.classList.remove('d-flex');
+    }
+
+    const empFromMap = employeeMap[item.employeeId] || {};
+    const employeeName = item.employeeName || empFromMap.name || `Employee #${item.employeeId}`;
+
+    document.getElementById('update-id').value = item.id;
+    document.getElementById('update-employee-id').value = item.employeeId;
+    
+    const searchInput = document.getElementById('update-employee-search-input');
+    if (searchInput) {
+        searchInput.value = employeeName;
+        searchInput.setAttribute('data-selected-name', employeeName);
+    }
+
+    const clearBtn = document.getElementById('update-btn-clear-employee');
+    if (clearBtn) {
+        clearBtn.classList.remove('d-none');
+    }
+
+    document.getElementById('update-amount').value = item.amount || '';
+    document.getElementById('update-payment-date').value = item.paymentDate ? item.paymentDate.substring(0, 10) : '';
+    document.getElementById('update-description').value = item.description || '';
+
+    const modalEl = document.getElementById('updateAdvancePaymentModal');
+    if (modalEl) {
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.show();
+    }
+}
+
+/**
+ * Initializes Update Advance Payment Modal & Form Handlers
+ */
+function initUpdateModalAndForm() {
+    const updateForm = document.getElementById('update-advance-payment-form');
+    const updateModalEl = document.getElementById('updateAdvancePaymentModal');
+
+    if (updateForm) {
+        updateForm.addEventListener('submit', executeUpdateAdvancePayment);
+    }
+
+    if (updateModalEl) {
+        updateModalEl.addEventListener('show.bs.modal', () => {
+            const errorAlert = document.getElementById('update-modal-error');
+            if (errorAlert) {
+                errorAlert.classList.add('d-none');
+                errorAlert.classList.remove('d-flex');
+            }
+            currentUpdateFocusedSuggestionIndex = -1;
+        });
+    }
+
+    initUpdateEmployeeAutocomplete();
+}
+
+/**
+ * Initializes Employee Searchable Combobox inside Update Modal (min 3 chars trigger + keyboard navigation)
+ */
+function initUpdateEmployeeAutocomplete() {
+    const searchInput = document.getElementById('update-employee-search-input');
+    const hiddenInput = document.getElementById('update-employee-id');
+    const clearBtn = document.getElementById('update-btn-clear-employee');
+    const menu = document.getElementById('update-employee-suggestions-menu');
+
+    if (!searchInput || !menu) return;
+
+    // Keyboard navigation
+    searchInput.addEventListener('keydown', (e) => {
+        const list = document.getElementById('update-employee-suggestions-list');
+        if (!list) return;
+
+        const items = list.querySelectorAll('.update-employee-suggestion-item');
+        if (!items || items.length === 0 || menu.classList.contains('d-none') || menu.style.display === 'none') {
+            return;
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentUpdateFocusedSuggestionIndex++;
+            if (currentUpdateFocusedSuggestionIndex >= items.length) {
+                currentUpdateFocusedSuggestionIndex = 0;
+            }
+            updateUpdateSuggestionFocus(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentUpdateFocusedSuggestionIndex--;
+            if (currentUpdateFocusedSuggestionIndex < 0) {
+                currentUpdateFocusedSuggestionIndex = items.length - 1;
+            }
+            updateUpdateSuggestionFocus(items);
+        } else if (e.key === 'Enter') {
+            if (currentUpdateFocusedSuggestionIndex >= 0 && currentUpdateFocusedSuggestionIndex < items.length) {
+                e.preventDefault();
+                const selectedBtn = items[currentUpdateFocusedSuggestionIndex];
+                const empId = selectedBtn.getAttribute('data-id');
+                const empName = selectedBtn.getAttribute('data-name');
+                selectUpdateModalEmployee(empId, empName);
+            }
+        } else if (e.key === 'Escape') {
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            currentUpdateFocusedSuggestionIndex = -1;
+        }
+    });
+
+    searchInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        currentUpdateFocusedSuggestionIndex = -1;
+
+        if (hiddenInput.value && val !== searchInput.getAttribute('data-selected-name')) {
+            hiddenInput.value = '';
+            if (clearBtn) clearBtn.classList.add('d-none');
+        }
+
+        if (val.length < 3) {
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            if (val.length === 0) {
+                hiddenInput.value = '';
+                if (clearBtn) clearBtn.classList.add('d-none');
+            }
+            return;
+        }
+
+        clearTimeout(updateSearchDebounceTimer);
+        updateSearchDebounceTimer = setTimeout(() => {
+            searchUpdateModalEmployees(val);
+        }, 300);
+    });
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            hiddenInput.value = '';
+            searchInput.removeAttribute('data-selected-name');
+            clearBtn.classList.add('d-none');
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            currentUpdateFocusedSuggestionIndex = -1;
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('update-employee-search-container');
+        if (container && !container.contains(e.target)) {
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            currentUpdateFocusedSuggestionIndex = -1;
+        }
+    });
+}
+
+function updateUpdateSuggestionFocus(items) {
+    items.forEach((item, index) => {
+        const empNameDiv = item.querySelector('.fw-semibold');
+        const badgeSpan = item.querySelector('.badge');
+
+        if (index === currentUpdateFocusedSuggestionIndex) {
+            item.classList.add('active', 'bg-primary', 'text-white');
+            if (empNameDiv) empNameDiv.classList.add('text-white');
+            if (badgeSpan) badgeSpan.classList.add('bg-white', 'text-primary');
+            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+            if (empNameDiv) empNameDiv.classList.remove('text-white');
+            if (badgeSpan) badgeSpan.classList.remove('bg-white', 'text-primary');
+        }
+    });
+}
+
+async function searchUpdateModalEmployees(nameQuery) {
+    const list = document.getElementById('update-employee-suggestions-list');
+    const menu = document.getElementById('update-employee-suggestions-menu');
+    if (!list || !menu) return;
+
+    currentUpdateFocusedSuggestionIndex = -1;
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const rootUrl = baseUrl.replace(/\/api\/?$/, '');
+
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/Employees/GetByName/${encodeURIComponent(nameQuery)}`;
+
+    list.innerHTML = `
+        <div class="p-3 text-center text-muted small">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span> Searching employees...
+        </div>
+    `;
+    menu.classList.remove('d-none');
+    menu.style.display = 'block';
+
+    try {
+        const response = await fetch(endpoint, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const resData = await response.json();
+
+        if (resData && resData.succeeded && Array.isArray(resData.data)) {
+            const employees = resData.data;
+
+            if (employees.length === 0) {
+                list.innerHTML = `<div class="p-3 text-center text-muted small"><i class="bi bi-info-circle me-1"></i>No employees found for "${nameQuery}".</div>`;
+                return;
+            }
+
+            list.innerHTML = employees.map(emp => {
+                employeeMap[emp.id] = emp;
+                const initials = emp.name ? emp.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
+                let imgHtml = `<div class="emp-initials-avatar fs-6 fw-bold" style="width:32px;height:32px;">${initials}</div>`;
+                if (emp.imagePath && emp.imagePath.trim() !== '') {
+                    const fullImgUrl = emp.imagePath.startsWith('http') ? emp.imagePath : `${rootUrl}${emp.imagePath.startsWith('/') ? '' : '/'}${emp.imagePath}`;
+                    imgHtml = `<img src="${fullImgUrl}" alt="${emp.name}" class="rounded-circle object-fit-cover shadow-sm" style="width: 32px; height: 32px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-6 fw-bold\\' style=\\'width:32px;height:32px;\\'>${initials}</div>';">`;
+                }
+
+                return `
+                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 border-0 update-employee-suggestion-item" data-id="${emp.id}" data-name="${emp.name}">
+                        <div class="d-flex align-items-center gap-2 overflow-hidden">
+                            ${imgHtml}
+                            <div class="text-truncate">
+                                <div class="fw-semibold text-dark text-truncate small mb-0">${emp.name}</div>
+                                <div class="text-muted small text-truncate" style="font-size: 0.725rem;">${emp.designation || 'Employee'}</div>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-secondary border ms-2">ID #${emp.id}</span>
+                    </button>
+                `;
+            }).join('');
+
+            list.querySelectorAll('.update-employee-suggestion-item').forEach(btn => {
+                const handleSelection = (e) => {
+                    e.preventDefault();
+                    const empId = btn.getAttribute('data-id');
+                    const empName = btn.getAttribute('data-name');
+                    selectUpdateModalEmployee(empId, empName);
+                };
+                btn.addEventListener('mousedown', handleSelection);
+                btn.addEventListener('click', handleSelection);
+            });
+
+        } else {
+            list.innerHTML = `<div class="p-3 text-center text-muted small">${resData.message || 'Failed to load employees.'}</div>`;
+        }
+
+    } catch (err) {
+        console.error('Error searching employees by name for update modal:', err);
+        list.innerHTML = `<div class="p-3 text-center text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Could not connect to API.</div>`;
+    }
+}
+
+function selectUpdateModalEmployee(empId, empName) {
+    const searchInput = document.getElementById('update-employee-search-input');
+    const hiddenInput = document.getElementById('update-employee-id');
+    const clearBtn = document.getElementById('update-btn-clear-employee');
+    const menu = document.getElementById('update-employee-suggestions-menu');
+
+    if (searchInput) {
+        searchInput.value = empName;
+        searchInput.setAttribute('data-selected-name', empName);
+    }
+    if (hiddenInput) {
+        hiddenInput.value = empId;
+    }
+
+    if (clearBtn) clearBtn.classList.remove('d-none');
+    if (menu) {
+        menu.classList.add('d-none');
+        menu.style.display = 'none';
+    }
+    currentUpdateFocusedSuggestionIndex = -1;
+}
+
+/**
+ * Sends PUT request to https://localhost:7148/api/EmployeeAdvancePayments
+ */
+async function executeUpdateAdvancePayment(e) {
+    e.preventDefault();
+
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/EmployeeAdvancePayments`;
+
+    const idVal = document.getElementById('update-id').value;
+    const employeeIdVal = document.getElementById('update-employee-id').value;
+    const amountVal = document.getElementById('update-amount').value;
+    const paymentDateVal = document.getElementById('update-payment-date').value;
+    const descriptionVal = document.getElementById('update-description').value.trim();
+
+    const errorAlert = document.getElementById('update-modal-error');
+
+    if (!idVal || isNaN(parseInt(idVal, 10))) {
+        showUpdateModalError('Invalid payment record ID.');
+        return;
+    }
+
+    if (!employeeIdVal || isNaN(parseInt(employeeIdVal, 10))) {
+        showUpdateModalError('Please search and select a valid employee from the dropdown list.');
+        return;
+    }
+
+    const id = parseInt(idVal, 10);
+    const employeeId = parseInt(employeeIdVal, 10);
+    const amount = parseFloat(amountVal);
+
+    if (isNaN(amount) || amount <= 0) {
+        showUpdateModalError('Please enter a valid positive payment amount.');
+        return;
+    }
+
+    if (!paymentDateVal) {
+        showUpdateModalError('Please select a payment date.');
+        return;
+    }
+
+    const paymentDateObj = new Date(paymentDateVal);
+    const paymentDateIso = paymentDateObj.toISOString();
+
+    const payload = {
+        id: id,
+        employeeId: employeeId,
+        amount: amount,
+        paymentDate: paymentDateIso,
+        description: descriptionVal
+    };
+
+    console.log('Sending Update Advance Payment Payload:', payload);
+
+    const updateBtn = document.getElementById('btn-update-advance-payment');
+    const updateBtnText = document.getElementById('btn-update-text');
+    const updateSpinner = document.getElementById('update-spinner');
+
+    if (updateBtn && updateBtnText && updateSpinner) {
+        updateBtn.disabled = true;
+        updateBtnText.innerText = 'Updating...';
+        updateSpinner.classList.remove('d-none');
+    }
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+        errorAlert.classList.remove('d-flex');
+    }
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+        console.log('Update Advance Payment API Response:', resData);
+
+        if (response.ok && resData && resData.succeeded) {
+            // Close modal
+            const updateModalEl = document.getElementById('updateAdvancePaymentModal');
+            if (updateModalEl) {
+                const modalInstance = bootstrap.Modal.getInstance(updateModalEl);
+                if (modalInstance) modalInstance.hide();
+            }
+
+            // Show Toast notification
+            showToast(resData.message || 'Employee advance payment successfully updated.', 'success');
+
+            // Refresh table
+            fetchAdvancePayments();
+        } else {
+            const errorMsg = resData?.message || 'Failed to update advance payment record.';
+            showUpdateModalError(errorMsg);
+        }
+    } catch (err) {
+        console.error('Error updating advance payment:', err);
+        showUpdateModalError('Network error: Unable to connect to server.');
+    } finally {
+        if (updateBtn && updateBtnText && updateSpinner) {
+            updateBtn.disabled = false;
+            updateBtnText.innerText = 'Update Advance Payment';
+            updateSpinner.classList.add('d-none');
+        }
+    }
+}
+
+function showUpdateModalError(msg) {
+    const errorAlert = document.getElementById('update-modal-error');
+    const errorText = document.getElementById('update-modal-error-text');
     if (errorAlert && errorText) {
         errorText.innerText = msg;
         errorAlert.classList.remove('d-none');
