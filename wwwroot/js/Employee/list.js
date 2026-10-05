@@ -882,7 +882,7 @@ async function executeUpdateEmployee(e) {
             headers['Authorization'] = `Bearer ${token}`;
         }
 
-        let response = await fetch(`${endpoint}/${empId}`, {
+        let response = await fetch(`${endpoint}`, {
             method: 'PUT',
             headers: headers,
             body: formData
