@@ -401,13 +401,11 @@ function exportToExcel() {
 
     const exportData = currentPaymentsList.map((item, index) => ({
         "SL": index + 1,
-        "Record ID": item.id,
         "Employee Name": item.employeeName || '',
         "Employee ID": item.employeeId || '',
         "Amount (BDT)": item.amount || 0,
         "Payment Date": item.paymentDate ? new Date(item.paymentDate).toLocaleDateString('en-GB') : '',
         "Description": item.description || '',
-        "Status": item.status === 1 ? 'Approved' : item.status,
         "Created On": item.createdOn ? new Date(item.createdOn).toLocaleDateString('en-GB') : ''
     }));
 
