@@ -5,7 +5,6 @@
 let currentPage = 1;
 let pageSize = 10;
 let searchTerm = '';
-let selectedEmployeeId = '';
 let fromDate = '';
 let toDate = '';
 let totalPages = 1;
@@ -27,7 +26,6 @@ function initAdvancePaymentPage() {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault();
             searchTerm = document.getElementById('search-input').value.trim();
-            selectedEmployeeId = document.getElementById('employee-select').value;
             fromDate = document.getElementById('from-date-input').value;
             toDate = document.getElementById('to-date-input').value;
             currentPage = 1;
@@ -38,11 +36,9 @@ function initAdvancePaymentPage() {
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
             document.getElementById('search-input').value = '';
-            document.getElementById('employee-select').value = '';
             document.getElementById('from-date-input').value = '';
             document.getElementById('to-date-input').value = '';
             searchTerm = '';
-            selectedEmployeeId = '';
             fromDate = '';
             toDate = '';
             currentPage = 1;
@@ -70,20 +66,17 @@ function initAdvancePaymentPage() {
         });
     }
 
-    // Load Employee options into dropdown filter
-    loadEmployeeDropdownOptions();
+    // Load initial employee dataset for image map
+    preloadEmployeeMap();
 
-    // Initial load
+    // Initial load of advance payments
     fetchAdvancePayments();
 }
 
 /**
- * Loads employee list into filter dropdown & populates employeeMap
+ * Preloads employee map silently for image resolution
  */
-async function loadEmployeeDropdownOptions() {
-    const employeeSelect = document.getElementById('employee-select');
-    if (!employeeSelect) return;
-
+async function preloadEmployeeMap() {
     const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
     const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
     const endpoint = `${baseUrl.replace(/\/+$/, '')}/Employees/GetAll?PageNumber=1&PageSize=1000`;
@@ -99,21 +92,16 @@ async function loadEmployeeDropdownOptions() {
         if (response.ok) {
             const resData = await response.json();
             if (resData && resData.succeeded && resData.data && Array.isArray(resData.data.items)) {
-                let optionsHtml = '<option value="">All Employees</option>';
                 resData.data.items.forEach(emp => {
                     employeeMap[emp.id] = emp;
-                    optionsHtml += `<option value="${emp.id}">${emp.name} (${emp.designation || 'ID: #' + emp.id})</option>`;
                 });
-                employeeSelect.innerHTML = optionsHtml;
-                
-                // Re-render table if data was already loaded before dropdown finished
                 if (currentPaymentsList && currentPaymentsList.length > 0) {
                     renderPaymentRows(currentPaymentsList);
                 }
             }
         }
     } catch (e) {
-        console.warn('Could not load employees dropdown list:', e);
+        console.warn('Could not preload employee map:', e);
     }
 }
 
@@ -131,9 +119,6 @@ async function fetchAdvancePayments() {
 
     if (searchTerm) {
         queryParams.append('SearchTerm', searchTerm);
-    }
-    if (selectedEmployeeId) {
-        queryParams.append('EmployeeId', selectedEmployeeId);
     }
     if (fromDate) {
         queryParams.append('FromDate', fromDate);
