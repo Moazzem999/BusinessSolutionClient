@@ -73,6 +73,9 @@ function initAdvancePaymentPage() {
         confirmDeleteBtn.addEventListener('click', executeDeleteAdvancePayment);
     }
 
+    // Initialize Create Modal & Form
+    initCreateModalAndForm();
+
     // Load initial employee dataset for image map
     preloadEmployeeMap();
 
@@ -660,4 +663,322 @@ function showToast(message, type = 'success') {
 
     const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 });
     toast.show();
+}
+
+let createSearchDebounceTimer = null;
+
+/**
+ * Initializes Create Advance Payment Modal & Form Handlers
+ */
+function initCreateModalAndForm() {
+    const createForm = document.getElementById('create-advance-payment-form');
+    const paymentDateInput = document.getElementById('create-payment-date');
+    const createModalEl = document.getElementById('createAdvancePaymentModal');
+
+    // Default payment date to today
+    if (paymentDateInput && !paymentDateInput.value) {
+        paymentDateInput.value = new Date().toISOString().substring(0, 10);
+    }
+
+    if (createForm) {
+        createForm.addEventListener('submit', executeCreateAdvancePayment);
+    }
+
+    // Reset create modal when opened
+    if (createModalEl) {
+        createModalEl.addEventListener('show.bs.modal', () => {
+            const errorAlert = document.getElementById('create-modal-error');
+            if (errorAlert) {
+                errorAlert.classList.add('d-none');
+                errorAlert.classList.remove('d-flex');
+            }
+            if (paymentDateInput && !paymentDateInput.value) {
+                paymentDateInput.value = new Date().toISOString().substring(0, 10);
+            }
+        });
+    }
+
+    initCreateEmployeeAutocomplete();
+}
+
+/**
+ * Initializes Employee Searchable Combobox inside Create Modal (min 3 chars trigger)
+ */
+function initCreateEmployeeAutocomplete() {
+    const searchInput = document.getElementById('create-employee-search-input');
+    const hiddenInput = document.getElementById('create-employee-id');
+    const clearBtn = document.getElementById('create-btn-clear-employee');
+    const menu = document.getElementById('create-employee-suggestions-menu');
+
+    if (!searchInput || !menu) return;
+
+    searchInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+
+        // If user changed input, reset hidden ID unless matches selected
+        if (hiddenInput.value && val !== searchInput.getAttribute('data-selected-name')) {
+            hiddenInput.value = '';
+            if (clearBtn) clearBtn.classList.add('d-none');
+        }
+
+        if (val.length < 3) {
+            menu.classList.add('d-none');
+            if (val.length === 0) {
+                hiddenInput.value = '';
+                if (clearBtn) clearBtn.classList.add('d-none');
+            }
+            return;
+        }
+
+        clearTimeout(createSearchDebounceTimer);
+        createSearchDebounceTimer = setTimeout(() => {
+            searchCreateModalEmployees(val);
+        }, 300);
+    });
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            hiddenInput.value = '';
+            searchInput.removeAttribute('data-selected-name');
+            clearBtn.classList.add('d-none');
+            menu.classList.add('d-none');
+        });
+    }
+
+    // Hide dropdown when clicking outside create search container
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('create-employee-search-container');
+        if (container && !container.contains(e.target)) {
+            menu.classList.add('d-none');
+        }
+    });
+}
+
+/**
+ * Calls API GET Employees/GetByName/{query} for Create Modal Autocomplete
+ */
+async function searchCreateModalEmployees(nameQuery) {
+    const list = document.getElementById('create-employee-suggestions-list');
+    const menu = document.getElementById('create-employee-suggestions-menu');
+    if (!list || !menu) return;
+
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const rootUrl = baseUrl.replace(/\/api\/?$/, '');
+
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/Employees/GetByName/${encodeURIComponent(nameQuery)}`;
+
+    list.innerHTML = `
+        <div class="p-3 text-center text-muted small">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span> Searching employees...
+        </div>
+    `;
+    menu.classList.remove('d-none');
+
+    try {
+        const response = await fetch(endpoint, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const resData = await response.json();
+        console.log('Create Modal Employees GetByName API Response:', resData);
+
+        if (resData && resData.succeeded && Array.isArray(resData.data)) {
+            const employees = resData.data;
+
+            if (employees.length === 0) {
+                list.innerHTML = `<div class="p-3 text-center text-muted small"><i class="bi bi-info-circle me-1"></i>No employees found for "${nameQuery}".</div>`;
+                return;
+            }
+
+            list.innerHTML = employees.map(emp => {
+                employeeMap[emp.id] = emp;
+                const initials = emp.name ? emp.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
+                let imgHtml = `<div class="emp-initials-avatar fs-6 fw-bold" style="width:32px;height:32px;">${initials}</div>`;
+                if (emp.imagePath && emp.imagePath.trim() !== '') {
+                    const fullImgUrl = emp.imagePath.startsWith('http') ? emp.imagePath : `${rootUrl}${emp.imagePath.startsWith('/') ? '' : '/'}${emp.imagePath}`;
+                    imgHtml = `<img src="${fullImgUrl}" alt="${emp.name}" class="rounded-circle object-fit-cover shadow-sm" style="width: 32px; height: 32px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-6 fw-bold\\' style=\\'width:32px;height:32px;\\'>${initials}</div>';">`;
+                }
+
+                return `
+                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 border-0 create-employee-suggestion-item" data-id="${emp.id}" data-name="${emp.name}">
+                        <div class="d-flex align-items-center gap-2 overflow-hidden">
+                            ${imgHtml}
+                            <div class="text-truncate">
+                                <div class="fw-semibold text-dark text-truncate small mb-0">${emp.name}</div>
+                                <div class="text-muted small text-truncate" style="font-size: 0.725rem;">${emp.designation || 'Employee'}</div>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-secondary border ms-2">ID #${emp.id}</span>
+                    </button>
+                `;
+            }).join('');
+
+            list.querySelectorAll('.create-employee-suggestion-item').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const empId = btn.getAttribute('data-id');
+                    const empName = btn.getAttribute('data-name');
+                    selectCreateModalEmployee(empId, empName);
+                });
+            });
+
+        } else {
+            list.innerHTML = `<div class="p-3 text-center text-muted small">${resData.message || 'Failed to load employees.'}</div>`;
+        }
+
+    } catch (err) {
+        console.error('Error searching employees by name for create modal:', err);
+        list.innerHTML = `<div class="p-3 text-center text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Could not connect to API.</div>`;
+    }
+}
+
+/**
+ * Handles selecting an employee from suggestion list in Create Modal
+ */
+function selectCreateModalEmployee(empId, empName) {
+    const searchInput = document.getElementById('create-employee-search-input');
+    const hiddenInput = document.getElementById('create-employee-id');
+    const clearBtn = document.getElementById('create-btn-clear-employee');
+    const menu = document.getElementById('create-employee-suggestions-menu');
+
+    if (searchInput) {
+        searchInput.value = empName;
+        searchInput.setAttribute('data-selected-name', empName);
+    }
+    if (hiddenInput) {
+        hiddenInput.value = empId;
+    }
+
+    if (clearBtn) clearBtn.classList.remove('d-none');
+    if (menu) menu.classList.add('d-none');
+}
+
+/**
+ * Sends POST request to https://localhost:7148/api/EmployeeAdvancePayments
+ */
+async function executeCreateAdvancePayment(e) {
+    e.preventDefault();
+
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/EmployeeAdvancePayments`;
+
+    const employeeIdVal = document.getElementById('create-employee-id').value;
+    const amountVal = document.getElementById('create-amount').value;
+    const paymentDateVal = document.getElementById('create-payment-date').value;
+    const descriptionVal = document.getElementById('create-description').value.trim();
+
+    const errorAlert = document.getElementById('create-modal-error');
+
+    if (!employeeIdVal || isNaN(parseInt(employeeIdVal, 10))) {
+        showCreateModalError('Please search and select a valid employee from the dropdown list.');
+        return;
+    }
+
+    const employeeId = parseInt(employeeIdVal, 10);
+    const amount = parseFloat(amountVal);
+
+    if (isNaN(amount) || amount <= 0) {
+        showCreateModalError('Please enter a valid positive payment amount.');
+        return;
+    }
+
+    if (!paymentDateVal) {
+        showCreateModalError('Please select a payment date.');
+        return;
+    }
+
+    const paymentDateObj = new Date(paymentDateVal);
+    const paymentDateIso = paymentDateObj.toISOString();
+
+    const payload = {
+        id: 0,
+        employeeId: employeeId,
+        amount: amount,
+        paymentDate: paymentDateIso,
+        description: descriptionVal
+    };
+
+    console.log('Sending Create Advance Payment Payload:', payload);
+
+    const saveBtn = document.getElementById('btn-save-advance-payment');
+    const saveBtnText = document.getElementById('btn-save-text');
+    const saveSpinner = document.getElementById('save-spinner');
+
+    if (saveBtn && saveBtnText && saveSpinner) {
+        saveBtn.disabled = true;
+        saveBtnText.innerText = 'Saving...';
+        saveSpinner.classList.remove('d-none');
+    }
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+        errorAlert.classList.remove('d-flex');
+    }
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const resData = await response.json();
+        console.log('Create Advance Payment API Response:', resData);
+
+        if (response.ok && resData && resData.succeeded) {
+            // Close modal
+            const createModalEl = document.getElementById('createAdvancePaymentModal');
+            if (createModalEl) {
+                const modalInstance = bootstrap.Modal.getInstance(createModalEl);
+                if (modalInstance) modalInstance.hide();
+            }
+
+            // Reset form
+            document.getElementById('create-advance-payment-form').reset();
+            document.getElementById('create-employee-id').value = '';
+            document.getElementById('create-payment-date').value = new Date().toISOString().substring(0, 10);
+            const clearBtn = document.getElementById('create-btn-clear-employee');
+            if (clearBtn) clearBtn.classList.add('d-none');
+
+            // Show Toast notification
+            showToast(resData.message || 'Employee advance payment successfully created.', 'success');
+
+            // Reset pagination and refresh list
+            currentPage = 1;
+            fetchAdvancePayments();
+        } else {
+            const errorMsg = resData?.message || 'Failed to create advance payment record.';
+            showCreateModalError(errorMsg);
+        }
+    } catch (err) {
+        console.error('Error creating advance payment:', err);
+        showCreateModalError('Network error: Unable to connect to server.');
+    } finally {
+        if (saveBtn && saveBtnText && saveSpinner) {
+            saveBtn.disabled = false;
+            saveBtnText.innerText = 'Save Advance Payment';
+            saveSpinner.classList.add('d-none');
+        }
+    }
+}
+
+function showCreateModalError(msg) {
+    const errorAlert = document.getElementById('create-modal-error');
+    const errorText = document.getElementById('create-modal-error-text');
+    if (errorAlert && errorText) {
+        errorText.innerText = msg;
+        errorAlert.classList.remove('d-none');
+        errorAlert.classList.add('d-flex');
+    }
 }
