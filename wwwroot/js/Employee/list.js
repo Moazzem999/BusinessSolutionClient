@@ -9,6 +9,7 @@ let totalPages = 1;
 let currentEmployeesList = [];
 let employeeToDeleteId = null;
 let deleteModalInstance = null;
+let updateModalInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     initEmployeeListPage();
@@ -64,6 +65,11 @@ function initEmployeeListPage() {
     const confirmDeleteBtn = document.getElementById('btn-confirm-delete');
     if (confirmDeleteBtn) {
         confirmDeleteBtn.addEventListener('click', executeDeleteEmployee);
+    }
+
+    const updateForm = document.getElementById('update-employee-form');
+    if (updateForm) {
+        updateForm.addEventListener('submit', executeUpdateEmployee);
     }
 
     // Initial load
@@ -211,6 +217,9 @@ function renderEmployeeRows(items, rootUrl) {
                     <div class="d-inline-flex gap-1 justify-content-end">
                         <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5" onclick="openEmployeeModal(${emp.id})" title="View Details">
                             <i class="bi bi-eye"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-3 px-2.5 py-1.5" onclick="openUpdateEmployeeModal(${emp.id})" title="Edit Employee">
+                            <i class="bi bi-pencil-square"></i>
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5" onclick="confirmDeleteEmployee(${emp.id})" title="Delete Employee">
                             <i class="bi bi-trash"></i>
@@ -666,4 +675,257 @@ function showToast(message, type = 'success') {
     const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 });
     toast.show();
 }
+
+/**
+ * Loads Marital Status and Religion dropdown options for update modal
+ */
+async function loadUpdateDropdowns() {
+    const statusSelect = document.getElementById('update-MaritalStatus');
+    const religionSelect = document.getElementById('update-Religion');
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+
+    if (statusSelect && statusSelect.options.length <= 1) {
+        try {
+            const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/Dropdown/GetAllMaritalStatus`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.succeeded && Array.isArray(data.data)) {
+                    statusSelect.innerHTML = data.data.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+                }
+            }
+        } catch (e) {
+            statusSelect.innerHTML = `<option value="1">Single</option><option value="2">Married</option><option value="3">Divorced</option>`;
+        }
+    }
+
+    if (religionSelect && religionSelect.options.length <= 1) {
+        try {
+            const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/Dropdown/GetAllReligion`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.succeeded && Array.isArray(data.data)) {
+                    religionSelect.innerHTML = data.data.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+                }
+            }
+        } catch (e) {
+            religionSelect.innerHTML = `<option value="1">Islam</option><option value="2">Hinduism</option><option value="3">Christianity</option><option value="4">Buddhism</option><option value="5">Others</option>`;
+        }
+    }
+}
+
+/**
+ * Opens employee update modal and populates form with employee data from GET /api/Employees/GetById/{id}
+ */
+async function openUpdateEmployeeModal(empId) {
+    await loadUpdateDropdowns();
+
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/Employees/GetById/${empId}`;
+
+    const errorAlert = document.getElementById('update-error-alert');
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+    }
+
+    let empData = null;
+    try {
+        const response = await fetch(endpoint, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        if (response.ok) {
+            const resData = await response.json();
+            console.log('Employee GetById API Response:', resData);
+            if (resData && resData.succeeded && resData.data) {
+                empData = resData.data;
+            }
+        }
+    } catch (err) {
+        console.warn('API GetById request failed, taking local data:', err);
+    }
+
+    if (!empData) {
+        empData = currentEmployeesList.find(e => e.id === empId);
+    }
+
+    if (!empData) {
+        showToast('Could not load employee details.', 'danger');
+        return;
+    }
+
+    // Populate form fields matching create form
+    document.getElementById('update-Id').value = empData.id || empId;
+    document.getElementById('update-Name').value = empData.name || '';
+    document.getElementById('update-FatherName').value = empData.fatherName || '';
+    document.getElementById('update-DateOfBirth').value = empData.dateOfBirth ? empData.dateOfBirth.substring(0, 10) : '';
+
+    if (document.getElementById('update-MaritalStatus')) {
+        document.getElementById('update-MaritalStatus').value = empData.maritalStatus || 1;
+    }
+    if (document.getElementById('update-Religion')) {
+        document.getElementById('update-Religion').value = empData.religion || 1;
+    }
+
+    document.getElementById('update-Email').value = empData.email || '';
+    document.getElementById('update-Mobile').value = empData.mobile || '';
+    document.getElementById('update-NidNo').value = empData.nidNo || '';
+    document.getElementById('update-Designation').value = empData.designation || '';
+    document.getElementById('update-AcademicQualification').value = empData.academicQualification || '';
+    document.getElementById('update-JoiningDate').value = empData.joiningDate ? empData.joiningDate.substring(0, 10) : '';
+    document.getElementById('update-Salary').value = empData.salary || '';
+    document.getElementById('update-PresentAddress').value = empData.presentAddress || '';
+    document.getElementById('update-PermanentAddress').value = empData.permanentAddress || '';
+
+    // Clear file inputs
+    document.getElementById('update-Image').value = '';
+    document.getElementById('update-NidImage').value = '';
+
+    // Document & image previews
+    const rootUrl = baseUrl.replace(/\/api\/?$/, '');
+    const imgPreview = document.getElementById('update-image-preview');
+    if (imgPreview) {
+        if (empData.imagePath) {
+            const fullImgUrl = empData.imagePath.startsWith('http') ? empData.imagePath : `${rootUrl}${empData.imagePath.startsWith('/') ? '' : '/'}${empData.imagePath}`;
+            imgPreview.innerHTML = `<span class="badge bg-light text-dark border"><i class="bi bi-image me-1"></i>Current Photo Attached</span> <a href="${fullImgUrl}" target="_blank" class="ms-1 small">View</a>`;
+        } else {
+            imgPreview.innerHTML = '<span class="text-muted">No photo attached</span>';
+        }
+    }
+
+    const nidPreview = document.getElementById('update-nid-preview');
+    if (nidPreview) {
+        if (empData.nidImagePath) {
+            const fullNidUrl = empData.nidImagePath.startsWith('http') ? empData.nidImagePath : `${rootUrl}${empData.nidImagePath.startsWith('/') ? '' : '/'}${empData.nidImagePath}`;
+            nidPreview.innerHTML = `<span class="badge bg-light text-dark border"><i class="bi bi-file-earmark-text me-1"></i>Current NID Attached</span> <a href="${fullNidUrl}" target="_blank" class="ms-1 small">View</a>`;
+        } else {
+            nidPreview.innerHTML = '<span class="text-muted">No NID document attached</span>';
+        }
+    }
+
+    const modalEl = document.getElementById('updateEmployeeModal');
+    if (modalEl) {
+        updateModalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        updateModalInstance.show();
+    }
+}
+
+/**
+ * Handles employee update form submission
+ */
+async function executeUpdateEmployee(e) {
+    e.preventDefault();
+
+    const btnUpdate = document.getElementById('btn-update-employee');
+    const btnText = document.getElementById('btn-update-text');
+    const spinner = document.getElementById('update-spinner');
+    const errorAlert = document.getElementById('update-error-alert');
+    const errorMsg = document.getElementById('update-error-message');
+
+    errorAlert.classList.add('d-none');
+    btnUpdate.disabled = true;
+    btnText.innerText = 'Updating...';
+    spinner.classList.remove('d-none');
+
+    const token = typeof BSApp !== 'undefined' ? BSApp.getStoredToken() : localStorage.getItem('bs_token');
+    const baseUrl = typeof BSApp !== 'undefined' ? BSApp.getApiBaseUrl() : (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:7148/api');
+    const empId = document.getElementById('update-Id').value;
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/Employees`;
+
+    const formData = new FormData();
+    formData.append('Id', empId);
+    formData.append('Name', document.getElementById('update-Name').value.trim());
+    formData.append('FatherName', document.getElementById('update-FatherName').value.trim());
+    formData.append('Email', document.getElementById('update-Email').value.trim());
+    formData.append('Mobile', document.getElementById('update-Mobile').value.trim());
+    formData.append('NidNo', document.getElementById('update-NidNo').value.trim());
+
+    const dobInput = document.getElementById('update-DateOfBirth').value;
+    if (dobInput) {
+        formData.append('DateOfBirth', new Date(dobInput).toISOString());
+    }
+
+    formData.append('MaritalStatus', parseInt(document.getElementById('update-MaritalStatus').value, 10) || 1);
+    formData.append('Religion', parseInt(document.getElementById('update-Religion').value, 10) || 1);
+    formData.append('Designation', document.getElementById('update-Designation').value.trim());
+    formData.append('AcademicQualification', document.getElementById('update-AcademicQualification').value.trim());
+
+    const joiningInput = document.getElementById('update-JoiningDate').value;
+    if (joiningInput) {
+        formData.append('JoiningDate', new Date(joiningInput).toISOString());
+    }
+
+    formData.append('Salary', parseFloat(document.getElementById('update-Salary').value) || 0);
+    formData.append('PresentAddress', document.getElementById('update-PresentAddress').value.trim());
+    formData.append('PermanentAddress', document.getElementById('update-PermanentAddress').value.trim());
+
+    const imageInput = document.getElementById('update-Image');
+    if (imageInput && imageInput.files.length > 0) {
+        formData.append('Image', imageInput.files[0]);
+    }
+
+    const nidImageInput = document.getElementById('update-NidImage');
+    if (nidImageInput && nidImageInput.files.length > 0) {
+        formData.append('NidImage', nidImageInput.files[0]);
+    }
+
+    try {
+        const headers = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        let response = await fetch(`${endpoint}/${empId}`, {
+            method: 'PUT',
+            headers: headers,
+            body: formData
+        });
+
+        if (response.status === 405 || response.status === 404) {
+            response = await fetch(endpoint, {
+                method: 'PUT',
+                headers: headers,
+                body: formData
+            });
+            if (response.status === 405) {
+                response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: headers,
+                    body: formData
+                });
+            }
+        }
+
+        const resData = await response.json();
+        console.log('Update Employee API Response:', resData);
+
+        if (response.ok && resData && (resData.succeeded === true || resData.statusCode === 200)) {
+            if (updateModalInstance) {
+                updateModalInstance.hide();
+            }
+            showToast(resData.message || 'Employee updated successfully!', 'success');
+            fetchEmployees();
+        } else {
+            const message = resData?.message || `Failed to update employee (Status ${response.status})`;
+            errorMsg.innerText = message;
+            errorAlert.classList.remove('d-none');
+        }
+    } catch (err) {
+        console.error('Error updating employee:', err);
+        errorMsg.innerText = 'Could not connect to backend server to update employee.';
+        errorAlert.classList.remove('d-none');
+    } finally {
+        btnUpdate.disabled = false;
+        btnText.innerText = 'Update Employee';
+        spinner.classList.add('d-none');
+    }
+}
+
 
