@@ -209,11 +209,11 @@ function renderEmployeeRows(items, rootUrl) {
                 </td>
                 <td class="pe-4 text-end">
                     <div class="d-inline-flex gap-1 justify-content-end">
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5 fw-medium d-inline-flex align-items-center gap-1" onclick="openEmployeeModal(${emp.id})" title="View Details">
-                            <i class="bi bi-eye"></i> Details
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5" onclick="openEmployeeModal(${emp.id})" title="View Details">
+                            <i class="bi bi-eye"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5 fw-medium d-inline-flex align-items-center gap-1" onclick="confirmDeleteEmployee(${emp.id})" title="Delete Employee">
-                            <i class="bi bi-trash"></i> Delete
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5" onclick="confirmDeleteEmployee(${emp.id})" title="Delete Employee">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </td>
