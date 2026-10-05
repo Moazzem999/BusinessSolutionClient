@@ -1464,7 +1464,7 @@ async function executeUpdateAdvancePayment(e) {
     } finally {
         if (updateBtn && updateBtnText && updateSpinner) {
             updateBtn.disabled = false;
-            updateBtnText.innerText = 'Update Advance Payment';
+            updateBtnText.innerText = 'Update';
             updateSpinner.classList.add('d-none');
         }
     }
