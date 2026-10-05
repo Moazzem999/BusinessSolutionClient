@@ -331,20 +331,6 @@ function openPaymentDetailsModal(paymentId) {
                     <div class="text-dark small lh-base">${item.description || 'No description provided.'}</div>
                 </div>
             </div>
-
-            <div class="col-12">
-                <div class="p-3 rounded-3 bg-light border">
-                    <div class="text-muted small fw-semibold text-uppercase mb-2">Audit Metadata</div>
-                    <div class="row g-2 small text-muted">
-                        <div class="col-6"><strong>Record ID:</strong> #${item.id}</div>
-                        <div class="col-6"><strong>Status:</strong> Approved (${item.status})</div>
-                        <div class="col-6"><strong>Created On:</strong> ${formattedCreatedOn}</div>
-                        <div class="col-6"><strong>Created By:</strong> User #${item.createdBy || 'N/A'}</div>
-                        <div class="col-6"><strong>Updated On:</strong> ${formattedUpdatedOn}</div>
-                        <div class="col-6"><strong>Updated By:</strong> User #${item.updatedBy || 'N/A'}</div>
-                    </div>
-                </div>
-            </div>
         </div>
     `;
 
