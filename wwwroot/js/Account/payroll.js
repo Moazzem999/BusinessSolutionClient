@@ -149,7 +149,7 @@ async function preloadEmployeeMap() {
                     if (filterSelect) {
                         const opt = document.createElement('option');
                         opt.value = emp.id;
-                        opt.textContent = `${emp.name || emp.firstName + ' ' + emp.lastName} (#${emp.id})`;
+                        opt.textContent = `${getEmployeeDisplayName(emp)} (#${emp.id})`;
                         filterSelect.appendChild(opt);
                     }
                 });
@@ -263,7 +263,7 @@ function renderSalaryRows(items) {
 
     tbody.innerHTML = items.map(item => {
         const empFromMap = employeeMap[item.employeeId] || {};
-        const employeeName = item.employeeName || empFromMap.name || empFromMap.firstName ? `${empFromMap.firstName} ${empFromMap.lastName}` : `Employee #${item.employeeId}`;
+        const employeeName = getEmployeeDisplayName(item, empFromMap);
         const imagePath = item.imagePath || item.employeeImagePath || empFromMap.imagePath;
 
         const initials = employeeName ? employeeName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
@@ -484,19 +484,20 @@ async function searchModalEmployees(prefix, nameQuery) {
 
             list.innerHTML = employees.map(emp => {
                 employeeMap[emp.id] = emp;
-                const initials = emp.name ? emp.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
+                const displayName = getEmployeeDisplayName(emp);
+                const initials = displayName ? displayName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
                 let imgHtml = `<div class="emp-initials-avatar fs-6 fw-bold" style="width:32px;height:32px;">${initials}</div>`;
                 if (emp.imagePath && emp.imagePath.trim() !== '') {
                     const fullImgUrl = emp.imagePath.startsWith('http') ? emp.imagePath : `${rootUrl}${emp.imagePath.startsWith('/') ? '' : '/'}${emp.imagePath}`;
-                    imgHtml = `<img src="${fullImgUrl}" alt="${emp.name}" class="rounded-circle object-fit-cover shadow-sm" style="width: 32px; height: 32px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-6 fw-bold\\' style=\\'width:32px;height:32px;\\'>${initials}</div>';">`;
+                    imgHtml = `<img src="${fullImgUrl}" alt="${escapeHtml(displayName)}" class="rounded-circle object-fit-cover shadow-sm" style="width: 32px; height: 32px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-6 fw-bold\\' style=\\'width:32px;height:32px;\\'>${initials}</div>';">`;
                 }
 
                 return `
-                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 border-0 ${prefix}-employee-suggestion-item" data-id="${emp.id}" data-name="${emp.name}">
+                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 border-0 ${prefix}-employee-suggestion-item" data-id="${emp.id}" data-name="${escapeHtml(displayName)}">
                         <div class="d-flex align-items-center gap-2 overflow-hidden">
                             ${imgHtml}
                             <div class="text-truncate">
-                                <div class="fw-semibold text-dark text-truncate small mb-0">${escapeHtml(emp.name)}</div>
+                                <div class="fw-semibold text-dark text-truncate small mb-0">${escapeHtml(displayName)}</div>
                                 <div class="text-muted small text-truncate" style="font-size: 0.725rem;">${escapeHtml(emp.designation || 'Employee')}</div>
                             </div>
                         </div>
@@ -699,7 +700,7 @@ async function openUpdateModal(id) {
 
     document.getElementById('update-id').value = item.id;
     const empFromMap = employeeMap[item.employeeId] || {};
-    const empName = item.employeeName || empFromMap.name || `Employee #${item.employeeId}`;
+    const empName = getEmployeeDisplayName(item, empFromMap);
 
     selectModalEmployee('update', item.employeeId, empName);
 
@@ -814,7 +815,7 @@ async function openDetailsModal(id) {
     }
 
     const empFromMap = employeeMap[item.employeeId] || {};
-    const empName = item.employeeName || empFromMap.name || `Employee #${item.employeeId}`;
+    const empName = getEmployeeDisplayName(item, empFromMap);
     const formatCurrency = (v) => `৳ ${Number(v || 0).toLocaleString('en-BD', { minimumFractionDigits: 2 })}`;
 
     const content = `
@@ -1162,6 +1163,43 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+/**
+ * Safely resolves employee display name preventing 'undefined undefined'
+ */
+function getEmployeeDisplayName(empOrItem, empFromMap) {
+    if (!empOrItem && !empFromMap) return 'Employee';
+
+    if (empOrItem) {
+        if (empOrItem.employeeName && empOrItem.employeeName !== 'undefined undefined' && empOrItem.employeeName.trim() !== '') {
+            return empOrItem.employeeName.trim();
+        }
+        if (empOrItem.name && empOrItem.name !== 'undefined undefined' && empOrItem.name.trim() !== '') {
+            return empOrItem.name.trim();
+        }
+        if (empOrItem.firstName || empOrItem.lastName) {
+            const first = empOrItem.firstName || '';
+            const last = empOrItem.lastName || '';
+            const full = `${first} ${last}`.trim();
+            if (full && full !== 'undefined undefined') return full;
+        }
+    }
+
+    if (empFromMap) {
+        if (empFromMap.name && empFromMap.name !== 'undefined undefined' && empFromMap.name.trim() !== '') {
+            return empFromMap.name.trim();
+        }
+        if (empFromMap.firstName || empFromMap.lastName) {
+            const first = empFromMap.firstName || '';
+            const last = empFromMap.lastName || '';
+            const full = `${first} ${last}`.trim();
+            if (full && full !== 'undefined undefined') return full;
+        }
+    }
+
+    const empId = empOrItem ? (empOrItem.employeeId || empOrItem.id) : (empFromMap ? empFromMap.id : '');
+    return empId ? `Employee #${empId}` : 'Employee';
 }
 
 /**
