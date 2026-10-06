@@ -937,12 +937,12 @@ function exportToPDF() {
         doc.setFontSize(10);
         doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 22);
 
-        const tableColumn = ["#", "Employee ID", "Employee Name", "Pay Slip For", "Basic Salary", "Advance", "Bonus", "Others", "Net Total"];
+        const tableColumn = ["#", "Employee ID", "Employee Name", "Month", "Basic Salary", "Advance", "Bonus", "Others", "Net Total"];
         const tableRows = [];
 
         currentSalariesList.forEach((item, index) => {
             const empFromMap = employeeMap[item.employeeId] || {};
-            const empName = item.employeeName || empFromMap.name || `Employee #${item.employeeId}`;
+            const empName = getEmployeeDisplayName(item, empFromMap);
 
             const rowData = [
                 index + 1,
@@ -987,13 +987,13 @@ function exportToExcel() {
     try {
         const exportData = currentSalariesList.map((item, idx) => {
             const empFromMap = employeeMap[item.employeeId] || {};
-            const empName = item.employeeName || empFromMap.name || `Employee #${item.employeeId}`;
+            const empName = getEmployeeDisplayName(item, empFromMap);
 
             return {
                 "SL": idx + 1,
                 "Employee ID": item.employeeId,
                 "Employee Name": empName,
-                "Pay Slip For": item.paySlipFor || '',
+                "Month": item.paySlipFor || '',
                 "Basic Salary": item.salary || 0,
                 "Advance Payment": item.advancePayment || 0,
                 "Bonus Payment": item.bonusPayment || 0,
