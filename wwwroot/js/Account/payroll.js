@@ -546,6 +546,21 @@ function selectModalEmployee(prefix, empId, empName) {
  */
 function initCreateModalAndForm() {
     const form = document.getElementById('create-salary-form');
+    const paySlipForInput = document.getElementById('create-pay-slip-for');
+    const createModalEl = document.getElementById('createSalaryModal');
+
+    if (paySlipForInput && !paySlipForInput.value) {
+        paySlipForInput.value = toMonthInputFormat('');
+    }
+
+    if (createModalEl) {
+        createModalEl.addEventListener('show.bs.modal', () => {
+            if (paySlipForInput && !paySlipForInput.value) {
+                paySlipForInput.value = toMonthInputFormat('');
+            }
+        });
+    }
+
     if (!form) return;
 
     form.addEventListener('submit', async (e) => {
@@ -562,7 +577,8 @@ function initCreateModalAndForm() {
         const bonusPayment = parseFloat(document.getElementById('create-bonus-payment').value) || 0;
         const othersBill = parseFloat(document.getElementById('create-others-bill').value) || 0;
         const total = parseFloat(document.getElementById('create-total').value) || (salary - advancePayment + bonusPayment + othersBill);
-        const paySlipFor = document.getElementById('create-pay-slip-for').value.trim();
+        const rawPaySlipFor = document.getElementById('create-pay-slip-for').value;
+        const paySlipFor = formatMonthYear(rawPaySlipFor);
         const remarks = document.getElementById('create-remarks').value.trim();
 
         const payload = {
@@ -649,7 +665,7 @@ async function openUpdateModal(id) {
 
     selectModalEmployee('update', item.employeeId, empName);
 
-    document.getElementById('update-pay-slip-for').value = item.paySlipFor || '';
+    document.getElementById('update-pay-slip-for').value = toMonthInputFormat(item.paySlipFor);
     document.getElementById('update-salary').value = item.salary || 0;
     document.getElementById('update-advance-payment').value = item.advancePayment || 0;
     document.getElementById('update-bonus-payment').value = item.bonusPayment || 0;
@@ -679,7 +695,8 @@ function initUpdateModalAndForm() {
         const bonusPayment = parseFloat(document.getElementById('update-bonus-payment').value) || 0;
         const othersBill = parseFloat(document.getElementById('update-others-bill').value) || 0;
         const total = parseFloat(document.getElementById('update-total').value) || (salary - advancePayment + bonusPayment + othersBill);
-        const paySlipFor = document.getElementById('update-pay-slip-for').value.trim();
+        const rawPaySlipFor = document.getElementById('update-pay-slip-for').value;
+        const paySlipFor = formatMonthYear(rawPaySlipFor);
         const remarks = document.getElementById('update-remarks').value.trim();
 
         const payload = {
@@ -981,6 +998,8 @@ function resetCreateForm() {
     if (clearBtn) clearBtn.classList.add('d-none');
     const menu = document.getElementById('create-employee-suggestions-menu');
     if (menu) menu.classList.add('d-none');
+    const paySlipForInput = document.getElementById('create-pay-slip-for');
+    if (paySlipForInput) paySlipForInput.value = toMonthInputFormat('');
     document.getElementById('create-total-display').textContent = '৳ 0.00';
     document.getElementById('create-total').value = '0';
 }
@@ -1105,4 +1124,42 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+/**
+ * Helper: Converts YYYY-MM month input string (e.g. "2026-06") to formatted string (e.g. "June 2026")
+ */
+function formatMonthYear(ymString) {
+    if (!ymString) return '';
+    if (ymString.includes('-')) {
+        const parts = ymString.split('-');
+        if (parts.length >= 2) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10);
+            if (!isNaN(year) && !isNaN(month)) {
+                const date = new Date(year, month - 1, 1);
+                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            }
+        }
+    }
+    return ymString;
+}
+
+/**
+ * Helper: Converts formatted Month Year string (e.g. "June 2026") to YYYY-MM for <input type="month">
+ */
+function toMonthInputFormat(str) {
+    if (!str) {
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return `${now.getFullYear()}-${month}`;
+    }
+    if (/^\d{4}-\d{2}$/.test(str)) return str;
+    const date = new Date(str);
+    if (!isNaN(date.getTime())) {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        return `${yyyy}-${mm}`;
+    }
+    return '';
 }
