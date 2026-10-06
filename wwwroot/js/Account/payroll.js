@@ -297,6 +297,9 @@ function renderSalaryRows(items) {
                 <td class="fw-bold text-primary fs-6">${formatCurrency(item.total)}</td>
                 <td class="pe-4 text-end">
                     <div class="d-flex align-items-center justify-content-end gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-2 px-2 py-1" onclick="printPayslip(${item.id})" title="Print Salary Receipt">
+                            <i class="bi bi-printer-fill"></i>
+                        </button>
                         <button type="button" class="btn btn-sm btn-outline-info rounded-2 px-2 py-1" onclick="openDetailsModal(${item.id})" title="View Payslip">
                             <i class="bi bi-eye-fill"></i>
                         </button>
@@ -311,6 +314,282 @@ function renderSalaryRows(items) {
             </tr>
         `;
     }).join('');
+}
+
+/**
+ * Opens printable Salary Payslip voucher in a new window and triggers print dialog
+ */
+async function printPayslip(id) {
+    let item = currentSalariesList.find(s => s.id === id);
+
+    if (!item) {
+        try {
+            const token = getAuthToken();
+            const baseUrl = getBaseApiUrl();
+            const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/EmployeeSalaries/GetById/${id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const resData = await response.json();
+                if (resData && resData.succeeded && resData.data) {
+                    item = resData.data;
+                }
+            }
+        } catch (e) {
+            console.error('Fetch salary error:', e);
+        }
+    }
+
+    if (!item) {
+        showToast('Could not load salary record for printing.', 'danger');
+        return;
+    }
+
+    const empFromMap = employeeMap[item.employeeId] || {};
+    const empName = getEmployeeDisplayName(item, empFromMap);
+    const empId = item.employeeId;
+    const month = item.paySlipFor || 'Salary Slip';
+    const designation = empFromMap.designation || 'Staff Member';
+    const generatedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const formatCurrency = (val) => `৳ ${Number(val || 0).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const printWindow = window.open('', '_blank', 'width=850,height=900');
+    if (!printWindow) {
+        showToast('Pop-up blocked. Please allow pop-ups to print payslips.', 'warning');
+        return;
+    }
+
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Payslip - ${escapeHtml(empName)} (${escapeHtml(month)})</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            <style>
+                body {
+                    font-family: 'Plus Jakarta Sans', sans-serif;
+                    color: #0f172a;
+                    background: #ffffff;
+                    padding: 30px;
+                }
+                .payslip-box {
+                    border: 2px solid #e2e8f0;
+                    border-radius: 16px;
+                    padding: 35px;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+                }
+                .payslip-header {
+                    border-bottom: 2px solid #2563eb;
+                    padding-bottom: 20px;
+                    margin-bottom: 25px;
+                }
+                .brand-title {
+                    font-size: 1.6rem;
+                    font-weight: 800;
+                    color: #2563eb;
+                    letter-spacing: -0.02em;
+                }
+                .payslip-badge {
+                    background-color: #eff6ff;
+                    color: #2563eb;
+                    font-weight: 700;
+                    padding: 6px 16px;
+                    border-radius: 8px;
+                    font-size: 0.85rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                .info-table td {
+                    padding: 6px 12px;
+                    font-size: 0.92rem;
+                }
+                .amount-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                }
+                .amount-table th {
+                    background-color: #f8fafc;
+                    color: #475569;
+                    font-size: 0.8rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    padding: 12px 16px;
+                    border-bottom: 2px solid #cbd5e1;
+                }
+                .amount-table td {
+                    padding: 12px 16px;
+                    border-bottom: 1px solid #e2e8f0;
+                    font-size: 0.95rem;
+                }
+                .net-total-row {
+                    background-color: #eff6ff;
+                    font-weight: 800;
+                }
+                .net-total-row td {
+                    border-top: 2px solid #2563eb;
+                    border-bottom: 2px solid #2563eb;
+                    color: #1e40af;
+                    font-size: 1.15rem;
+                }
+                .signature-section {
+                    margin-top: 60px;
+                    display: flex;
+                    justify-content: space-between;
+                }
+                .signature-line {
+                    border-top: 1px dashed #94a3b8;
+                    width: 200px;
+                    text-align: center;
+                    padding-top: 8px;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    color: #475569;
+                }
+                @media print {
+                    body {
+                        padding: 0;
+                        background: none;
+                    }
+                    .payslip-box {
+                        border: 1px solid #cbd5e1;
+                        box-shadow: none;
+                        max-width: 100%;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="no-print text-center mb-4">
+                <button class="btn btn-primary px-4 py-2 fw-semibold rounded-3 shadow-sm me-2" onclick="window.print();">
+                    <i class="bi bi-printer"></i> Print Payslip
+                </button>
+                <button class="btn btn-outline-secondary px-4 py-2 fw-semibold rounded-3" onclick="window.close();">
+                    Close
+                </button>
+            </div>
+
+            <div class="payslip-box">
+                <div class="payslip-header d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="brand-title">BUSINESS SOLUTION</div>
+                        <div class="text-muted small">Employee Salary Payslip / Payment Voucher</div>
+                    </div>
+                    <div>
+                        <span class="payslip-badge">PAYSLIP FOR ${escapeHtml(month)}</span>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <table class="info-table w-100">
+                            <tr>
+                                <td class="text-muted fw-semibold ps-0" style="width: 130px;">Employee Name:</td>
+                                <td class="fw-bold text-dark">${escapeHtml(empName)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-semibold ps-0">Employee ID:</td>
+                                <td class="fw-bold text-dark">#${empId}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-semibold ps-0">Designation:</td>
+                                <td class="fw-medium text-dark">${escapeHtml(designation)}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-6">
+                        <table class="info-table w-100">
+                            <tr>
+                                <td class="text-muted fw-semibold ps-0" style="width: 130px;">Payslip Period:</td>
+                                <td class="fw-bold text-primary">${escapeHtml(month)}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-semibold ps-0">Issue Date:</td>
+                                <td class="fw-medium text-dark">${generatedDate}</td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted fw-semibold ps-0">Payment Status:</td>
+                                <td><span class="badge bg-success px-2 py-1">PAID</span></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <table class="amount-table mb-4">
+                    <thead>
+                        <tr>
+                            <th>Earnings & Deductions Description</th>
+                            <th class="text-end">Type</th>
+                            <th class="text-end">Amount (BDT)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-semibold">Basic Salary</td>
+                            <td class="text-end text-muted small">Earning</td>
+                            <td class="text-end fw-semibold">${formatCurrency(item.salary)}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold text-success">Bonus Payment</td>
+                            <td class="text-end text-success small">Allowance</td>
+                            <td class="text-end text-success fw-semibold">+ ${formatCurrency(item.bonusPayment)}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold text-info-emphasis">Others Bill / Allowances</td>
+                            <td class="text-end text-info-emphasis small">Allowance</td>
+                            <td class="text-end text-info-emphasis fw-semibold">+ ${formatCurrency(item.othersBill)}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold text-danger">Advance Payment Deducted</td>
+                            <td class="text-end text-danger small">Deduction</td>
+                            <td class="text-end text-danger fw-semibold">- ${formatCurrency(item.advancePayment)}</td>
+                        </tr>
+                        <tr class="net-total-row">
+                            <td colspan="2" class="fw-bold">NET SALARY PAYABLE</td>
+                            <td class="text-end fw-bold">${formatCurrency(item.total)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                ${item.remarks ? `
+                    <div class="p-3 bg-light rounded-3 mb-4 border">
+                        <span class="fw-bold text-secondary small d-block mb-1">Remarks / Payment Notes:</span>
+                        <span class="text-dark small">${escapeHtml(item.remarks)}</span>
+                    </div>
+                ` : ''}
+
+                <div class="signature-section pt-4">
+                    <div class="signature-line">
+                        Employee Signature
+                    </div>
+                    <div class="signature-line">
+                        Authorized Accounts Signature
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 400);
+                };
+            </script>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
 }
 
 /**
