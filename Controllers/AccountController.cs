@@ -24,5 +24,12 @@ namespace BusinessSolutionClient.Controllers
             Response.Cookies.Delete("bs_auth_token");
             return RedirectToAction("Login");
         }
+
+        [HttpGet]
+        public IActionResult Payroll()
+        {
+            ViewBag.ApiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7148/api";
+            return View();
+        }
     }
 }

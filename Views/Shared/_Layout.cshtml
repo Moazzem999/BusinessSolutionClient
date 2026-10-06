@@ -34,7 +34,7 @@
     var currentAction = ViewContext.RouteData.Values["Action"]?.ToString();
     var isDashboardActive = currentController == "Dashboard";
     var isEmployeeActive = currentController == "Employee";
-    var isAccountsActive = currentController == "Accounts" || currentController == "Payroll";
+    var isAccountsActive = currentController == "Account" || currentController == "Accounts" || currentController == "Payroll";
 }
 
             <nav class="sidebar-nav">
@@ -81,7 +81,7 @@
                     </a>
                     <div class="collapse @(isAccountsActive ? "show" : "")" id="accountsSubmenu">
                         <div class="sidebar-submenu">
-                            <a href="#" class="sidebar-sublink @(isAccountsActive && (currentAction == "Payroll" || currentController == "Payroll") ? "active" : "")">
+                            <a asp-controller="Account" asp-action="Payroll" class="sidebar-sublink @(isAccountsActive && currentAction == "Payroll" ? "active" : "")">
                                 <i class="bi bi-currency-dollar"></i>
                                 <span>Payroll</span>
                             </a>
