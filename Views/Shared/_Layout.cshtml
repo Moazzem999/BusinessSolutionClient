@@ -34,6 +34,7 @@
     var currentAction = ViewContext.RouteData.Values["Action"]?.ToString();
     var isDashboardActive = currentController == "Dashboard";
     var isEmployeeActive = currentController == "Employee";
+    var isAccountsActive = currentController == "Accounts" || currentController == "Payroll";
 }
 
             <nav class="sidebar-nav">
@@ -69,14 +70,25 @@
                     </div>
                 </div>
 
-                <a href="#" class="sidebar-link">
-                    <i class="bi bi-building"></i>
-                    <span>Departments</span>
-                </a>
-                <a href="#" class="sidebar-link">
-                    <i class="bi bi-currency-dollar"></i>
-                    <span>Payroll</span>
-                </a>
+                <!-- Accounts Group with Submenu -->
+                <div class="sidebar-group">
+                    <a href="#accountsSubmenu" class="sidebar-link d-flex align-items-center justify-content-between @(isAccountsActive ? "active" : "")" data-bs-toggle="collapse" aria-expanded="@(isAccountsActive ? "true" : "false")" role="button">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="bi bi-wallet2"></i>
+                            <span>Accounts</span>
+                        </div>
+                        <i class="bi bi-chevron-down sidebar-chevron"></i>
+                    </a>
+                    <div class="collapse @(isAccountsActive ? "show" : "")" id="accountsSubmenu">
+                        <div class="sidebar-submenu">
+                            <a href="#" class="sidebar-sublink @(isAccountsActive && (currentAction == "Payroll" || currentController == "Payroll") ? "active" : "")">
+                                <i class="bi bi-currency-dollar"></i>
+                                <span>Payroll</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <a href="#" class="sidebar-link">
                     <i class="bi bi-gear-fill"></i>
                     <span>Settings</span>
