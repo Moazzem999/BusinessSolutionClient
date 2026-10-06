@@ -492,7 +492,7 @@ async function printPayslip(id) {
                     <div class="col-6">
                         <table class="info-table w-100">
                             <tr>
-                                <td class="text-muted fw-semibold ps-0" style="width: 130px;">Employee Name:</td>
+                                <td class="text-muted fw-semibold ps-0" style="width: 130px;">Name:</td>
                                 <td class="fw-bold text-dark">${escapeHtml(empName)}</td>
                             </tr>
                             <tr>
