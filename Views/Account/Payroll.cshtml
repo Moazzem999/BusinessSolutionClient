@@ -12,7 +12,7 @@
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <button type="button" id="btn-open-create-modal" class="btn btn-primary rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" data-bs-toggle="modal" data-bs-target="#createSalaryModal">
             <i class="bi bi-plus-circle-fill fs-6"></i>
-            <span>Create Salary</span>
+            <span>Create</span>
         </button>
         <button type="button" id="btn-export-pdf" class="btn btn-outline-danger rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
             <i class="bi bi-file-earmark-pdf-fill fs-6 text-danger"></i>
@@ -151,15 +151,15 @@
                 <form id="create-salary-form">
                     <div class="row g-3">
                         <!-- Employee Searchable Combobox -->
-                        <div class="col-md-6 position-relative" id="create-employee-search-container">
+                        <div class="col-12 position-relative" id="create-employee-search-container">
                             <label for="create-employee-search-input" class="form-label text-dark small fw-semibold">Employee <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-end-0 text-muted ps-3">
                                     <i class="bi bi-person-search"></i>
                                 </span>
-                                <input type="text" id="create-employee-search-input" class="form-control bg-light border-start-0 ps-1" placeholder="Type employee name to search..." autocomplete="off" required>
+                                <input type="text" id="create-employee-search-input" class="form-control bg-light border-start-0 ps-1" placeholder="Type employee name (min 3 chars to search)..." autocomplete="off" required>
                                 <input type="hidden" id="create-employee-id" name="employeeId">
-                                <button type="button" id="create-btn-clear-employee" class="btn btn-light border border-start-0 text-muted d-none" title="Clear Selection">
+                                <button type="button" id="create-btn-clear-employee" class="btn btn-light border border-start-0 text-muted d-none" title="Clear Employee Selection">
                                     <i class="bi bi-x-circle-fill"></i>
                                 </button>
                             </div>
@@ -265,15 +265,15 @@
 
                     <div class="row g-3">
                         <!-- Employee Searchable Combobox -->
-                        <div class="col-md-6 position-relative" id="update-employee-search-container">
+                        <div class="col-12 position-relative" id="update-employee-search-container">
                             <label for="update-employee-search-input" class="form-label text-dark small fw-semibold">Employee <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-end-0 text-muted ps-3">
                                     <i class="bi bi-person-search"></i>
                                 </span>
-                                <input type="text" id="update-employee-search-input" class="form-control bg-light border-start-0 ps-1" placeholder="Type employee name to search..." autocomplete="off" required>
+                                <input type="text" id="update-employee-search-input" class="form-control bg-light border-start-0 ps-1" placeholder="Type employee name (min 3 chars to search)..." autocomplete="off" required>
                                 <input type="hidden" id="update-employee-id" name="employeeId">
-                                <button type="button" id="update-btn-clear-employee" class="btn btn-light border border-start-0 text-muted d-none" title="Clear Selection">
+                                <button type="button" id="update-btn-clear-employee" class="btn btn-light border border-start-0 text-muted d-none" title="Clear Employee Selection">
                                     <i class="bi bi-x-circle-fill"></i>
                                 </button>
                             </div>

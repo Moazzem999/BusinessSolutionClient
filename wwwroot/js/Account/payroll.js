@@ -314,84 +314,231 @@ function renderSalaryRows(items) {
 }
 
 /**
- * Autocomplete for Employee Selection in Modals
+ * Autocomplete for Employee Selection in Modals (min 3 chars trigger + keyboard navigation)
  */
+let searchDebounceTimers = {};
+let currentFocusedSuggestionIndex = -1;
+
 function initEmployeeAutocomplete(prefix) {
-    const input = document.getElementById(`${prefix}-employee-search-input`);
-    const hiddenId = document.getElementById(`${prefix}-employee-id`);
+    const searchInput = document.getElementById(`${prefix}-employee-search-input`);
+    const hiddenInput = document.getElementById(`${prefix}-employee-id`);
     const clearBtn = document.getElementById(`${prefix}-btn-clear-employee`);
-    const suggestionsMenu = document.getElementById(`${prefix}-employee-suggestions-menu`);
-    const suggestionsList = document.getElementById(`${prefix}-employee-suggestions-list`);
+    const menu = document.getElementById(`${prefix}-employee-suggestions-menu`);
+    const container = document.getElementById(`${prefix}-employee-search-container`);
 
-    if (!input || !suggestionsMenu || !suggestionsList) return;
+    if (!searchInput || !menu) return;
 
-    let debounceTimer;
+    // Handle Keyboard Navigation (ArrowUp, ArrowDown, Enter, Escape)
+    searchInput.addEventListener('keydown', (e) => {
+        const list = document.getElementById(`${prefix}-employee-suggestions-list`);
+        if (!list) return;
 
-    input.addEventListener('input', (e) => {
-        const query = e.target.value.trim();
-        clearTimeout(debounceTimer);
-
-        if (query.length < 1) {
-            suggestionsMenu.classList.add('d-none');
+        const items = list.querySelectorAll(`.${prefix}-employee-suggestion-item`);
+        if (!items || items.length === 0 || menu.classList.contains('d-none') || menu.style.display === 'none') {
             return;
         }
 
-        debounceTimer = setTimeout(() => {
-            const matches = allEmployeesList.filter(emp => {
-                const name = (emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`).toLowerCase();
-                const code = (emp.employeeCode || emp.id.toString()).toLowerCase();
-                return name.includes(query.toLowerCase()) || code.includes(query.toLowerCase());
-            });
-
-            if (matches.length === 0) {
-                suggestionsList.innerHTML = `<div class="p-3 text-muted text-center small">No matching employees found</div>`;
-            } else {
-                suggestionsList.innerHTML = matches.slice(0, 10).map(emp => {
-                    const empName = emp.name || `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || `Employee #${emp.id}`;
-                    return `
-                        <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between py-2 px-3" onclick="selectEmployee('${prefix}', ${emp.id}, '${escapeHtml(empName)}')">
-                            <div>
-                                <div class="fw-semibold text-dark">${escapeHtml(empName)}</div>
-                                <div class="text-muted extra-small">${emp.designation || 'Staff'} • ID: #${emp.id}</div>
-                            </div>
-                            <i class="bi bi-chevron-right text-muted small"></i>
-                        </button>
-                    `;
-                }).join('');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentFocusedSuggestionIndex++;
+            if (currentFocusedSuggestionIndex >= items.length) {
+                currentFocusedSuggestionIndex = 0;
             }
-            suggestionsMenu.classList.remove('d-none');
-        }, 200);
+            updateSuggestionFocus(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentFocusedSuggestionIndex--;
+            if (currentFocusedSuggestionIndex < 0) {
+                currentFocusedSuggestionIndex = items.length - 1;
+            }
+            updateSuggestionFocus(items);
+        } else if (e.key === 'Enter') {
+            if (currentFocusedSuggestionIndex >= 0 && currentFocusedSuggestionIndex < items.length) {
+                e.preventDefault();
+                const selectedBtn = items[currentFocusedSuggestionIndex];
+                const empId = selectedBtn.getAttribute('data-id');
+                const empName = selectedBtn.getAttribute('data-name');
+                selectModalEmployee(prefix, empId, empName);
+            }
+        } else if (e.key === 'Escape') {
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            currentFocusedSuggestionIndex = -1;
+        }
+    });
+
+    searchInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        currentFocusedSuggestionIndex = -1;
+
+        if (hiddenInput.value && val !== searchInput.getAttribute('data-selected-name')) {
+            hiddenInput.value = '';
+            if (clearBtn) clearBtn.classList.add('d-none');
+        }
+
+        if (val.length < 3) {
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            if (val.length === 0) {
+                hiddenInput.value = '';
+                if (clearBtn) clearBtn.classList.add('d-none');
+            }
+            return;
+        }
+
+        clearTimeout(searchDebounceTimers[prefix]);
+        searchDebounceTimers[prefix] = setTimeout(() => {
+            searchModalEmployees(prefix, val);
+        }, 300);
     });
 
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
-            input.value = '';
-            hiddenId.value = '';
-            input.readOnly = false;
+            searchInput.value = '';
+            hiddenInput.value = '';
+            searchInput.removeAttribute('data-selected-name');
             clearBtn.classList.add('d-none');
-            suggestionsMenu.classList.add('d-none');
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            currentFocusedSuggestionIndex = -1;
         });
     }
 
-    // Hide dropdown on outside click
+    // Hide dropdown when clicking outside
     document.addEventListener('click', (e) => {
-        if (!input.contains(e.target) && !suggestionsMenu.contains(e.target)) {
-            suggestionsMenu.classList.add('d-none');
+        if (container && !container.contains(e.target)) {
+            menu.classList.add('d-none');
+            menu.style.display = 'none';
+            currentFocusedSuggestionIndex = -1;
         }
     });
 }
 
-function selectEmployee(prefix, id, name) {
-    const input = document.getElementById(`${prefix}-employee-search-input`);
-    const hiddenId = document.getElementById(`${prefix}-employee-id`);
-    const clearBtn = document.getElementById(`${prefix}-btn-clear-employee`);
-    const suggestionsMenu = document.getElementById(`${prefix}-employee-suggestions-menu`);
+function updateSuggestionFocus(items) {
+    items.forEach((item, index) => {
+        const empNameDiv = item.querySelector('.fw-semibold');
+        const badgeSpan = item.querySelector('.badge');
 
-    input.value = name;
-    hiddenId.value = id;
-    input.readOnly = true;
+        if (index === currentFocusedSuggestionIndex) {
+            item.classList.add('active', 'bg-primary', 'text-white');
+            item.classList.remove('bg-white');
+            if (empNameDiv) empNameDiv.classList.add('text-white');
+            if (badgeSpan) badgeSpan.classList.add('bg-white', 'text-primary');
+            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+            if (empNameDiv) empNameDiv.classList.remove('text-white');
+            if (badgeSpan) badgeSpan.classList.remove('bg-white', 'text-primary');
+        }
+    });
+}
+
+async function searchModalEmployees(prefix, nameQuery) {
+    const list = document.getElementById(`${prefix}-employee-suggestions-list`);
+    const menu = document.getElementById(`${prefix}-employee-suggestions-menu`);
+    if (!list || !menu) return;
+
+    currentFocusedSuggestionIndex = -1;
+    const token = getAuthToken();
+    const baseUrl = getBaseApiUrl();
+    const rootUrl = baseUrl.replace(/\/api\/?$/, '');
+
+    const endpoint = `${baseUrl.replace(/\/+$/, '')}/Employees/GetByName/${encodeURIComponent(nameQuery)}`;
+
+    list.innerHTML = `
+        <div class="p-3 text-center text-muted small">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span> Searching employees...
+        </div>
+    `;
+    menu.classList.remove('d-none');
+    menu.style.display = 'block';
+
+    try {
+        const response = await fetch(endpoint, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const resData = await response.json();
+
+        if (resData && resData.succeeded && Array.isArray(resData.data)) {
+            const employees = resData.data;
+
+            if (employees.length === 0) {
+                list.innerHTML = `<div class="p-3 text-center text-muted small"><i class="bi bi-info-circle me-1"></i>No employees found for "${nameQuery}".</div>`;
+                return;
+            }
+
+            list.innerHTML = employees.map(emp => {
+                employeeMap[emp.id] = emp;
+                const initials = emp.name ? emp.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'EM';
+                let imgHtml = `<div class="emp-initials-avatar fs-6 fw-bold" style="width:32px;height:32px;">${initials}</div>`;
+                if (emp.imagePath && emp.imagePath.trim() !== '') {
+                    const fullImgUrl = emp.imagePath.startsWith('http') ? emp.imagePath : `${rootUrl}${emp.imagePath.startsWith('/') ? '' : '/'}${emp.imagePath}`;
+                    imgHtml = `<img src="${fullImgUrl}" alt="${emp.name}" class="rounded-circle object-fit-cover shadow-sm" style="width: 32px; height: 32px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-6 fw-bold\\' style=\\'width:32px;height:32px;\\'>${initials}</div>';">`;
+                }
+
+                return `
+                    <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 border-0 ${prefix}-employee-suggestion-item" data-id="${emp.id}" data-name="${emp.name}">
+                        <div class="d-flex align-items-center gap-2 overflow-hidden">
+                            ${imgHtml}
+                            <div class="text-truncate">
+                                <div class="fw-semibold text-dark text-truncate small mb-0">${escapeHtml(emp.name)}</div>
+                                <div class="text-muted small text-truncate" style="font-size: 0.725rem;">${escapeHtml(emp.designation || 'Employee')}</div>
+                            </div>
+                        </div>
+                        <span class="badge bg-light text-secondary border ms-2">ID #${emp.id}</span>
+                    </button>
+                `;
+            }).join('');
+
+            list.querySelectorAll(`.${prefix}-employee-suggestion-item`).forEach(btn => {
+                const handleSelection = (e) => {
+                    e.preventDefault();
+                    const empId = btn.getAttribute('data-id');
+                    const empName = btn.getAttribute('data-name');
+                    selectModalEmployee(prefix, empId, empName);
+                };
+                btn.addEventListener('mousedown', handleSelection);
+                btn.addEventListener('click', handleSelection);
+            });
+
+        } else {
+            list.innerHTML = `<div class="p-3 text-center text-muted small">${escapeHtml(resData.message || 'Failed to load employees.')}</div>`;
+        }
+
+    } catch (err) {
+        console.error('Error searching employees by name:', err);
+        list.innerHTML = `<div class="p-3 text-center text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Could not connect to API.</div>`;
+    }
+}
+
+function selectModalEmployee(prefix, empId, empName) {
+    const searchInput = document.getElementById(`${prefix}-employee-search-input`);
+    const hiddenInput = document.getElementById(`${prefix}-employee-id`);
+    const clearBtn = document.getElementById(`${prefix}-btn-clear-employee`);
+    const menu = document.getElementById(`${prefix}-employee-suggestions-menu`);
+
+    if (searchInput) {
+        searchInput.value = empName;
+        searchInput.setAttribute('data-selected-name', empName);
+    }
+    if (hiddenInput) {
+        hiddenInput.value = empId;
+    }
+
     if (clearBtn) clearBtn.classList.remove('d-none');
-    if (suggestionsMenu) suggestionsMenu.classList.add('d-none');
+    if (menu) {
+        menu.classList.add('d-none');
+        menu.style.display = 'none';
+    }
+    currentFocusedSuggestionIndex = -1;
 }
 
 /**
@@ -500,7 +647,7 @@ async function openUpdateModal(id) {
     const empFromMap = employeeMap[item.employeeId] || {};
     const empName = item.employeeName || empFromMap.name || `Employee #${item.employeeId}`;
 
-    selectEmployee('update', item.employeeId, empName);
+    selectModalEmployee('update', item.employeeId, empName);
 
     document.getElementById('update-pay-slip-for').value = item.paySlipFor || '';
     document.getElementById('update-salary').value = item.salary || 0;
@@ -822,10 +969,18 @@ function getBaseApiUrl() {
 }
 
 function resetCreateForm() {
-    document.getElementById('create-salary-form').reset();
+    const form = document.getElementById('create-salary-form');
+    if (form) form.reset();
     document.getElementById('create-employee-id').value = '';
-    document.getElementById('create-employee-search-input').readOnly = false;
-    document.getElementById('create-btn-clear-employee').classList.add('d-none');
+    const input = document.getElementById('create-employee-search-input');
+    if (input) {
+        input.value = '';
+        input.removeAttribute('data-selected-name');
+    }
+    const clearBtn = document.getElementById('create-btn-clear-employee');
+    if (clearBtn) clearBtn.classList.add('d-none');
+    const menu = document.getElementById('create-employee-suggestions-menu');
+    if (menu) menu.classList.add('d-none');
     document.getElementById('create-total-display').textContent = '৳ 0.00';
     document.getElementById('create-total').value = '0';
 }
