@@ -401,6 +401,13 @@ function initEmployeeAutocomplete(prefix) {
             menu.classList.add('d-none');
             menu.style.display = 'none';
             currentFocusedSuggestionIndex = -1;
+
+            const salaryInput = document.getElementById(`${prefix}-salary`);
+            if (salaryInput) {
+                salaryInput.value = '';
+                if (prefix === 'create') calculateCreateTotal();
+                else if (prefix === 'update') calculateUpdateTotal();
+            }
         });
     }
 
@@ -519,7 +526,7 @@ async function searchModalEmployees(prefix, nameQuery) {
     }
 }
 
-function selectModalEmployee(prefix, empId, empName) {
+async function selectModalEmployee(prefix, empId, empName) {
     const searchInput = document.getElementById(`${prefix}-employee-search-input`);
     const hiddenInput = document.getElementById(`${prefix}-employee-id`);
     const clearBtn = document.getElementById(`${prefix}-btn-clear-employee`);
@@ -539,6 +546,37 @@ function selectModalEmployee(prefix, empId, empName) {
         menu.style.display = 'none';
     }
     currentFocusedSuggestionIndex = -1;
+
+    // Auto-fill Employee Basic Salary into the salary input
+    let emp = employeeMap[empId];
+    if (!emp || emp.salary === undefined || emp.salary === null) {
+        try {
+            const token = getAuthToken();
+            const baseUrl = getBaseApiUrl();
+            const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/Employees/GetById/${empId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const resData = await response.json();
+                if (resData && resData.succeeded && resData.data) {
+                    emp = resData.data;
+                    employeeMap[empId] = emp;
+                }
+            }
+        } catch (err) {
+            console.warn('Error fetching employee salary details:', err);
+        }
+    }
+
+    const salaryInput = document.getElementById(`${prefix}-salary`);
+    if (salaryInput && emp && (emp.salary !== undefined && emp.salary !== null)) {
+        salaryInput.value = emp.salary;
+        if (prefix === 'create') {
+            calculateCreateTotal();
+        } else if (prefix === 'update') {
+            calculateUpdateTotal();
+        }
+    }
 }
 
 /**
