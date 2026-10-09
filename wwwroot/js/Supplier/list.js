@@ -33,6 +33,27 @@ function getAuthToken() {
 }
 
 /**
+ * Converts image paths (relative or absolute) to full accessible URLs
+ */
+function resolveImageUrl(path) {
+    if (!path || typeof path !== 'string' || path.trim() === '') return '';
+    path = path.trim();
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+        return path;
+    }
+    const baseUrl = getApiBaseUrl();
+    let host = '';
+    try {
+        const urlObj = new URL(baseUrl);
+        host = urlObj.origin;
+    } catch (e) {
+        host = baseUrl.replace(/\/api\/?$/i, '');
+    }
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
+    return `${host}${cleanPath}`;
+}
+
+/**
  * Main function to load suppliers list from API
  */
 async function loadSuppliers() {
@@ -150,7 +171,8 @@ function renderSupplierTable(data) {
         const nidNo = item.nidNo || item.NidNo || 'N/A';
         const currentBalance = item.currentBalance !== undefined && item.currentBalance !== null ? item.currentBalance : (item.CurrentBalance || 0);
         const presentAddress = item.presentAddress || item.PresentAddress || 'N/A';
-        const imageUrl = item.image || item.Image || '';
+        const rawImage = item.imagePath || item.ImagePath || item.image || item.Image || item.supplierImage || item.SupplierImage || '';
+        const imageUrl = resolveImageUrl(rawImage);
 
         const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SP';
         const formattedBalance = Number(currentBalance).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -429,9 +451,13 @@ async function openViewModal(id) {
         const permanentAddress = supplierData.permanentAddress || supplierData.PermanentAddress || 'N/A';
         const additionalDetails = supplierData.additionalDetails || supplierData.AdditionalDetails || 'N/A';
 
-        const image = supplierData.image || supplierData.Image || '';
-        const nidImage = supplierData.nidImage || supplierData.NidImage || '';
-        const chequeImage = supplierData.chequeImage || supplierData.ChequeImage || '';
+        const rawImage = supplierData.imagePath || supplierData.ImagePath || supplierData.image || supplierData.Image || supplierData.supplierImage || supplierData.SupplierImage || '';
+        const rawNidImage = supplierData.nidImagePath || supplierData.NidImagePath || supplierData.nidImage || supplierData.NidImage || '';
+        const rawChequeImage = supplierData.chequeImagePath || supplierData.ChequeImagePath || supplierData.chequeImage || supplierData.ChequeImage || '';
+
+        const image = resolveImageUrl(rawImage);
+        const nidImage = resolveImageUrl(rawNidImage);
+        const chequeImage = resolveImageUrl(rawChequeImage);
 
         const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SP';
         const formattedBalance = Number(currentBalance).toLocaleString('en-BD', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -576,6 +602,26 @@ async function openEditModal(id) {
     document.getElementById('update-PresentAddress').value = supplier.presentAddress || supplier.PresentAddress || '';
     document.getElementById('update-PermanentAddress').value = supplier.permanentAddress || supplier.PermanentAddress || '';
     document.getElementById('update-AdditionalDetails').value = supplier.additionalDetails || supplier.AdditionalDetails || '';
+
+    // Image previews for current files
+    const currentImg = resolveImageUrl(supplier.imagePath || supplier.ImagePath || supplier.image || supplier.Image || supplier.supplierImage || supplier.SupplierImage);
+    const currentNid = resolveImageUrl(supplier.nidImagePath || supplier.NidImagePath || supplier.nidImage || supplier.NidImage);
+    const currentCheque = resolveImageUrl(supplier.chequeImagePath || supplier.ChequeImagePath || supplier.chequeImage || supplier.ChequeImage);
+
+    const imgPreviewEl = document.getElementById('update-image-preview');
+    if (imgPreviewEl) {
+        imgPreviewEl.innerHTML = currentImg ? `<div class="d-flex align-items-center gap-2 mt-1"><img src="${currentImg}" class="rounded border shadow-sm" style="height: 40px; width: 40px; object-fit: cover;"><span class="text-muted small">Current Photo</span></div>` : '';
+    }
+
+    const nidPreviewEl = document.getElementById('update-nid-preview');
+    if (nidPreviewEl) {
+        nidPreviewEl.innerHTML = currentNid ? `<div class="d-flex align-items-center gap-2 mt-1"><img src="${currentNid}" class="rounded border shadow-sm" style="height: 40px; width: 40px; object-fit: cover;"><span class="text-muted small">Current NID</span></div>` : '';
+    }
+
+    const chequePreviewEl = document.getElementById('update-cheque-preview');
+    if (chequePreviewEl) {
+        chequePreviewEl.innerHTML = currentCheque ? `<div class="d-flex align-items-center gap-2 mt-1"><img src="${currentCheque}" class="rounded border shadow-sm" style="height: 40px; width: 40px; object-fit: cover;"><span class="text-muted small">Current Cheque</span></div>` : '';
+    }
 
     // Clear file inputs
     document.getElementById('update-Image').value = '';
