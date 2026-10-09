@@ -70,7 +70,7 @@ async function loadSuppliers() {
     emptyState.classList.add('d-none');
     tableBody.innerHTML = `
         <tr id="supplier-loading-row">
-            <td colspan="6" class="text-center py-5">
+            <td colspan="5" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -210,11 +210,6 @@ function renderSupplierTable(data) {
                 <td>
                     <span class="fw-semibold ${currentBalance > 0 ? 'text-success' : (currentBalance < 0 ? 'text-danger' : 'text-dark')}">
                         ৳ ${formattedBalance}
-                    </span>
-                </td>
-                <td>
-                    <span class="text-muted small text-truncate d-inline-block" style="max-width: 200px;" title="${escapeHtml(presentAddress)}">
-                        ${escapeHtml(presentAddress)}
                     </span>
                 </td>
                 <td class="pe-4 text-end">
