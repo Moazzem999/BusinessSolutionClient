@@ -182,7 +182,9 @@ function renderSupplierTable(data) {
                 <td class="ps-4">
                     <div class="d-flex align-items-center gap-3">
                         ${imageUrl ? `
-                            <img src="${imageUrl}" alt="${name}" class="rounded-circle border shadow-sm" style="width: 42px; height: 42px; object-fit: cover;" onerror="this.onerror=null; this.outerHTML='<div class=\'avatar-circle-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold\' style=\'width:42px;height:42px;font-size:14px;\'>${initials}</div>';">
+                            <a href="${imageUrl}" target="_blank" rel="noopener noreferrer" title="Click to view full image in new tab">
+                                <img src="${imageUrl}" alt="${name}" class="rounded-circle border shadow-sm" style="width: 42px; height: 42px; object-fit: cover; cursor: pointer;" onerror="this.onerror=null; this.parentElement.outerHTML='<div class=\'avatar-circle-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold\' style=\'width:42px;height:42px;font-size:14px;\'>${initials}</div>';">
+                            </a>
                         ` : `
                             <div class="avatar-circle-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 42px; height: 42px; font-size: 14px;">
                                 ${initials}
@@ -468,7 +470,9 @@ async function openViewModal(id) {
                 <div class="col-12">
                     <div class="p-3 bg-light rounded-3 d-flex align-items-center gap-3 border">
                         ${image ? `
-                            <img src="${image}" alt="${name}" class="rounded-circle border shadow-sm" style="width: 64px; height: 64px; object-fit: cover;">
+                            <a href="${image}" target="_blank" rel="noopener noreferrer" title="Click to view full image in new tab">
+                                <img src="${image}" alt="${name}" class="rounded-circle border shadow-sm" style="width: 64px; height: 64px; object-fit: cover; cursor: pointer;">
+                            </a>
                         ` : `
                             <div class="avatar-circle bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 64px; height: 64px;">
                                 ${initials}
@@ -533,19 +537,31 @@ async function openViewModal(id) {
                         <div class="col-md-4">
                             <div class="border rounded-3 p-2 text-center bg-white shadow-sm">
                                 <div class="small fw-semibold text-muted mb-2">Profile Photo</div>
-                                ${image ? `<img src="${image}" class="img-fluid rounded border" style="max-height: 120px; object-fit: contain;">` : `<div class="text-muted py-3 small">No image uploaded</div>`}
+                                ${image ? `
+                                    <a href="${image}" target="_blank" rel="noopener noreferrer" title="Click to open full photo in new tab">
+                                        <img src="${image}" class="img-fluid rounded border shadow-sm" style="max-height: 130px; object-fit: contain; cursor: pointer;">
+                                    </a>
+                                ` : `<div class="text-muted py-3 small">No image uploaded</div>`}
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="border rounded-3 p-2 text-center bg-white shadow-sm">
                                 <div class="small fw-semibold text-muted mb-2">NID Document</div>
-                                ${nidImage ? `<img src="${nidImage}" class="img-fluid rounded border" style="max-height: 120px; object-fit: contain;">` : `<div class="text-muted py-3 small">No NID document uploaded</div>`}
+                                ${nidImage ? `
+                                    <a href="${nidImage}" target="_blank" rel="noopener noreferrer" title="Click to open full NID in new tab">
+                                        <img src="${nidImage}" class="img-fluid rounded border shadow-sm" style="max-height: 130px; object-fit: contain; cursor: pointer;">
+                                    </a>
+                                ` : `<div class="text-muted py-3 small">No NID document uploaded</div>`}
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="border rounded-3 p-2 text-center bg-white shadow-sm">
                                 <div class="small fw-semibold text-muted mb-2">Bank Cheque Image</div>
-                                ${chequeImage ? `<img src="${chequeImage}" class="img-fluid rounded border" style="max-height: 120px; object-fit: contain;">` : `<div class="text-muted py-3 small">No cheque image uploaded</div>`}
+                                ${chequeImage ? `
+                                    <a href="${chequeImage}" target="_blank" rel="noopener noreferrer" title="Click to open full Cheque in new tab">
+                                        <img src="${chequeImage}" class="img-fluid rounded border shadow-sm" style="max-height: 130px; object-fit: contain; cursor: pointer;">
+                                    </a>
+                                ` : `<div class="text-muted py-3 small">No cheque image uploaded</div>`}
                             </div>
                         </div>
                     </div>
@@ -610,17 +626,35 @@ async function openEditModal(id) {
 
     const imgPreviewEl = document.getElementById('update-image-preview');
     if (imgPreviewEl) {
-        imgPreviewEl.innerHTML = currentImg ? `<div class="d-flex align-items-center gap-2 mt-1"><img src="${currentImg}" class="rounded border shadow-sm" style="height: 40px; width: 40px; object-fit: cover;"><span class="text-muted small">Current Photo</span></div>` : '';
+        imgPreviewEl.innerHTML = currentImg ? `
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <a href="${currentImg}" target="_blank" rel="noopener noreferrer" title="Click to view full photo in new tab">
+                    <img src="${currentImg}" class="rounded border shadow-sm" style="height: 42px; width: 42px; object-fit: cover; cursor: pointer;">
+                </a>
+                <span class="text-muted small">Current Photo <i class="bi bi-box-arrow-up-right ms-1"></i></span>
+            </div>` : '';
     }
 
     const nidPreviewEl = document.getElementById('update-nid-preview');
     if (nidPreviewEl) {
-        nidPreviewEl.innerHTML = currentNid ? `<div class="d-flex align-items-center gap-2 mt-1"><img src="${currentNid}" class="rounded border shadow-sm" style="height: 40px; width: 40px; object-fit: cover;"><span class="text-muted small">Current NID</span></div>` : '';
+        nidPreviewEl.innerHTML = currentNid ? `
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <a href="${currentNid}" target="_blank" rel="noopener noreferrer" title="Click to view full NID in new tab">
+                    <img src="${currentNid}" class="rounded border shadow-sm" style="height: 42px; width: 42px; object-fit: cover; cursor: pointer;">
+                </a>
+                <span class="text-muted small">Current NID <i class="bi bi-box-arrow-up-right ms-1"></i></span>
+            </div>` : '';
     }
 
     const chequePreviewEl = document.getElementById('update-cheque-preview');
     if (chequePreviewEl) {
-        chequePreviewEl.innerHTML = currentCheque ? `<div class="d-flex align-items-center gap-2 mt-1"><img src="${currentCheque}" class="rounded border shadow-sm" style="height: 40px; width: 40px; object-fit: cover;"><span class="text-muted small">Current Cheque</span></div>` : '';
+        chequePreviewEl.innerHTML = currentCheque ? `
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <a href="${currentCheque}" target="_blank" rel="noopener noreferrer" title="Click to view full Cheque in new tab">
+                    <img src="${currentCheque}" class="rounded border shadow-sm" style="height: 42px; width: 42px; object-fit: cover; cursor: pointer;">
+                </a>
+                <span class="text-muted small">Current Cheque <i class="bi bi-box-arrow-up-right ms-1"></i></span>
+            </div>` : '';
     }
 
     // Clear file inputs
