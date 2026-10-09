@@ -1,0 +1,145 @@
+@{
+    ViewData["Title"] = "Create Supplier";
+    var apiBaseUrl = ViewBag.ApiBaseUrl ?? "https://localhost:7148/api";
+}
+
+<!-- Page Header Row -->
+<div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+    <div>
+        <h1 class="page-title d-flex align-items-center gap-2">
+            <i class="bi bi-plus-circle-fill text-primary"></i> Create New Supplier
+        </h1>
+        <p class="page-subtitle mb-0">Fill in the supplier and shop details below to register a new supplier.</p>
+    </div>
+    <div>
+        <a asp-controller="Supplier" asp-action="List" class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-medium d-inline-flex align-items-center gap-2">
+            <i class="bi bi-arrow-left"></i> Back to Supplier List
+        </a>
+    </div>
+</div>
+
+<!-- Alert Boxes -->
+<div id="create-error-alert" class="alert alert-danger d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <span id="create-error-message">Error saving supplier data.</span>
+</div>
+
+<div id="create-success-alert" class="alert alert-success d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-check-circle-fill fs-5"></i>
+    <span id="create-success-message">Supplier created successfully! Redirecting...</span>
+</div>
+
+<!-- Main Create Form Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-5" style="background: #ffffff;">
+    <div class="card-body p-4 p-md-5">
+        <form id="create-supplier-form" enctype="multipart/form-data">
+
+            <!-- Section 1: Shop & Basic Information -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-shop text-primary"></i> Shop & Basic Information
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-4">
+                        <label for="ShopName" class="form-label text-dark small fw-semibold">Shop Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="ShopName" name="ShopName" placeholder="e.g. Dhaka Electronics & Hardware" required>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Name" class="form-label text-dark small fw-semibold">Supplier Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="Name" name="Name" placeholder="e.g. Md Tariqul Islam" required>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="CurrentBalance" class="form-label text-dark small fw-semibold">Initial Current Balance (BDT)</label>
+                        <input type="number" step="0.01" class="form-control rounded-3" id="CurrentBalance" name="CurrentBalance" placeholder="0.00" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Contact & Identification -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-card-heading text-primary"></i> Contact & Identification
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Mobile" class="form-label text-dark small fw-semibold">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control rounded-3" id="Mobile" name="Mobile" placeholder="e.g. 01712345678" required>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="Email" class="form-label text-dark small fw-semibold">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control rounded-3" id="Email" name="Email" placeholder="e.g. tariqul@dhakaelectronics.com" required>
+                    </div>
+                    <div class="col-md-6 col-lg-4">
+                        <label for="NidNo" class="form-label text-dark small fw-semibold">NID Number</label>
+                        <input type="text" class="form-control rounded-3" id="NidNo" name="NidNo" placeholder="e.g. 198765432101">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Address & Additional Details -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-geo-alt-fill text-primary"></i> Address & Remarks
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="PresentAddress" class="form-label text-dark small fw-semibold">Present Address</label>
+                        <textarea class="form-control rounded-3" id="PresentAddress" name="PresentAddress" rows="3" placeholder="Enter present shop or office address..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="PermanentAddress" class="form-label text-dark small fw-semibold">Permanent Address</label>
+                        <textarea class="form-control rounded-3" id="PermanentAddress" name="PermanentAddress" rows="3" placeholder="Enter permanent home address..."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label for="AdditionalDetails" class="form-label text-dark small fw-semibold">Additional Details / Notes</label>
+                        <textarea class="form-control rounded-3" id="AdditionalDetails" name="AdditionalDetails" rows="2" placeholder="Enter additional terms, notes, or bank info..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Document Uploads -->
+            <div class="mb-4">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-arrow-up-fill text-primary"></i> Document Uploads
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="Image" class="form-label text-dark small fw-semibold">Supplier Photo / Logo</label>
+                        <input type="file" class="form-control rounded-3" id="Image" name="Image" accept="image/*">
+                        <div class="form-text small text-muted">Upload profile photo or shop logo (.png, .jpg, .jpeg)</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="NidImage" class="form-label text-dark small fw-semibold">NID Document Photo</label>
+                        <input type="file" class="form-control rounded-3" id="NidImage" name="NidImage" accept="image/*">
+                        <div class="form-text small text-muted">Upload NID card scan image (.png, .jpg, .jpeg)</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="ChequeImage" class="form-label text-dark small fw-semibold">Bank Cheque Image</label>
+                        <input type="file" class="form-control rounded-3" id="ChequeImage" name="ChequeImage" accept="image/*">
+                        <div class="form-text small text-muted">Upload cancelled bank cheque photo (.png, .jpg, .jpeg)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Submit Controls -->
+            <div class="d-flex align-items-center justify-content-end gap-3 pt-3 border-top">
+                <a asp-controller="Supplier" asp-action="List" class="btn btn-outline-secondary rounded-3 px-4 py-2">
+                    Cancel
+                </a>
+                <button type="submit" id="btn-save-supplier" class="btn btn-primary rounded-3 px-5 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+                    <span id="btn-save-text">Save Supplier</span>
+                    <div id="save-spinner" class="spinner-border spinner-border-sm d-none" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_BASE_URL = "@apiBaseUrl";
+    </script>
+    <script src="~/js/Supplier/create.js" asp-append-version="true"></script>
+}
