@@ -90,7 +90,7 @@ function initCreateSupplierPage() {
             errorAlert.classList.remove('d-none');
         } finally {
             btnSave.disabled = false;
-            btnText.innerText = 'Save Supplier';
+            btnText.innerText = 'Save';
             btnSpinner.classList.add('d-none');
         }
     });

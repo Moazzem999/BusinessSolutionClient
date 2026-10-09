@@ -668,7 +668,7 @@ async function handleUpdateSupplier(e) {
         errorAlert.classList.remove('d-none');
     } finally {
         btnUpdate.disabled = false;
-        btnText.innerText = 'Update Supplier';
+        btnText.innerText = 'Update';
         btnSpinner.classList.add('d-none');
     }
 }
