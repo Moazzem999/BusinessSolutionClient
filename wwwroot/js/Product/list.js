@@ -743,4 +743,143 @@ function initProductListEvents() {
     if (btnConfirmDelete) {
         btnConfirmDelete.addEventListener('click', handleConfirmDelete);
     }
+
+    // Create form submit
+    const createForm = document.getElementById('create-product-form');
+    if (createForm) {
+        createForm.addEventListener('submit', handleCreateProductSubmit);
+    }
+
+    // Create image preview
+    const createImgInput = document.getElementById('create-product-image');
+    const createImgPreview = document.getElementById('create-image-preview');
+    const createImgContainer = document.getElementById('create-image-preview-container');
+    const btnRemoveCreateImg = document.getElementById('btn-remove-create-image');
+
+    if (createImgInput && createImgPreview && createImgContainer) {
+        createImgInput.addEventListener('change', () => {
+            if (createImgInput.files && createImgInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    createImgPreview.src = e.target.result;
+                    createImgContainer.classList.remove('d-none');
+                };
+                reader.readAsDataURL(createImgInput.files[0]);
+            } else {
+                createImgContainer.classList.add('d-none');
+            }
+        });
+    }
+
+    if (btnRemoveCreateImg && createImgInput && createImgContainer) {
+        btnRemoveCreateImg.addEventListener('click', () => {
+            createImgInput.value = '';
+            createImgContainer.classList.add('d-none');
+        });
+    }
+}
+
+/**
+ * Handle Create Product form submission:
+ * POST https://localhost:7148/api/Products
+ * Content-Type: multipart/form-data
+ * Fields: Id=0, Name, Details, Image
+ */
+async function handleCreateProductSubmit(e) {
+    e.preventDefault();
+
+    const nameInput = document.getElementById('create-product-name');
+    const detailsInput = document.getElementById('create-product-details');
+    const imageInput = document.getElementById('create-product-image');
+    const btnSubmit = document.getElementById('btn-submit-create');
+    const btnText = document.getElementById('btn-submit-create-text');
+    const spinner = document.getElementById('create-spinner');
+    const errorAlert = document.getElementById('create-product-error');
+    const errorText = document.getElementById('create-product-error-text');
+
+    const nameVal = nameInput ? nameInput.value.trim() : '';
+    if (!nameVal) {
+        if (errorText) errorText.innerText = 'Product Name is required.';
+        if (errorAlert) {
+            errorAlert.classList.remove('d-none');
+            errorAlert.classList.add('d-flex');
+        }
+        return;
+    }
+
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+        errorAlert.classList.remove('d-flex');
+    }
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (btnText) btnText.innerText = 'Creating...';
+    if (spinner) spinner.classList.remove('d-none');
+
+    const formData = new FormData();
+    formData.append('Id', '0');
+    formData.append('Name', nameVal);
+    formData.append('Details', detailsInput ? detailsInput.value.trim() : '');
+
+    if (imageInput && imageInput.files && imageInput.files.length > 0) {
+        formData.append('Image', imageInput.files[0]);
+    }
+
+    const token = getAuthToken();
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const endpoint = `${baseUrl}/Products`;
+
+    try {
+        console.log('Sending POST to create product:', endpoint);
+        const headers = { 'accept': '*/*' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: headers,
+            body: formData
+        });
+
+        let resData = null;
+        try {
+            resData = await response.json();
+        } catch (e) { }
+
+        if (response.ok && (!resData || resData.succeeded === true || resData.statusCode === 200 || resData.statusCode === 201 || response.status === 200 || response.status === 201)) {
+            // Reset form
+            const form = document.getElementById('create-product-form');
+            if (form) form.reset();
+            const previewContainer = document.getElementById('create-image-preview-container');
+            if (previewContainer) previewContainer.classList.add('d-none');
+
+            // Close modal
+            const modalEl = document.getElementById('createProductModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const bsModal = bootstrap.Modal.getInstance(modalEl);
+                if (bsModal) bsModal.hide();
+            }
+
+            showToast('Product created successfully!', 'success');
+            // Reload table to show newly added product
+            currentPage = 1;
+            loadProducts();
+        } else {
+            const msg = (resData && resData.message) ? resData.message : `Failed to create product (Status ${response.status})`;
+            if (errorText) errorText.innerText = msg;
+            if (errorAlert) {
+                errorAlert.classList.remove('d-none');
+                errorAlert.classList.add('d-flex');
+            }
+        }
+    } catch (err) {
+        console.error('Error creating product:', err);
+        if (errorText) errorText.innerText = 'Network connection error while creating product.';
+        if (errorAlert) {
+            errorAlert.classList.remove('d-none');
+            errorAlert.classList.add('d-flex');
+        }
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (btnText) btnText.innerText = 'Create Product';
+        if (spinner) spinner.classList.add('d-none');
+    }
 }
