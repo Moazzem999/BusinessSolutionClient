@@ -289,8 +289,11 @@ function renderProductTable(items) {
                 </td>
                 <td class="pe-4 text-end">
                     <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-primary rounded-2 me-1 btn-view-product" data-id="${id}" title="View Details">
+                        <button type="button" class="btn btn-outline-info rounded-2 me-1 btn-view-product" data-id="${id}" title="View Details">
                             <i class="bi bi-eye-fill"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary rounded-2 me-1 btn-edit-product" data-id="${id}" title="Edit Product">
+                            <i class="bi bi-pencil-square"></i>
                         </button>
                         <button type="button" class="btn btn-outline-danger rounded-2 btn-delete-product" data-id="${id}" data-name="${escapeHtml(name)}" title="Delete Product">
                             <i class="bi bi-trash-fill"></i>
@@ -308,6 +311,14 @@ function renderProductTable(items) {
         btn.addEventListener('click', (e) => {
             const id = parseInt(btn.getAttribute('data-id'), 10);
             showProductDetailsModal(id);
+        });
+    });
+
+    // Attach click listeners to Edit buttons
+    document.querySelectorAll('.btn-edit-product').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            openEditProductModal(id);
         });
     });
 
@@ -776,6 +787,32 @@ function initProductListEvents() {
             createImgContainer.classList.add('d-none');
         });
     }
+
+    // Update form submit
+    const updateForm = document.getElementById('update-product-form');
+    if (updateForm) {
+        updateForm.addEventListener('submit', handleUpdateProductSubmit);
+    }
+
+    // Update image preview
+    const updateImgInput = document.getElementById('update-product-image');
+    const updateImgPreview = document.getElementById('update-image-preview');
+    const updateImgContainer = document.getElementById('update-image-preview-container');
+    const updateImgStatus = document.getElementById('update-image-status');
+
+    if (updateImgInput && updateImgPreview && updateImgContainer) {
+        updateImgInput.addEventListener('change', () => {
+            if (updateImgInput.files && updateImgInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    updateImgPreview.src = e.target.result;
+                    if (updateImgStatus) updateImgStatus.innerText = '(New selected image)';
+                    updateImgContainer.classList.remove('d-none');
+                };
+                reader.readAsDataURL(updateImgInput.files[0]);
+            }
+        });
+    }
 }
 
 /**
@@ -879,6 +916,152 @@ async function handleCreateProductSubmit(e) {
     } finally {
         if (btnSubmit) btnSubmit.disabled = false;
         if (btnText) btnText.innerText = 'Create Product';
+        if (spinner) spinner.classList.add('d-none');
+    }
+}
+
+/**
+ * Open Update Product modal and populate current values
+ */
+function openEditProductModal(id) {
+    const product = productsList.find(p => (p.id ?? p.Id) == id);
+    if (!product) return;
+
+    const idInput = document.getElementById('update-product-id');
+    const nameInput = document.getElementById('update-product-name');
+    const detailsInput = document.getElementById('update-product-details');
+    const imageInput = document.getElementById('update-product-image');
+    const previewContainer = document.getElementById('update-image-preview-container');
+    const imagePreview = document.getElementById('update-image-preview');
+    const imageStatus = document.getElementById('update-image-status');
+    const errorAlert = document.getElementById('update-product-error');
+
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+        errorAlert.classList.remove('d-flex');
+    }
+
+    if (idInput) idInput.value = product.id ?? product.Id ?? id;
+    if (nameInput) nameInput.value = product.name || product.Name || '';
+    if (detailsInput) detailsInput.value = product.details || product.Details || '';
+    if (imageInput) imageInput.value = '';
+
+    const rawImage = product.imagePath || product.ImagePath || '';
+    const imageUrl = resolveImageUrl(rawImage);
+
+    if (imageUrl && previewContainer && imagePreview) {
+        imagePreview.src = imageUrl;
+        if (imageStatus) imageStatus.innerText = '(Current image)';
+        previewContainer.classList.remove('d-none');
+    } else if (previewContainer) {
+        previewContainer.classList.add('d-none');
+    }
+
+    const modalEl = document.getElementById('updateProductModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+}
+
+/**
+ * Handle Update Product form submission:
+ * PUT https://localhost:7148/api/Products
+ * Content-Type: multipart/form-data
+ * Fields: Id=44, Name=dfds, Details=sdfsd, Image=@...
+ */
+async function handleUpdateProductSubmit(e) {
+    e.preventDefault();
+
+    const idInput = document.getElementById('update-product-id');
+    const nameInput = document.getElementById('update-product-name');
+    const detailsInput = document.getElementById('update-product-details');
+    const imageInput = document.getElementById('update-product-image');
+
+    const btnSubmit = document.getElementById('btn-submit-update');
+    const btnText = document.getElementById('btn-submit-update-text');
+    const spinner = document.getElementById('update-spinner');
+    const errorAlert = document.getElementById('update-product-error');
+    const errorText = document.getElementById('update-product-error-text');
+
+    const idVal = idInput ? idInput.value : '';
+    const nameVal = nameInput ? nameInput.value.trim() : '';
+
+    if (!nameVal) {
+        if (errorText) errorText.innerText = 'Product Name is required.';
+        if (errorAlert) {
+            errorAlert.classList.remove('d-none');
+            errorAlert.classList.add('d-flex');
+        }
+        return;
+    }
+
+    if (errorAlert) {
+        errorAlert.classList.add('d-none');
+        errorAlert.classList.remove('d-flex');
+    }
+
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (btnText) btnText.innerText = 'Updating...';
+    if (spinner) spinner.classList.remove('d-none');
+
+    const formData = new FormData();
+    formData.append('Id', idVal);
+    formData.append('Name', nameVal);
+    formData.append('Details', detailsInput ? detailsInput.value.trim() : '');
+
+    if (imageInput && imageInput.files && imageInput.files.length > 0) {
+        formData.append('Image', imageInput.files[0]);
+    }
+
+    const token = getAuthToken();
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const endpoint = `${baseUrl}/Products`;
+
+    try {
+        console.log('Sending PUT to update product:', endpoint);
+        const headers = { 'accept': '*/*' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: headers,
+            body: formData
+        });
+
+        let resData = null;
+        try {
+            resData = await response.json();
+        } catch (e) { }
+
+        if (response.ok && (!resData || resData.succeeded === true || resData.statusCode === 200 || response.status === 200 || response.status === 204)) {
+            // Close modal
+            const modalEl = document.getElementById('updateProductModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const bsModal = bootstrap.Modal.getInstance(modalEl);
+                if (bsModal) bsModal.hide();
+            }
+
+            showToast('Product updated successfully!', 'success');
+            loadProducts();
+        } else {
+            const msg = (resData && resData.message) ? resData.message : `Failed to update product (Status ${response.status})`;
+            if (errorText) errorText.innerText = msg;
+            if (errorAlert) {
+                errorAlert.classList.remove('d-none');
+                errorAlert.classList.add('d-flex');
+            }
+        }
+    } catch (err) {
+        console.error('Error updating product:', err);
+        if (errorText) errorText.innerText = 'Network connection error while updating product.';
+        if (errorAlert) {
+            errorAlert.classList.remove('d-none');
+            errorAlert.classList.add('d-flex');
+        }
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (btnText) btnText.innerText = 'Update';
         if (spinner) spinner.classList.add('d-none');
     }
 }
