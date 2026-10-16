@@ -9,6 +9,7 @@ let statusFilter = '';
 let totalCount = 0;
 let totalPages = 1;
 let productsList = [];
+let deleteProductId = null;
 let searchDebounceTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -289,8 +290,11 @@ function renderProductTable(items) {
                 </td>
                 <td class="pe-4 text-end">
                     <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-primary rounded-2 btn-view-product" data-id="${id}" title="View Details">
+                        <button type="button" class="btn btn-outline-primary rounded-2 me-1 btn-view-product" data-id="${id}" title="View Details">
                             <i class="bi bi-eye-fill"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger rounded-2 btn-delete-product" data-id="${id}" data-name="${escapeHtml(name)}" title="Delete Product">
+                            <i class="bi bi-trash-fill"></i>
                         </button>
                     </div>
                 </td>
@@ -305,6 +309,15 @@ function renderProductTable(items) {
         btn.addEventListener('click', (e) => {
             const id = parseInt(btn.getAttribute('data-id'), 10);
             showProductDetailsModal(id);
+        });
+    });
+
+    // Attach click listeners to Delete buttons
+    document.querySelectorAll('.btn-delete-product').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = btn.getAttribute('data-id');
+            const name = btn.getAttribute('data-name');
+            openDeleteProductModal(id, name);
         });
     });
 }
@@ -432,6 +445,86 @@ function showProductDetailsModal(productId) {
     if (modalEl && typeof bootstrap !== 'undefined') {
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
+    }
+}
+
+/**
+ * Open Delete Product confirmation modal
+ */
+function openDeleteProductModal(id, name) {
+    deleteProductId = id;
+    const nameEl = document.getElementById('delete-product-name');
+    const idEl = document.getElementById('delete-product-id');
+    const errorEl = document.getElementById('delete-product-error');
+
+    if (nameEl) nameEl.innerText = name || 'this product';
+    if (idEl) idEl.innerText = id;
+    if (errorEl) errorEl.classList.add('d-none');
+
+    const modalEl = document.getElementById('deleteProductModal');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    }
+}
+
+/**
+ * Confirm delete product API call:
+ * DELETE https://localhost:7148/api/Products/{id}
+ */
+async function handleConfirmDelete() {
+    if (!deleteProductId) return;
+
+    const btnConfirm = document.getElementById('btn-confirm-delete');
+    const btnConfirmText = document.getElementById('btn-confirm-delete-text');
+    const errorEl = document.getElementById('delete-product-error');
+    const errorText = document.getElementById('delete-product-error-text');
+
+    if (btnConfirm) btnConfirm.disabled = true;
+    if (btnConfirmText) btnConfirmText.innerText = 'Deleting...';
+    if (errorEl) errorEl.classList.add('d-none');
+
+    const token = getAuthToken();
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const endpoint = `${baseUrl}/Products/${deleteProductId}`;
+
+    try {
+        console.log('Deleting Product:', endpoint);
+        const headers = { 'accept': '*/*' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: headers
+        });
+
+        let resData = null;
+        try {
+            resData = await response.json();
+        } catch (e) { }
+
+        if (response.ok && (!resData || resData.succeeded === true || resData.statusCode === 200 || response.status === 204)) {
+            const modalEl = document.getElementById('deleteProductModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const bsModal = bootstrap.Modal.getInstance(modalEl);
+                if (bsModal) bsModal.hide();
+            }
+
+            showToast('Product deleted successfully!', 'success');
+            deleteProductId = null;
+            loadProducts();
+        } else {
+            const msg = (resData && resData.message) ? resData.message : `Failed to delete product (Status ${response.status})`;
+            if (errorText) errorText.innerText = msg;
+            if (errorEl) errorEl.classList.remove('d-none');
+        }
+    } catch (err) {
+        console.error('Error deleting product:', err);
+        if (errorText) errorText.innerText = 'Network connection error while deleting product.';
+        if (errorEl) errorEl.classList.remove('d-none');
+    } finally {
+        if (btnConfirm) btnConfirm.disabled = false;
+        if (btnConfirmText) btnConfirmText.innerText = 'Delete';
     }
 }
 
@@ -643,5 +736,11 @@ function initProductListEvents() {
     // Excel export
     if (btnExportExcel) {
         btnExportExcel.addEventListener('click', exportToExcel);
+    }
+
+    // Confirm Delete button
+    const btnConfirmDelete = document.getElementById('btn-confirm-delete');
+    if (btnConfirmDelete) {
+        btnConfirmDelete.addEventListener('click', handleConfirmDelete);
     }
 }
