@@ -111,7 +111,7 @@ async function loadProducts() {
     emptyState.classList.add('d-none');
     tableBody.innerHTML = `
         <tr id="product-loading-row">
-            <td colspan="7" class="text-center py-5">
+            <td colspan="5" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -229,8 +229,6 @@ function renderProductTable(items) {
         const rawImage = product.imagePath || product.ImagePath || product.image || '';
         const imageUrl = resolveImageUrl(rawImage);
         const status = product.status ?? product.Status ?? 1;
-        const createdOn = product.createdOn || product.CreatedOn || '';
-        const updatedOn = product.updatedOn || product.UpdatedOn || '';
 
         const initials = name.trim().substring(0, 2).toUpperCase() || 'PR';
 
@@ -288,18 +286,6 @@ function renderProductTable(items) {
                 </td>
                 <td>
                     ${statusBadge}
-                </td>
-                <td>
-                    <span class="text-dark small d-inline-flex align-items-center gap-1">
-                        <i class="bi bi-calendar3 text-muted"></i>
-                        ${formatDateTime(createdOn)}
-                    </span>
-                </td>
-                <td>
-                    <span class="text-muted small d-inline-flex align-items-center gap-1">
-                        <i class="bi bi-clock-history text-muted"></i>
-                        ${formatDateTime(updatedOn)}
-                    </span>
                 </td>
                 <td class="pe-4 text-end">
                     <div class="btn-group btn-group-sm">
@@ -413,15 +399,11 @@ function showProductDetailsModal(productId) {
     const rawImage = product.imagePath || product.ImagePath || '';
     const imageUrl = resolveImageUrl(rawImage);
     const status = product.status ?? product.Status ?? 1;
-    const createdOn = product.createdOn || product.CreatedOn || '';
-    const updatedOn = product.updatedOn || product.UpdatedOn || '';
-    const createdBy = product.createdBy ?? product.CreatedBy ?? '—';
-    const updatedBy = product.updatedBy ?? product.UpdatedBy ?? '—';
 
     const initials = name.trim().substring(0, 2).toUpperCase() || 'PR';
 
     modalBody.innerHTML = `
-        <div class="row g-4 align-items-center mb-4">
+        <div class="row g-4 align-items-center">
             <div class="col-12 col-md-4 text-center">
                 ${imageUrl ? `
                     <img src="${imageUrl}" alt="${escapeHtml(name)}" class="img-fluid rounded-4 border shadow-sm" style="max-height: 180px; width: 100%; object-fit: cover;" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'bg-light rounded-4 d-flex align-items-center justify-content-center p-5 text-muted border\'><i class=\'bi bi-box-seam fs-1\'></i></div>';">
@@ -442,30 +424,6 @@ function showProductDetailsModal(productId) {
                 </div>
                 <h4 class="fw-bold text-dark mb-2">${escapeHtml(name)}</h4>
                 <p class="text-secondary mb-0 text-break">${escapeHtml(details)}</p>
-            </div>
-        </div>
-
-        <div class="card border bg-light rounded-3 p-3">
-            <h6 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2 small text-uppercase" style="letter-spacing: 0.5px;">
-                <i class="bi bi-info-circle-fill text-primary"></i> Audit Information
-            </h6>
-            <div class="row g-3">
-                <div class="col-6 col-md-3">
-                    <div class="text-muted small">Created Date</div>
-                    <div class="fw-semibold text-dark small">${formatDateTime(createdOn)}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted small">Created By</div>
-                    <div class="fw-semibold text-dark small">User #${createdBy}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted small">Updated Date</div>
-                    <div class="fw-semibold text-dark small">${formatDateTime(updatedOn)}</div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="text-muted small">Updated By</div>
-                    <div class="fw-semibold text-dark small">User #${updatedBy}</div>
-                </div>
             </div>
         </div>
     `;
@@ -503,14 +461,12 @@ function exportToPdf() {
         doc.setTextColor(100);
         doc.text(`Generated on: ${new Date().toLocaleString()} | Total Items: ${productsList.length}`, 14, 22);
 
-        const tableHeaders = [['#ID', 'Product Name', 'Details', 'Status', 'Created On', 'Updated On']];
+        const tableHeaders = [['#ID', 'Product Name', 'Details', 'Status']];
         const tableRows = productsList.map(p => [
             p.id ?? p.Id ?? '',
             p.name || p.Name || '',
             p.details || p.Details || '',
-            (p.status ?? p.Status) === 1 ? 'Active' : 'Inactive',
-            formatDateTime(p.createdOn || p.CreatedOn),
-            formatDateTime(p.updatedOn || p.UpdatedOn)
+            (p.status ?? p.Status) === 1 ? 'Active' : 'Inactive'
         ]);
 
         doc.autoTable({
@@ -556,11 +512,7 @@ function exportToExcel() {
             'ID': p.id ?? p.Id ?? '',
             'Product Name': p.name || p.Name || '',
             'Details': p.details || p.Details || '',
-            'Status': (p.status ?? p.Status) === 1 ? 'Active' : 'Inactive',
-            'Created On': formatDateTime(p.createdOn || p.CreatedOn),
-            'Updated On': formatDateTime(p.updatedOn || p.UpdatedOn),
-            'Created By': p.createdBy ?? p.CreatedBy ?? '',
-            'Updated By': p.updatedBy ?? p.UpdatedBy ?? ''
+            'Status': (p.status ?? p.Status) === 1 ? 'Active' : 'Inactive'
         }));
 
         const ws = XLSX.utils.json_to_sheet(exportData);
@@ -621,7 +573,6 @@ function initProductListEvents() {
     const statusSelect = document.getElementById('status-filter');
     const pageSizeSelect = document.getElementById('page-size-select');
     const btnReset = document.getElementById('btn-reset');
-    const btnRefresh = document.getElementById('btn-refresh');
     const btnRetry = document.getElementById('btn-retry-api');
     const btnExportPdf = document.getElementById('btn-export-pdf');
     const btnExportExcel = document.getElementById('btn-export-excel');
@@ -673,13 +624,6 @@ function initProductListEvents() {
             searchTerm = '';
             statusFilter = '';
             currentPage = 1;
-            loadProducts();
-        });
-    }
-
-    // Refresh button
-    if (btnRefresh) {
-        btnRefresh.addEventListener('click', () => {
             loadProducts();
         });
     }

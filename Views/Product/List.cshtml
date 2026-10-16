@@ -12,10 +12,6 @@
         <p class="page-subtitle mb-0">View, search, filter, and manage all product catalog items.</p>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
-        <button type="button" id="btn-refresh" class="btn btn-light border rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm text-secondary" title="Refresh Table">
-            <i class="bi bi-arrow-clockwise fs-6"></i>
-            <span>Refresh</span>
-        </button>
         <button type="button" id="btn-export-pdf" class="btn btn-outline-danger rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" title="Export current list to PDF">
             <i class="bi bi-file-earmark-pdf-fill fs-6 text-danger"></i>
             <span>Download PDF</span>
@@ -94,15 +90,13 @@
                     <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Product</th>
                     <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Details</th>
                     <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 120px;">Status</th>
-                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 180px;">Created On</th>
-                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 180px;">Updated On</th>
                     <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 100px;">Action</th>
                 </tr>
             </thead>
             <tbody id="product-table-body">
                 <!-- Loading Skeleton -->
                 <tr id="product-loading-row">
-                    <td colspan="7" class="text-center py-5">
+                    <td colspan="5" class="text-center py-5">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
@@ -150,6 +144,36 @@
             </div>
             <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
                 <button type="button" class="btn btn-secondary rounded-3 px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Delete Confirmation Modal -->
+<div class="modal fade" id="deleteProductModal" tabindex="-1" aria-labelledby="deleteProductModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="deleteProductModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i> Delete Product
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="mb-2 text-dark">Are you sure you want to delete product <strong id="delete-product-name" class="text-danger"></strong> (ID: #<span id="delete-product-id"></span>)?</p>
+                <p class="text-muted small mb-0">This action cannot be undone and will permanently remove the product from the catalog.</p>
+                
+                <div id="delete-product-error" class="alert alert-danger d-none mt-3 mb-0 rounded-3 py-2 px-3 small align-items-center gap-2" role="alert">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span id="delete-product-error-text">Failed to delete product.</span>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light border rounded-3 px-3" data-bs-dismiss="modal" id="btn-cancel-delete">Cancel</button>
+                <button type="button" class="btn btn-danger rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2" id="btn-confirm-delete">
+                    <i class="bi bi-trash-fill"></i>
+                    <span id="btn-confirm-delete-text">Delete</span>
+                </button>
             </div>
         </div>
     </div>
