@@ -277,8 +277,7 @@ function renderProductTable(items) {
                             </div>
                         `}
                         <div>
-                            <div class="fw-bold text-dark mb-0">${escapeHtml(name)}</div>
-                            <span class="text-muted small">Catalog item</span>
+                            <span class="fw-bold text-dark">${escapeHtml(name)}</span>
                         </div>
                     </div>
                 </td>
