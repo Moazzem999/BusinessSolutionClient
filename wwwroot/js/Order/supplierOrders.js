@@ -10,6 +10,7 @@ let toDate = '';
 let totalCount = 0;
 let totalPages = 1;
 let ordersList = [];
+let currentSelectedOrder = null;
 let orderDetailsModalInstance = null;
 let deleteOrderModalInstance = null;
 let deleteOrderId = null;
@@ -302,6 +303,16 @@ function ensureTableStructureAndModal() {
     if (btnConfirmDelete && !btnConfirmDelete.dataset.bound) {
         btnConfirmDelete.dataset.bound = 'true';
         btnConfirmDelete.addEventListener('click', executeDeleteOrder);
+    }
+
+    // Bind modal print button
+    const printBtn = document.querySelector('#orderDetailsModal button[onclick*="print"], #btn-modal-print-order');
+    if (printBtn && !printBtn.dataset.boundPrint) {
+        printBtn.dataset.boundPrint = 'true';
+        printBtn.onclick = function(e) {
+            e.preventDefault();
+            window.printOrderDetails();
+        };
     }
 }
 
@@ -789,6 +800,7 @@ async function executeDeleteOrder() {
 window.viewOrderDetails = function(orderIndex) {
     const order = ordersList[orderIndex];
     if (!order) return;
+    currentSelectedOrder = order;
 
     const modalTitleNo = document.getElementById('modal-order-no');
     const modalContent = document.getElementById('modal-order-details-content');
@@ -925,7 +937,7 @@ window.viewOrderDetails = function(orderIndex) {
                 <thead class="bg-light">
                     <tr>
                         <th class="text-center text-secondary small fw-semibold text-uppercase" style="width: 45px;">#</th>
-                        <th class="text-secondary small fw-semibold text-uppercase">Product Name</th>
+                        <th class="text-secondary small fw-semibold text-uppercase">Product</th>
                         <th class="text-center text-secondary small fw-semibold text-uppercase" style="width: 90px;">Quantity</th>
                         <th class="text-end text-secondary small fw-semibold text-uppercase" style="width: 120px;">Unit Price</th>
                         <th class="text-end text-secondary small fw-semibold text-uppercase" style="width: 130px;">Line Total</th>
@@ -948,6 +960,15 @@ window.viewOrderDetails = function(orderIndex) {
         </div>
     `;
 
+    // Re-bind modal print button to print currently selected order
+    const printBtn = document.querySelector('#orderDetailsModal button[onclick*="print"], #btn-modal-print-order');
+    if (printBtn) {
+        printBtn.onclick = function(e) {
+            e.preventDefault();
+            window.printOrderDetails(currentSelectedOrder);
+        };
+    }
+
     if (orderDetailsModalInstance) {
         orderDetailsModalInstance.show();
     } else {
@@ -957,6 +978,374 @@ window.viewOrderDetails = function(orderIndex) {
             modal.show();
         }
     }
+};
+
+/**
+ * Generates and prints a high-fidelity Purchase Order Voucher with master & detail info
+ */
+window.printOrderDetails = function(orderParam) {
+    const order = orderParam || currentSelectedOrder;
+    if (!order) {
+        showToast('No supplier order selected to print.', 'warning');
+        return;
+    }
+
+    const orderId = order.id || order.Id || '—';
+    const orderNo = order.orderNo || order.OrderNo || `PO-${orderId}`;
+    const orderDateFormatted = formatDate(order.orderDate || order.OrderDate);
+    const supplierName = order.supplierName || order.SupplierName || '—';
+    const supplierShopName = order.supplierShopName || order.SupplierShopName || '';
+    const supplierId = order.supplierId || order.SupplierId || '—';
+    const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
+    const prevBalance = order.supplierPreviousBalance !== undefined ? order.supplierPreviousBalance : (order.SupplierPreviousBalance !== undefined ? order.SupplierPreviousBalance : 0);
+    const newBalance = order.supplierNewBalance !== undefined ? order.supplierNewBalance : (order.SupplierNewBalance !== undefined ? order.SupplierNewBalance : 0);
+    const notes = order.notes || order.Notes || '';
+    const details = order.orderDetails || order.OrderDetails || [];
+
+    const printDateTime = new Date().toLocaleString('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    });
+
+    let itemsRowsHtml = '';
+    let totalQty = 0;
+    let computedSum = 0;
+
+    if (Array.isArray(details) && details.length > 0) {
+        details.forEach((item, index) => {
+            const productName = item.productName || item.ProductName || `Product #${item.productId || ''}`;
+            const qty = item.quantity !== undefined ? item.quantity : (item.Quantity !== undefined ? item.Quantity : 0);
+            const unitPrice = item.unitPrice !== undefined ? item.unitPrice : (item.UnitPrice !== undefined ? item.UnitPrice : 0);
+            const lineTotal = item.lineTotal !== undefined ? item.lineTotal : (item.LineTotal !== undefined ? item.LineTotal : (qty * unitPrice));
+            const remarks = item.remarks || item.Remarks || '';
+
+            totalQty += Number(qty);
+            computedSum += Number(lineTotal);
+
+            itemsRowsHtml += `
+                <tr>
+                    <td class="text-center text-muted" style="font-size: 0.85rem;">${index + 1}</td>
+                    <td>
+                        <div class="fw-bold text-dark">${escapeHtml(productName)}</div>
+                    </td>
+                    <td class="text-center fw-semibold">${qty}</td>
+                    <td class="text-end">৳ ${formatCurrency(unitPrice)}</td>
+                    <td class="text-end fw-bold text-dark">৳ ${formatCurrency(lineTotal)}</td>
+                    <td class="small text-muted">${escapeHtml(remarks || '—')}</td>
+                </tr>
+            `;
+        });
+    } else {
+        itemsRowsHtml = `
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    No itemized product details found for this order.
+                </td>
+            </tr>
+        `;
+    }
+
+    const finalTotal = totalAmount || computedSum;
+
+    const printWindow = window.open('', '_blank', 'width=950,height=900');
+    if (!printWindow) {
+        // Fallback: trigger parent window print
+        window.print();
+        return;
+    }
+
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Purchase Order Voucher - ${escapeHtml(orderNo)}</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            <style>
+                body {
+                    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    color: #0f172a;
+                    background: #f8fafc;
+                    padding: 30px;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                .voucher-box {
+                    background: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 16px;
+                    padding: 40px;
+                    max-width: 900px;
+                    margin: 0 auto;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+                }
+                .voucher-header {
+                    border-bottom: 2px solid #2563eb;
+                    padding-bottom: 20px;
+                    margin-bottom: 24px;
+                }
+                .brand-title {
+                    font-size: 1.6rem;
+                    font-weight: 800;
+                    color: #1e40af;
+                    letter-spacing: -0.02em;
+                    line-height: 1.2;
+                }
+                .brand-subtitle {
+                    font-size: 0.82rem;
+                    color: #64748b;
+                    font-weight: 500;
+                }
+                .voucher-badge {
+                    background-color: #eff6ff;
+                    color: #1d4ed8;
+                    font-weight: 700;
+                    padding: 6px 16px;
+                    border-radius: 8px;
+                    font-size: 0.85rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    display: inline-block;
+                    border: 1px solid #bfdbfe;
+                }
+                .meta-card {
+                    background-color: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 12px;
+                    padding: 16px;
+                    height: 100%;
+                }
+                .meta-card-title {
+                    font-size: 0.78rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.06em;
+                    color: #475569;
+                    margin-bottom: 8px;
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                .items-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                }
+                .items-table th {
+                    background-color: #f1f5f9;
+                    color: #334155;
+                    font-size: 0.78rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    padding: 10px 14px;
+                    border-bottom: 2px solid #cbd5e1;
+                }
+                .items-table td {
+                    padding: 11px 14px;
+                    border-bottom: 1px solid #e2e8f0;
+                    font-size: 0.9rem;
+                    vertical-align: middle;
+                }
+                .items-table tbody tr:nth-child(even) {
+                    background-color: #fafbfc;
+                }
+                .items-table tfoot td {
+                    padding: 12px 14px;
+                    background-color: #f8fafc;
+                    border-top: 2px solid #cbd5e1;
+                    font-size: 0.95rem;
+                }
+                .signature-section {
+                    margin-top: 60px;
+                    padding-top: 15px;
+                    display: flex;
+                    justify-content: space-between;
+                }
+                .signature-line {
+                    border-top: 1.5px dashed #94a3b8;
+                    width: 220px;
+                    text-align: center;
+                    padding-top: 8px;
+                    font-size: 0.82rem;
+                    font-weight: 600;
+                    color: #475569;
+                }
+                .footer-notice {
+                    margin-top: 35px;
+                    padding-top: 15px;
+                    border-top: 1px solid #e2e8f0;
+                    font-size: 0.78rem;
+                    color: #94a3b8;
+                    text-align: center;
+                }
+                @media print {
+                    body {
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                    }
+                    .voucher-box {
+                        border: 1px solid #cbd5e1 !important;
+                        box-shadow: none !important;
+                        padding: 25px !important;
+                        max-width: 100% !important;
+                        margin: 0 !important;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="no-print text-center mb-4">
+                <button class="btn btn-primary px-4 py-2 fw-semibold rounded-3 shadow-sm me-2" onclick="window.print();">
+                    <i class="bi bi-printer"></i> Print Purchase Order
+                </button>
+                <button class="btn btn-outline-secondary px-4 py-2 fw-semibold rounded-3" onclick="window.close();">
+                    Close
+                </button>
+            </div>
+
+            <div class="voucher-box">
+                <!-- Voucher Header -->
+                <div class="voucher-header d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="brand-title">BUSINESS SOLUTION</div>
+                        <div class="brand-subtitle">Commercial & Supply Chain Management System</div>
+                        <div class="text-muted small mt-1">Purchase Order & Inward Goods Voucher</div>
+                    </div>
+                    <div class="text-end">
+                        <span class="voucher-badge mb-2">Purchase Order</span>
+                        <div class="font-monospace fw-bold text-dark fs-5">${escapeHtml(orderNo)}</div>
+                        <div class="text-muted small">PO ID: #${escapeHtml(orderId)}</div>
+                    </div>
+                </div>
+
+                <!-- Master Info 3 Columns -->
+                <div class="row g-3 mb-4">
+                    <!-- Supplier Details -->
+                    <div class="col-4">
+                        <div class="meta-card">
+                            <div class="meta-card-title text-primary">
+                                <i class="bi bi-truck"></i> Supplier Details
+                            </div>
+                            <div class="fw-bold text-dark fs-6">${escapeHtml(supplierName)}</div>
+                            ${supplierShopName ? `<div class="text-secondary small fw-medium mt-0.5"><i class="bi bi-shop me-1"></i>${escapeHtml(supplierShopName)}</div>` : ''}
+                            <div class="text-muted small mt-1">Supplier ID: <span class="fw-semibold text-dark">#${escapeHtml(supplierId)}</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Summary -->
+                    <div class="col-4">
+                        <div class="meta-card">
+                            <div class="meta-card-title text-success">
+                                <i class="bi bi-cash-stack"></i> Financial Summary
+                            </div>
+                            <div class="d-flex justify-content-between small py-0.5">
+                                <span class="text-muted">Previous Balance:</span>
+                                <span class="fw-medium text-dark">৳ ${formatCurrency(prevBalance)}</span>
+                            </div>
+                            <div class="d-flex justify-content-between small py-0.5 border-top border-bottom my-1">
+                                <span class="fw-bold text-dark">Order Total:</span>
+                                <span class="fw-bold text-primary">৳ ${formatCurrency(finalTotal)}</span>
+                            </div>
+                            <div class="d-flex justify-content-between small py-0.5">
+                                <span class="text-muted">New Balance:</span>
+                                <span class="fw-bold text-danger">৳ ${formatCurrency(newBalance)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Meta & Notes -->
+                    <div class="col-4">
+                        <div class="meta-card">
+                            <div class="meta-card-title text-info-emphasis">
+                                <i class="bi bi-info-circle"></i> Order Information
+                            </div>
+                            <div class="small mb-1">
+                                <span class="text-muted">Order Date:</span>
+                                <span class="fw-semibold text-dark ms-1">${escapeHtml(orderDateFormatted)}</span>
+                            </div>
+                            <div class="small mb-1">
+                                <span class="text-muted">Printed On:</span>
+                                <span class="text-secondary ms-1">${printDateTime}</span>
+                            </div>
+                            <div class="small">
+                                <span class="text-muted">Notes:</span>
+                                <span class="text-dark fw-medium ms-1">${escapeHtml(notes || 'None')}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Details (Items Table) -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-box-seam-fill text-primary"></i> Ordered Items Specification
+                    </h6>
+                    <span class="text-muted small">Total items: ${details.length}</span>
+                </div>
+
+                <table class="items-table mb-4">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 45px;">#</th>
+                            <th>Product</th>
+                            <th class="text-center" style="width: 90px;">Quantity</th>
+                            <th class="text-end" style="width: 130px;">Unit Price</th>
+                            <th class="text-end" style="width: 140px;">Line Total</th>
+                            <th style="width: 160px;">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsRowsHtml}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="text-end fw-bold text-dark">Total:</td>
+                            <td class="text-center fw-bold text-dark">${totalQty}</td>
+                            <td></td>
+                            <td class="text-end fw-bold text-primary fs-6">৳ ${formatCurrency(finalTotal)}</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- Signatures -->
+                <div class="signature-section">
+                    <div class="signature-line">
+                        Prepared / Received By
+                    </div>
+                    <div class="signature-line">
+                        Supplier Signature & Seal
+                    </div>
+                    <div class="signature-line">
+                        Authorized Signatory
+                    </div>
+                </div>
+
+                <div class="footer-notice">
+                    This is an electronically generated Purchase Order voucher issued by BUSINESS SOLUTION. Received goods are subject to verification.
+                </div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 400);
+                };
+            </script>
+        </body>
+        </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
 };
 
 /**
