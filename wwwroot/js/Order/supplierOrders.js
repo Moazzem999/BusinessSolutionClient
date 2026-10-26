@@ -892,7 +892,7 @@ window.viewOrderDetails = function(orderIndex) {
                         <h6 class="mb-0 fw-bold text-dark">Financial Summary</h6>
                     </div>
                     <div class="d-flex justify-content-between text-muted small py-1 border-bottom">
-                        <span>Previous Balance:</span>
+                        <span>Old Balance:</span>
                         <span class="fw-medium text-dark">৳ ${formatCurrency(prevBalance)}</span>
                     </div>
                     <div class="d-flex justify-content-between py-1 border-bottom">
@@ -1244,7 +1244,7 @@ window.printOrderDetails = function(orderParam) {
                                 <i class="bi bi-cash-stack"></i> Financial Summary
                             </div>
                             <div class="d-flex justify-content-between small py-0.5">
-                                <span class="text-muted">Previous Balance:</span>
+                                <span class="text-muted">Old Balance:</span>
                                 <span class="fw-medium text-dark">৳ ${formatCurrency(prevBalance)}</span>
                             </div>
                             <div class="d-flex justify-content-between small py-0.5 border-top border-bottom my-1">
