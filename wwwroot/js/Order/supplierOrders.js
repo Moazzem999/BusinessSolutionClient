@@ -255,7 +255,7 @@ function ensureTableStructureAndModal() {
             <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Date</th>
             <th class="text-center text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 110px;">Items</th>
             <th class="text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Total Amount</th>
-            <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 110px;">Action</th>
+            <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 130px;">Action</th>
         `;
     }
 
@@ -656,6 +656,9 @@ function renderSupplierOrdersTable(orders) {
             </td>
             <td class="pe-4 text-end">
                 <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-primary rounded-2 me-1" onclick="printOrderDetails(${index})" title="Print Order">
+                        <i class="bi bi-printer-fill"></i>
+                    </button>
                     <button type="button" class="btn btn-outline-info rounded-2 me-1" onclick="viewOrderDetails(${index})" title="View Details">
                         <i class="bi bi-eye-fill"></i>
                     </button>
@@ -983,11 +986,16 @@ window.viewOrderDetails = function(orderIndex) {
  * Generates and prints a high-fidelity Purchase Order Voucher with master & detail info
  */
 window.printOrderDetails = function(orderParam) {
-    const order = orderParam || currentSelectedOrder;
+    let order = orderParam;
+    if (typeof orderParam === 'number') {
+        order = ordersList[orderParam];
+    }
+    order = order || currentSelectedOrder;
     if (!order) {
         showToast('No supplier order selected to print.', 'warning');
         return;
     }
+    currentSelectedOrder = order;
 
     const orderId = order.id || order.Id || '—';
     const orderNo = order.orderNo || order.OrderNo || `PO-${orderId}`;
