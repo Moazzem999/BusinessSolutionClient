@@ -804,7 +804,6 @@ window.viewOrderDetails = function(orderIndex) {
     const newBalance = order.supplierNewBalance !== undefined ? order.supplierNewBalance : (order.SupplierNewBalance !== undefined ? order.SupplierNewBalance : 0);
     const notes = order.notes || order.Notes || '';
     const details = order.orderDetails || order.OrderDetails || [];
-    const status = order.status !== undefined ? order.status : (order.Status !== undefined ? order.Status : 1);
 
     if (modalTitleNo) {
         modalTitleNo.innerText = orderNo;
@@ -904,15 +903,12 @@ window.viewOrderDetails = function(orderIndex) {
                         </div>
                         <h6 class="mb-0 fw-bold text-dark">Information</h6>
                     </div>
-                    <div class="text-muted small mb-1">
-                        Date: <span class="fw-medium text-dark">${escapeHtml(orderDateFormatted)}</span>
-                    </div>
                     <div class="text-muted small mb-2">
-                        Status: ${status === 1 ? '<span class="badge bg-success-subtle text-success">Active</span>' : '<span class="badge bg-secondary-subtle text-secondary">Inactive</span>'}
+                        Date: <span class="fw-medium text-dark">${escapeHtml(orderDateFormatted)}</span>
                     </div>
                     <div class="text-muted small">
                         <strong>Notes:</strong>
-                        <div class="p-1 rounded bg-white border mt-1 text-dark text-break" style="font-size: 0.8rem; max-height: 50px; overflow-y: auto;">
+                        <div class="p-1 rounded bg-white border mt-1 text-dark text-break" style="font-size: 0.8rem; max-height: 60px; overflow-y: auto;">
                             ${escapeHtml(notes || 'None')}
                         </div>
                     </div>
