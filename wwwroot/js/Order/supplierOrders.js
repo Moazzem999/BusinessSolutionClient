@@ -246,26 +246,16 @@ function showToast(message, type = 'info') {
  * Ensures table headers match current design and modal exists in DOM
  */
 function ensureTableStructureAndModal() {
-    // Remove Supplier Balance header if still present from cached view
-    const headers = Array.from(document.querySelectorAll('.orders-list-table thead th'));
-    headers.forEach(th => {
-        if (th.textContent.trim().toLowerCase().includes('supplier balance')) {
-            th.remove();
-        }
-    });
-
-    // Ensure Items header exists between Supplier and Total Amount
-    const currentHeaders = Array.from(document.querySelectorAll('.orders-list-table thead th'));
-    const hasItemsHeader = currentHeaders.some(th => th.textContent.trim().toLowerCase() === 'items');
-    if (!hasItemsHeader) {
-        const totalAmountTh = currentHeaders.find(th => th.textContent.trim().toLowerCase().includes('total amount'));
-        if (totalAmountTh) {
-            const itemsTh = document.createElement('th');
-            itemsTh.className = 'text-secondary small fw-semibold text-uppercase';
-            itemsTh.style.cssText = 'letter-spacing: 0.5px; width: 130px;';
-            itemsTh.textContent = 'Items';
-            totalAmountTh.parentNode.insertBefore(itemsTh, totalAmountTh);
-        }
+    const theadTr = document.querySelector('.orders-list-table thead tr');
+    if (theadTr) {
+        theadTr.innerHTML = `
+            <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 170px;">Order No / ID</th>
+            <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Supplier</th>
+            <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Date</th>
+            <th class="text-center text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 110px;">Items</th>
+            <th class="text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Total Amount</th>
+            <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 110px;">Action</th>
+        `;
     }
 
     // Ensure delete confirmation modal exists in DOM
@@ -630,12 +620,6 @@ function renderSupplierOrdersTable(orders) {
                 </div>
             </td>
             <td>
-                <div class="d-flex align-items-center gap-2 text-dark">
-                    <i class="bi bi-calendar3 text-muted small"></i>
-                    <span class="fw-medium">${escapeHtml(orderDateFormatted)}</span>
-                </div>
-            </td>
-            <td>
                 <div class="d-flex align-items-center gap-2">
                     <div class="avatar-circle-sm bg-light text-primary border rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 34px; height: 34px; min-width: 34px; font-size: 0.8rem;">
                         <i class="bi bi-truck"></i>
@@ -647,22 +631,28 @@ function renderSupplierOrdersTable(orders) {
                 </div>
             </td>
             <td>
+                <div class="d-flex align-items-center gap-1.5 text-dark">
+                    <i class="bi bi-calendar3 text-muted small"></i>
+                    <span class="fw-medium">${escapeHtml(orderDateFormatted)}</span>
+                </div>
+            </td>
+            <td class="text-center">
                 <span class="badge bg-light text-dark border px-2.5 py-1 fw-semibold font-monospace" style="font-size: 0.8rem;">
-                    ${itemsCount} ${itemsCount === 1 ? 'item' : 'items'}
+                    <i class="bi bi-box-seam text-secondary me-1"></i>${itemsCount} ${itemsCount === 1 ? 'item' : 'items'}
                 </span>
             </td>
-            <td>
-                <div class="fw-bold text-dark fs-6">
+            <td class="text-end">
+                <div class="fw-bold text-dark fs-6 font-monospace">
                     ৳ ${formatCurrency(totalAmount)}
                 </div>
             </td>
             <td class="pe-4 text-end">
-                <div class="d-inline-flex align-items-center gap-1.5 justify-content-end">
-                    <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1.5 d-inline-flex align-items-center justify-content-center" onclick="viewOrderDetails(${index})" title="View Order Details" aria-label="View Details">
-                        <i class="bi bi-eye-fill fs-6"></i>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-info rounded-2 me-1" onclick="viewOrderDetails(${index})" title="View Details">
+                        <i class="bi bi-eye-fill"></i>
                     </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1.5 d-inline-flex align-items-center justify-content-center" onclick="confirmDeleteOrder('${escapeHtml(orderId)}', '${escapeHtml(orderNo)}')" title="Delete Order" aria-label="Delete Order">
-                        <i class="bi bi-trash-fill fs-6"></i>
+                    <button type="button" class="btn btn-outline-danger rounded-2" onclick="confirmDeleteOrder('${escapeHtml(orderId)}', '${escapeHtml(orderNo)}')" title="Delete Order">
+                        <i class="bi bi-trash-fill"></i>
                     </button>
                 </div>
             </td>
@@ -1086,12 +1076,12 @@ function exportToPdf() {
         doc.setTextColor(100);
         doc.text(`Generated on: ${new Date().toLocaleString()} | Total Orders: ${ordersList.length}`, 14, 22);
 
-        const tableHeaders = [['PO Number', 'Order Date', 'Supplier', 'Shop', 'Items', 'Total Amount']];
+        const tableHeaders = [['PO Number', 'Supplier', 'Shop', 'Order Date', 'Items', 'Total Amount']];
         const tableRows = ordersList.map(o => [
             o.orderNo || o.OrderNo || `PO-${o.id}`,
-            formatDate(o.orderDate || o.OrderDate),
             o.supplierName || o.SupplierName || '',
             o.supplierShopName || o.SupplierShopName || '',
+            formatDate(o.orderDate || o.OrderDate),
             `${(o.orderDetails || o.OrderDetails || []).length} items`,
             `BDT ${formatCurrency(o.totalAmount !== undefined ? o.totalAmount : o.TotalAmount)}`
         ]);
@@ -1137,9 +1127,9 @@ function exportToExcel() {
     try {
         const rows = ordersList.map(o => ({
             'PO Number': o.orderNo || o.OrderNo || `PO-${o.id}`,
-            'Order Date': formatDate(o.orderDate || o.OrderDate),
             'Supplier Name': o.supplierName || o.SupplierName || '',
             'Shop Name': o.supplierShopName || o.SupplierShopName || '',
+            'Order Date': formatDate(o.orderDate || o.OrderDate),
             'Items': `${(o.orderDetails || o.OrderDetails || []).length} items`,
             'Total Amount': Number(o.totalAmount !== undefined ? o.totalAmount : (o.TotalAmount || 0)),
             'Notes': o.notes || o.Notes || ''
