@@ -12,6 +12,17 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <script>
         (function() {
+            // Check authentication token
+            function hasAuthCookie() {
+                var match = document.cookie.match(/(?:^|;\s*)bs_auth_token=([^;]+)/);
+                return match && match[1] && match[1].trim() !== '';
+            }
+            var token = hasAuthCookie() || localStorage.getItem('bs_token');
+            if (!token) {
+                var returnPath = window.location.pathname + window.location.search;
+                window.location.replace('/Account/Login' + (returnPath && returnPath !== '/' ? '?ReturnUrl=' + encodeURIComponent(returnPath) : ''));
+            }
+
             const savedTheme = localStorage.getItem('bs_app_theme');
             if (savedTheme) {
                 document.documentElement.setAttribute('data-app-theme', savedTheme);
@@ -236,7 +247,7 @@
                             <li><h6 class="dropdown-header" id="dropdown-user-name">Super Admin</h6></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item text-danger d-flex items-center gap-2" asp-controller="Account" asp-action="Logout">
+                                <a class="dropdown-item text-danger d-flex items-center gap-2" asp-controller="Account" asp-action="Logout" onclick="if(window.BSApp) BSApp.clearSession();">
                                     <i class="bi bi-box-arrow-right"></i> Sign Out
                                 </a>
                             </li>

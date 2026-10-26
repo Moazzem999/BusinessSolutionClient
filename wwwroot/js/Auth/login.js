@@ -84,7 +84,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 successAlert.classList.remove('d-none');
 
                 setTimeout(() => {
-                    window.location.href = '/Dashboard';
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const returnUrl = urlParams.get('ReturnUrl');
+                    if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//')) {
+                        window.location.href = returnUrl;
+                    } else {
+                        window.location.href = '/Dashboard';
+                    }
                 }, 500);
             } else {
                 errorAlert.innerText = responseMessage;

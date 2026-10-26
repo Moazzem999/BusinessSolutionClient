@@ -1,7 +1,12 @@
+using BusinessSolutionClient.Filters;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<AuthTokenFilter>();
+});
 
 var app = builder.Build();
 
