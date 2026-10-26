@@ -99,15 +99,14 @@
                     <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 170px;">Order No / ID</th>
                     <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Date</th>
                     <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Supplier</th>
-                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 150px;">Total Amount</th>
-                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 190px;">Supplier Balance</th>
-                    <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 70px;">Action</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 160px;">Total Amount</th>
+                    <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 95px;">Action</th>
                 </tr>
             </thead>
             <tbody id="orders-table-body">
                 <!-- Loading Skeleton -->
                 <tr id="orders-loading-row">
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="5" class="text-center py-5">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
@@ -158,6 +157,36 @@
                     <i class="bi bi-printer me-1"></i> Print
                 </button>
                 <button type="button" class="btn btn-secondary rounded-3 px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Delete Confirmation Modal -->
+<div class="modal fade" id="deleteOrderModal" tabindex="-1" aria-labelledby="deleteOrderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="deleteOrderModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i> Delete Supplier Order
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="mb-2 text-dark">Are you sure you want to delete supplier order <strong id="delete-order-no" class="text-danger"></strong> (ID: #<span id="delete-order-id"></span>)?</p>
+                <p class="text-muted small mb-0">This action cannot be undone and will permanently remove this purchase order from the system.</p>
+                
+                <div id="delete-order-error" class="alert alert-danger d-none mt-3 mb-0 rounded-3 py-2 px-3 small align-items-center gap-2" role="alert">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span id="delete-order-error-text">Failed to delete supplier order.</span>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light border rounded-3 px-3" data-bs-dismiss="modal" id="btn-cancel-delete">Cancel</button>
+                <button type="button" class="btn btn-danger rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2" id="btn-confirm-delete-order">
+                    <i class="bi bi-trash-fill"></i>
+                    <span id="btn-confirm-delete-order-text">Delete</span>
+                </button>
             </div>
         </div>
     </div>

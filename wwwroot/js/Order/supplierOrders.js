@@ -11,6 +11,8 @@ let totalCount = 0;
 let totalPages = 1;
 let ordersList = [];
 let orderDetailsModalInstance = null;
+let deleteOrderModalInstance = null;
+let deleteOrderId = null;
 let searchDebounceTimer = null;
 
 // Sample fallback orders matching the API schema
@@ -241,6 +243,65 @@ function showToast(message, type = 'info') {
 }
 
 /**
+ * Ensures table headers match current design and modal exists in DOM
+ */
+function ensureTableStructureAndModal() {
+    // Remove Supplier Balance header if still present from cached view
+    const headers = document.querySelectorAll('.orders-list-table thead th');
+    headers.forEach(th => {
+        if (th.textContent.trim().toLowerCase().includes('supplier balance')) {
+            th.remove();
+        }
+    });
+
+    // Ensure delete confirmation modal exists in DOM
+    if (!document.getElementById('deleteOrderModal')) {
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal fade';
+        modalDiv.id = 'deleteOrderModal';
+        modalDiv.tabIndex = -1;
+        modalDiv.setAttribute('aria-labelledby', 'deleteOrderModalLabel');
+        modalDiv.setAttribute('aria-hidden', 'true');
+        modalDiv.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                        <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="deleteOrderModalLabel">
+                            <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i> Delete Supplier Order
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="mb-2 text-dark">Are you sure you want to delete supplier order <strong id="delete-order-no" class="text-danger"></strong> (ID: #<span id="delete-order-id"></span>)?</p>
+                        <p class="text-muted small mb-0">This action cannot be undone and will permanently remove this purchase order from the system.</p>
+                        
+                        <div id="delete-order-error" class="alert alert-danger d-none mt-3 mb-0 rounded-3 py-2 px-3 small align-items-center gap-2" role="alert">
+                            <i class="bi bi-exclamation-circle-fill"></i>
+                            <span id="delete-order-error-text">Failed to delete supplier order.</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                        <button type="button" class="btn btn-light border rounded-3 px-3" data-bs-dismiss="modal" id="btn-cancel-delete">Cancel</button>
+                        <button type="button" class="btn btn-danger rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2" id="btn-confirm-delete-order">
+                            <i class="bi bi-trash-fill"></i>
+                            <span id="btn-confirm-delete-order-text">Delete</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+    }
+
+    // Bind confirm delete button
+    const btnConfirmDelete = document.getElementById('btn-confirm-delete-order');
+    if (btnConfirmDelete && !btnConfirmDelete.dataset.bound) {
+        btnConfirmDelete.dataset.bound = 'true';
+        btnConfirmDelete.addEventListener('click', executeDeleteOrder);
+    }
+}
+
+/**
  * Initializes form listeners, filter controls, and modal instances
  */
 function initSupplierOrdersEvents() {
@@ -255,13 +316,25 @@ function initSupplierOrdersEvents() {
     const pdfBtn = document.getElementById('btn-export-pdf');
     const excelBtn = document.getElementById('btn-export-excel');
 
-    // Safely init modal
+    // Ensure DOM table headers and modal exist
+    ensureTableStructureAndModal();
+
+    // Safely init modals
     const modalEl = document.getElementById('orderDetailsModal');
     if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
         try {
             orderDetailsModalInstance = new bootstrap.Modal(modalEl);
         } catch (e) {
             console.warn('Could not initialize orderDetailsModal bootstrap instance:', e);
+        }
+    }
+
+    const deleteModalEl = document.getElementById('deleteOrderModal');
+    if (deleteModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        try {
+            deleteOrderModalInstance = new bootstrap.Modal(deleteModalEl);
+        } catch (e) {
+            console.warn('Could not initialize deleteOrderModal bootstrap instance:', e);
         }
     }
 
@@ -379,7 +452,7 @@ async function loadSupplierOrders() {
 
     tableBody.innerHTML = `
         <tr id="orders-loading-row">
-            <td colspan="6" class="text-center py-5">
+            <td colspan="5" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -500,6 +573,7 @@ async function loadSupplierOrders() {
  * Renders supplier order items in table body (Items and Status columns removed, Details is icon only)
  */
 function renderSupplierOrdersTable(orders) {
+    ensureTableStructureAndModal();
     const tableBody = document.getElementById('orders-table-body');
     const emptyState = document.getElementById('orders-empty-state');
     if (!tableBody) return;
@@ -560,28 +634,144 @@ function renderSupplierOrdersTable(orders) {
                     ৳ ${formatCurrency(totalAmount)}
                 </div>
             </td>
-            <td>
-                <div class="d-flex flex-column" style="font-size: 0.85rem;">
-                    <div class="text-muted d-flex align-items-center gap-1">
-                        <span>Prev:</span>
-                        <span>৳ ${formatCurrency(prevBalance)}</span>
-                    </div>
-                    <div class="fw-semibold ${isIncreased ? 'text-danger' : 'text-success'} d-flex align-items-center gap-1">
-                        <span>New:</span>
-                        <span>৳ ${formatCurrency(newBalance)}</span>
-                        <i class="bi ${isIncreased ? 'bi-arrow-up-short' : 'bi-arrow-down-short'}"></i>
-                    </div>
-                </div>
-            </td>
             <td class="pe-4 text-end">
-                <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1.5 d-inline-flex align-items-center justify-content-center" onclick="viewOrderDetails(${index})" title="View Order Details" aria-label="View Details">
-                    <i class="bi bi-eye-fill fs-6"></i>
-                </button>
+                <div class="d-inline-flex align-items-center gap-1.5 justify-content-end">
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1.5 d-inline-flex align-items-center justify-content-center" onclick="viewOrderDetails(${index})" title="View Order Details" aria-label="View Details">
+                        <i class="bi bi-eye-fill fs-6"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2 py-1.5 d-inline-flex align-items-center justify-content-center" onclick="confirmDeleteOrder('${escapeHtml(orderId)}', '${escapeHtml(orderNo)}')" title="Delete Order" aria-label="Delete Order">
+                        <i class="bi bi-trash-fill fs-6"></i>
+                    </button>
+                </div>
             </td>
         `;
 
         tableBody.appendChild(tr);
     });
+}
+
+/**
+ * Opens delete confirmation modal for the selected supplier order
+ */
+window.confirmDeleteOrder = function(id, orderNo) {
+    ensureTableStructureAndModal();
+    deleteOrderId = id;
+
+    const noEl = document.getElementById('delete-order-no');
+    const idEl = document.getElementById('delete-order-id');
+    const errEl = document.getElementById('delete-order-error');
+
+    if (noEl) noEl.innerText = orderNo || `PO-${id}`;
+    if (idEl) idEl.innerText = id;
+    if (errEl) {
+        errEl.classList.add('d-none');
+        errEl.classList.remove('d-flex');
+    }
+
+    if (deleteOrderModalInstance) {
+        deleteOrderModalInstance.show();
+    } else {
+        const modalEl = document.getElementById('deleteOrderModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            deleteOrderModalInstance = new bootstrap.Modal(modalEl);
+            deleteOrderModalInstance.show();
+        }
+    }
+};
+
+/**
+ * Executes delete request to backend API: DELETE /api/SupplierOrders/{id}
+ */
+async function executeDeleteOrder() {
+    if (!deleteOrderId) return;
+
+    const btnConfirm = document.getElementById('btn-confirm-delete-order');
+    const btnText = document.getElementById('btn-confirm-delete-order-text');
+    const errEl = document.getElementById('delete-order-error');
+    const errText = document.getElementById('delete-order-error-text');
+
+    if (errEl) {
+        errEl.classList.add('d-none');
+        errEl.classList.remove('d-flex');
+    }
+
+    // Set button loading state
+    if (btnConfirm) btnConfirm.disabled = true;
+    if (btnText) btnText.innerText = 'Deleting...';
+
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const token = getAuthToken();
+    const endpoint = `${baseUrl}/SupplierOrders/${deleteOrderId}`;
+
+    try {
+        console.log('Deleting Supplier Order at:', endpoint);
+        const headers = { 'accept': '*/*' };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: headers
+        });
+
+        if (response.status === 401) {
+            throw new Error('Unauthorized (401). Please sign in with an authorized account.');
+        }
+
+        if (!response.ok) {
+            let errorMsg = `Server error HTTP ${response.status}`;
+            try {
+                const resJson = await response.json();
+                if (resJson && (resJson.message || resJson.Message)) {
+                    errorMsg = resJson.message || resJson.Message;
+                }
+            } catch (_) {
+                // If not JSON, use default errorMsg
+            }
+            throw new Error(errorMsg);
+        }
+
+        // Also remove from SAMPLE_ORDERS_DATA if present
+        const sampleIdx = SAMPLE_ORDERS_DATA.findIndex(o => String(o.id) === String(deleteOrderId));
+        if (sampleIdx !== -1) {
+            SAMPLE_ORDERS_DATA.splice(sampleIdx, 1);
+        }
+
+        // Close modal
+        if (deleteOrderModalInstance) {
+            deleteOrderModalInstance.hide();
+        }
+
+        showToast('Supplier order deleted successfully!', 'success');
+        loadSupplierOrders();
+
+    } catch (error) {
+        console.warn('API delete failed, checking sample fallback:', error);
+
+        // If in sample fallback mode (or 401), allow deleting from local sample list for seamless user demo
+        const sampleIdx = SAMPLE_ORDERS_DATA.findIndex(o => String(o.id) === String(deleteOrderId));
+        if (sampleIdx !== -1 && (error.message.includes('401') || error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+            SAMPLE_ORDERS_DATA.splice(sampleIdx, 1);
+            if (deleteOrderModalInstance) {
+                deleteOrderModalInstance.hide();
+            }
+            showToast('Order removed from sample dataset.', 'info');
+            loadSupplierOrders();
+            return;
+        }
+
+        if (errEl && errText) {
+            errText.innerText = error.message || 'Failed to delete supplier order.';
+            errEl.classList.remove('d-none');
+            errEl.classList.add('d-flex');
+        } else {
+            showToast(error.message || 'Failed to delete order', 'danger');
+        }
+    } finally {
+        if (btnConfirm) btnConfirm.disabled = false;
+        if (btnText) btnText.innerText = 'Delete';
+    }
 }
 
 /**
