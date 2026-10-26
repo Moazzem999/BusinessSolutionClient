@@ -844,12 +844,12 @@ window.viewOrderDetails = function(orderIndex) {
                     <td>
                         <span class="fw-semibold text-dark">${escapeHtml(productName)}</span>
                     </td>
+                    <td class="text-muted small">${escapeHtml(remarks || '—')}</td>
                     <td class="text-center">
                         <span class="badge bg-light text-dark border px-2 py-1">${qty}</span>
                     </td>
                     <td class="text-end">৳ ${formatCurrency(unitPrice)}</td>
                     <td class="text-end fw-bold text-dark">৳ ${formatCurrency(lineTotal)}</td>
-                    <td class="text-muted small">${escapeHtml(remarks || '—')}</td>
                 </tr>
             `;
         });
@@ -937,11 +937,11 @@ window.viewOrderDetails = function(orderIndex) {
                 <thead class="bg-light">
                     <tr>
                         <th class="text-center text-secondary small fw-semibold text-uppercase" style="width: 45px;">#</th>
-                        <th class="text-secondary small fw-semibold text-uppercase">Product</th>
+                        <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 140px;">Product</th>
+                        <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 140px;">Remarks</th>
                         <th class="text-center text-secondary small fw-semibold text-uppercase" style="width: 90px;">Quantity</th>
                         <th class="text-end text-secondary small fw-semibold text-uppercase" style="width: 120px;">Unit Price</th>
                         <th class="text-end text-secondary small fw-semibold text-uppercase" style="width: 130px;">Line Total</th>
-                        <th class="text-secondary small fw-semibold text-uppercase" style="width: 150px;">Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -949,11 +949,10 @@ window.viewOrderDetails = function(orderIndex) {
                 </tbody>
                 <tfoot class="table-light fw-bold border-top">
                     <tr>
-                        <td colspan="2" class="text-end text-dark">Total:</td>
+                        <td colspan="3" class="text-end text-dark">Total:</td>
                         <td class="text-center text-dark">${totalItemsQuantity}</td>
                         <td></td>
                         <td class="text-end text-primary fs-6">৳ ${formatCurrency(totalAmount || computedLineTotals)}</td>
-                        <td></td>
                     </tr>
                 </tfoot>
             </table>
@@ -1028,10 +1027,10 @@ window.printOrderDetails = function(orderParam) {
                     <td>
                         <div class="fw-bold text-dark">${escapeHtml(productName)}</div>
                     </td>
+                    <td class="small text-muted">${escapeHtml(remarks || '—')}</td>
                     <td class="text-center fw-semibold">${qty}</td>
                     <td class="text-end">৳ ${formatCurrency(unitPrice)}</td>
                     <td class="text-end fw-bold text-dark">৳ ${formatCurrency(lineTotal)}</td>
-                    <td class="small text-muted">${escapeHtml(remarks || '—')}</td>
                 </tr>
             `;
         });
@@ -1294,10 +1293,10 @@ window.printOrderDetails = function(orderParam) {
                         <tr>
                             <th class="text-center" style="width: 45px;">#</th>
                             <th>Product</th>
+                            <th style="width: 160px;">Remarks</th>
                             <th class="text-center" style="width: 90px;">Quantity</th>
                             <th class="text-end" style="width: 130px;">Unit Price</th>
                             <th class="text-end" style="width: 140px;">Line Total</th>
-                            <th style="width: 160px;">Remarks</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1305,11 +1304,10 @@ window.printOrderDetails = function(orderParam) {
                     </tbody>
                     <tfoot>
                         <tr>
-                            <td colspan="2" class="text-end fw-bold text-dark">Total:</td>
+                            <td colspan="3" class="text-end fw-bold text-dark">Total:</td>
                             <td class="text-center fw-bold text-dark">${totalQty}</td>
                             <td></td>
                             <td class="text-end fw-bold text-primary fs-6">৳ ${formatCurrency(finalTotal)}</td>
-                            <td></td>
                         </tr>
                     </tfoot>
                 </table>
