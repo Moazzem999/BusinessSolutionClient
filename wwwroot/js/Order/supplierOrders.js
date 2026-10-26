@@ -249,8 +249,8 @@ function ensureTableStructureAndModal() {
     const theadTr = document.querySelector('.orders-list-table thead tr');
     if (theadTr) {
         theadTr.innerHTML = `
-            <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 170px;">Order No / ID</th>
-            <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px;">Supplier</th>
+            <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 150px;">Order No</th>
+            <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 220px;">Supplier</th>
             <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Date</th>
             <th class="text-center text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 110px;">Items</th>
             <th class="text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Total Amount</th>
@@ -612,21 +612,18 @@ function renderSupplierOrdersTable(orders) {
 
         tr.innerHTML = `
             <td class="ps-4">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-primary-subtle text-primary fw-bold font-monospace px-2.5 py-1 rounded-2">
-                        ${escapeHtml(orderNo)}
-                    </span>
-                    <span class="text-muted small">#${escapeHtml(orderId)}</span>
-                </div>
+                <span class="badge bg-primary-subtle text-primary fw-bold font-monospace px-2.5 py-1 rounded-2">
+                    ${escapeHtml(orderNo)}
+                </span>
             </td>
-            <td>
+            <td style="max-width: 220px;">
                 <div class="d-flex align-items-center gap-2">
                     <div class="avatar-circle-sm bg-light text-primary border rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 34px; height: 34px; min-width: 34px; font-size: 0.8rem;">
                         <i class="bi bi-truck"></i>
                     </div>
-                    <div>
-                        <div class="fw-semibold text-dark">${escapeHtml(supplierName)}</div>
-                        ${supplierShopName ? `<div class="text-muted small d-flex align-items-center gap-1"><i class="bi bi-shop small"></i> ${escapeHtml(supplierShopName)}</div>` : ''}
+                    <div class="text-truncate">
+                        <div class="fw-semibold text-dark text-truncate" title="${escapeHtml(supplierName)}">${escapeHtml(supplierName)}</div>
+                        ${supplierShopName ? `<div class="text-muted small d-flex align-items-center gap-1 text-truncate" title="${escapeHtml(supplierShopName)}"><i class="bi bi-shop small"></i> ${escapeHtml(supplierShopName)}</div>` : ''}
                     </div>
                 </div>
             </td>
