@@ -5,7 +5,6 @@
 let currentPage = 1;
 let pageSize = 10;
 let searchTerm = '';
-let selectedSupplierId = '';
 let fromDate = '';
 let toDate = '';
 let totalCount = 0;
@@ -125,7 +124,6 @@ if (document.readyState === 'loading') {
 
 function initSupplierOrdersPage() {
     initSupplierOrdersEvents();
-    loadSuppliersDropdown();
     loadSupplierOrders();
 }
 
@@ -248,7 +246,6 @@ function showToast(message, type = 'info') {
 function initSupplierOrdersEvents() {
     const searchForm = document.getElementById('orders-filter-form');
     const searchInput = document.getElementById('search-input');
-    const supplierFilter = document.getElementById('supplier-filter');
     const fromDateInput = document.getElementById('from-date-input');
     const toDateInput = document.getElementById('to-date-input');
     const resetBtn = document.getElementById('btn-reset');
@@ -286,13 +283,6 @@ function initSupplierOrdersEvents() {
         });
     }
 
-    // Supplier Dropdown Change
-    if (supplierFilter) {
-        supplierFilter.addEventListener('change', () => {
-            applyFilters();
-        });
-    }
-
     // Date Filters Change
     if (fromDateInput) {
         fromDateInput.addEventListener('change', () => {
@@ -309,12 +299,10 @@ function initSupplierOrdersEvents() {
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
             if (searchInput) searchInput.value = '';
-            if (supplierFilter) supplierFilter.value = '';
             if (fromDateInput) fromDateInput.value = '';
             if (toDateInput) toDateInput.value = '';
 
             searchTerm = '';
-            selectedSupplierId = '';
             fromDate = '';
             toDate = '';
             currentPage = 1;
@@ -358,12 +346,10 @@ function initSupplierOrdersEvents() {
  */
 function applyFilters() {
     const searchInput = document.getElementById('search-input');
-    const supplierFilter = document.getElementById('supplier-filter');
     const fromDateInput = document.getElementById('from-date-input');
     const toDateInput = document.getElementById('to-date-input');
 
     searchTerm = searchInput ? searchInput.value.trim() : '';
-    selectedSupplierId = supplierFilter ? supplierFilter.value.trim() : '';
     fromDate = fromDateInput ? fromDateInput.value.trim() : '';
     toDate = toDateInput ? toDateInput.value.trim() : '';
 
@@ -372,63 +358,8 @@ function applyFilters() {
 }
 
 /**
- * Loads supplier list to populate the supplier filter dropdown
- */
-async function loadSuppliersDropdown() {
-    const supplierSelect = document.getElementById('supplier-filter');
-    if (!supplierSelect) return;
-
-    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
-    const token = getAuthToken();
-    const endpoint = `${baseUrl}/Suppliers/GetAll?PageNumber=1&PageSize=200`;
-
-    try {
-        const headers = { 'accept': '*/*' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const response = await fetch(endpoint, { method: 'GET', headers: headers });
-        if (response.ok) {
-            const result = await response.json();
-            let suppliers = [];
-            if (result && result.data && Array.isArray(result.data.items)) {
-                suppliers = result.data.items;
-            } else if (result && Array.isArray(result.data)) {
-                suppliers = result.data;
-            } else if (Array.isArray(result)) {
-                suppliers = result;
-            }
-
-            if (suppliers.length > 0) {
-                const currentVal = supplierSelect.value;
-                let optionsHtml = '<option value="">All Suppliers</option>';
-                suppliers.forEach(s => {
-                    const sId = s.id || s.Id;
-                    const sName = s.name || s.Name || `Supplier #${sId}`;
-                    const sShop = s.shopName || s.ShopName || '';
-                    const label = sShop ? `${sName} (${sShop})` : sName;
-                    optionsHtml += `<option value="${sId}">${escapeHtml(label)}</option>`;
-                });
-                supplierSelect.innerHTML = optionsHtml;
-                if (currentVal) supplierSelect.value = currentVal;
-                return;
-            }
-        }
-    } catch (e) {
-        console.warn('Could not fetch suppliers from backend API, using fallback option:', e);
-    }
-
-    // Default fallback supplier option
-    if (supplierSelect.children.length <= 1) {
-        supplierSelect.innerHTML = `
-            <option value="">All Suppliers</option>
-            <option value="1">Md Abdul Wadud (Makka Cap House-2)</option>
-        `;
-    }
-}
-
-/**
  * Loads supplier orders from the backend API:
- * GET /api/SupplierOrders/GetAll?SearchTerm=...&SupplierId=...&FromDate=...&ToDate=...&PageNumber=...&PageSize=...
+ * GET /api/SupplierOrders/GetAll?SearchTerm=...&FromDate=...&ToDate=...&PageNumber=...&PageSize=...
  * Note: All parameters are optional.
  */
 async function loadSupplierOrders() {
@@ -448,7 +379,7 @@ async function loadSupplierOrders() {
 
     tableBody.innerHTML = `
         <tr id="orders-loading-row">
-            <td colspan="8" class="text-center py-5">
+            <td colspan="6" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -465,9 +396,6 @@ async function loadSupplierOrders() {
 
     if (searchTerm && searchTerm.trim() !== '') {
         queryParams.append('SearchTerm', searchTerm.trim());
-    }
-    if (selectedSupplierId && selectedSupplierId.trim() !== '') {
-        queryParams.append('SupplierId', selectedSupplierId.trim());
     }
     if (fromDate && fromDate.trim() !== '') {
         queryParams.append('FromDate', fromDate.trim());
@@ -538,7 +466,7 @@ async function loadSupplierOrders() {
     } catch (error) {
         console.warn('API returned error or session unauthorized, using sample dataset fallback:', error);
         
-        // Filter sample data based on current active filters
+        // Filter sample data based on active search filter
         let filteredSample = SAMPLE_ORDERS_DATA;
         if (searchTerm) {
             const st = searchTerm.toLowerCase();
@@ -547,9 +475,6 @@ async function loadSupplierOrders() {
                 (o.supplierName && o.supplierName.toLowerCase().includes(st)) ||
                 (o.notes && o.notes.toLowerCase().includes(st))
             );
-        }
-        if (selectedSupplierId) {
-            filteredSample = filteredSample.filter(o => String(o.supplierId) === String(selectedSupplierId));
         }
 
         ordersList = filteredSample;
@@ -572,7 +497,7 @@ async function loadSupplierOrders() {
 }
 
 /**
- * Renders supplier order items in table body
+ * Renders supplier order items in table body (Items and Status columns removed, Details is icon only)
  */
 function renderSupplierOrdersTable(orders) {
     const tableBody = document.getElementById('orders-table-body');
@@ -600,9 +525,6 @@ function renderSupplierOrdersTable(orders) {
         const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
         const prevBalance = order.supplierPreviousBalance !== undefined ? order.supplierPreviousBalance : (order.SupplierPreviousBalance !== undefined ? order.SupplierPreviousBalance : 0);
         const newBalance = order.supplierNewBalance !== undefined ? order.supplierNewBalance : (order.SupplierNewBalance !== undefined ? order.SupplierNewBalance : 0);
-        const details = order.orderDetails || order.OrderDetails || [];
-        const itemsCount = Array.isArray(details) ? details.length : 0;
-        const status = order.status !== undefined ? order.status : (order.Status !== undefined ? order.Status : 1);
 
         // Balance difference indicator
         const isIncreased = Number(newBalance) >= Number(prevBalance);
@@ -634,12 +556,6 @@ function renderSupplierOrdersTable(orders) {
                 </div>
             </td>
             <td>
-                <span class="badge bg-light text-secondary border rounded-pill px-2.5 py-1 d-inline-flex align-items-center gap-1">
-                    <i class="bi bi-box-seam"></i>
-                    <span>${itemsCount} ${itemsCount === 1 ? 'item' : 'items'}</span>
-                </span>
-            </td>
-            <td>
                 <div class="fw-bold text-dark fs-6">
                     ৳ ${formatCurrency(totalAmount)}
                 </div>
@@ -657,16 +573,9 @@ function renderSupplierOrdersTable(orders) {
                     </div>
                 </div>
             </td>
-            <td>
-                ${status === 1 
-                    ? `<span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1 rounded-pill fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Active</span>`
-                    : `<span class="badge bg-secondary-subtle text-secondary border px-2.5 py-1 rounded-pill fw-normal">Inactive</span>`
-                }
-            </td>
             <td class="pe-4 text-end">
-                <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5 fw-medium d-inline-flex align-items-center gap-1.5" onclick="viewOrderDetails(${index})" title="View Order Details">
-                    <i class="bi bi-eye-fill"></i>
-                    <span>Details</span>
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2 py-1.5 d-inline-flex align-items-center justify-content-center" onclick="viewOrderDetails(${index})" title="View Order Details" aria-label="View Details">
+                    <i class="bi bi-eye-fill fs-6"></i>
                 </button>
             </td>
         `;
@@ -965,7 +874,7 @@ function exportToPdf() {
         doc.setTextColor(100);
         doc.text(`Generated on: ${new Date().toLocaleString()} | Total Orders: ${ordersList.length}`, 14, 22);
 
-        const tableHeaders = [['PO Number', 'Order Date', 'Supplier', 'Shop', 'Total Amount', 'Prev Balance', 'New Balance', 'Status']];
+        const tableHeaders = [['PO Number', 'Order Date', 'Supplier', 'Shop', 'Total Amount', 'Prev Balance', 'New Balance']];
         const tableRows = ordersList.map(o => [
             o.orderNo || o.OrderNo || `PO-${o.id}`,
             formatDate(o.orderDate || o.OrderDate),
@@ -973,8 +882,7 @@ function exportToPdf() {
             o.supplierShopName || o.SupplierShopName || '',
             `BDT ${formatCurrency(o.totalAmount !== undefined ? o.totalAmount : o.TotalAmount)}`,
             `BDT ${formatCurrency(o.supplierPreviousBalance !== undefined ? o.supplierPreviousBalance : o.SupplierPreviousBalance)}`,
-            `BDT ${formatCurrency(o.supplierNewBalance !== undefined ? o.supplierNewBalance : o.SupplierNewBalance)}`,
-            (o.status !== undefined ? o.status : o.Status) === 1 ? 'Active' : 'Inactive'
+            `BDT ${formatCurrency(o.supplierNewBalance !== undefined ? o.supplierNewBalance : o.SupplierNewBalance)}`
         ]);
 
         doc.autoTable({
@@ -1021,12 +929,10 @@ function exportToExcel() {
             'Order Date': formatDate(o.orderDate || o.OrderDate),
             'Supplier Name': o.supplierName || o.SupplierName || '',
             'Shop Name': o.supplierShopName || o.SupplierShopName || '',
-            'Items Count': Array.isArray(o.orderDetails) ? o.orderDetails.length : 0,
             'Total Amount': Number(o.totalAmount !== undefined ? o.totalAmount : (o.TotalAmount || 0)),
             'Previous Balance': Number(o.supplierPreviousBalance !== undefined ? o.supplierPreviousBalance : (o.SupplierPreviousBalance || 0)),
             'New Balance': Number(o.supplierNewBalance !== undefined ? o.supplierNewBalance : (o.SupplierNewBalance || 0)),
-            'Notes': o.notes || o.Notes || '',
-            'Status': (o.status !== undefined ? o.status : o.Status) === 1 ? 'Active' : 'Inactive'
+            'Notes': o.notes || o.Notes || ''
         }));
 
         const ws = XLSX.utils.json_to_sheet(rows);
