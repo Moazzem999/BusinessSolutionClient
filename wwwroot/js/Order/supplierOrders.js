@@ -247,12 +247,26 @@ function showToast(message, type = 'info') {
  */
 function ensureTableStructureAndModal() {
     // Remove Supplier Balance header if still present from cached view
-    const headers = document.querySelectorAll('.orders-list-table thead th');
+    const headers = Array.from(document.querySelectorAll('.orders-list-table thead th'));
     headers.forEach(th => {
         if (th.textContent.trim().toLowerCase().includes('supplier balance')) {
             th.remove();
         }
     });
+
+    // Ensure Items header exists between Supplier and Total Amount
+    const currentHeaders = Array.from(document.querySelectorAll('.orders-list-table thead th'));
+    const hasItemsHeader = currentHeaders.some(th => th.textContent.trim().toLowerCase() === 'items');
+    if (!hasItemsHeader) {
+        const totalAmountTh = currentHeaders.find(th => th.textContent.trim().toLowerCase().includes('total amount'));
+        if (totalAmountTh) {
+            const itemsTh = document.createElement('th');
+            itemsTh.className = 'text-secondary small fw-semibold text-uppercase';
+            itemsTh.style.cssText = 'letter-spacing: 0.5px; width: 130px;';
+            itemsTh.textContent = 'Items';
+            totalAmountTh.parentNode.insertBefore(itemsTh, totalAmountTh);
+        }
+    }
 
     // Ensure delete confirmation modal exists in DOM
     if (!document.getElementById('deleteOrderModal')) {
@@ -452,7 +466,7 @@ async function loadSupplierOrders() {
 
     tableBody.innerHTML = `
         <tr id="orders-loading-row">
-            <td colspan="5" class="text-center py-5">
+            <td colspan="6" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -603,6 +617,9 @@ function renderSupplierOrdersTable(orders) {
         // Balance difference indicator
         const isIncreased = Number(newBalance) >= Number(prevBalance);
 
+        const details = order.orderDetails || order.OrderDetails || [];
+        const itemsCount = Array.isArray(details) ? details.length : 0;
+
         tr.innerHTML = `
             <td class="ps-4">
                 <div class="d-flex align-items-center gap-2">
@@ -628,6 +645,11 @@ function renderSupplierOrdersTable(orders) {
                         ${supplierShopName ? `<div class="text-muted small d-flex align-items-center gap-1"><i class="bi bi-shop small"></i> ${escapeHtml(supplierShopName)}</div>` : ''}
                     </div>
                 </div>
+            </td>
+            <td>
+                <span class="badge bg-light text-dark border px-2.5 py-1 fw-semibold font-monospace" style="font-size: 0.8rem;">
+                    ${itemsCount} ${itemsCount === 1 ? 'item' : 'items'}
+                </span>
             </td>
             <td>
                 <div class="fw-bold text-dark fs-6">
@@ -1064,15 +1086,14 @@ function exportToPdf() {
         doc.setTextColor(100);
         doc.text(`Generated on: ${new Date().toLocaleString()} | Total Orders: ${ordersList.length}`, 14, 22);
 
-        const tableHeaders = [['PO Number', 'Order Date', 'Supplier', 'Shop', 'Total Amount', 'Prev Balance', 'New Balance']];
+        const tableHeaders = [['PO Number', 'Order Date', 'Supplier', 'Shop', 'Items', 'Total Amount']];
         const tableRows = ordersList.map(o => [
             o.orderNo || o.OrderNo || `PO-${o.id}`,
             formatDate(o.orderDate || o.OrderDate),
             o.supplierName || o.SupplierName || '',
             o.supplierShopName || o.SupplierShopName || '',
-            `BDT ${formatCurrency(o.totalAmount !== undefined ? o.totalAmount : o.TotalAmount)}`,
-            `BDT ${formatCurrency(o.supplierPreviousBalance !== undefined ? o.supplierPreviousBalance : o.SupplierPreviousBalance)}`,
-            `BDT ${formatCurrency(o.supplierNewBalance !== undefined ? o.supplierNewBalance : o.SupplierNewBalance)}`
+            `${(o.orderDetails || o.OrderDetails || []).length} items`,
+            `BDT ${formatCurrency(o.totalAmount !== undefined ? o.totalAmount : o.TotalAmount)}`
         ]);
 
         doc.autoTable({
@@ -1119,9 +1140,8 @@ function exportToExcel() {
             'Order Date': formatDate(o.orderDate || o.OrderDate),
             'Supplier Name': o.supplierName || o.SupplierName || '',
             'Shop Name': o.supplierShopName || o.SupplierShopName || '',
+            'Items': `${(o.orderDetails || o.OrderDetails || []).length} items`,
             'Total Amount': Number(o.totalAmount !== undefined ? o.totalAmount : (o.TotalAmount || 0)),
-            'Previous Balance': Number(o.supplierPreviousBalance !== undefined ? o.supplierPreviousBalance : (o.SupplierPreviousBalance || 0)),
-            'New Balance': Number(o.supplierNewBalance !== undefined ? o.supplierNewBalance : (o.SupplierNewBalance || 0)),
             'Notes': o.notes || o.Notes || ''
         }));
 
