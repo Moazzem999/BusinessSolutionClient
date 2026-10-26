@@ -1,0 +1,41 @@
+@{
+    ViewData["Title"] = "Supplier Orders";
+    var apiBaseUrl = ViewBag.ApiBaseUrl ?? "https://localhost:7148/api";
+}
+
+<!-- Page Header Row -->
+<div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+    <div>
+        <h1 class="page-title d-flex align-items-center gap-2">
+            <i class="bi bi-cart-check-fill text-primary"></i> Supplier Orders
+        </h1>
+        <p class="page-subtitle mb-0">Manage purchase orders placed with suppliers, track shipments, and review fulfillment status.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <button type="button" class="btn btn-primary rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" disabled>
+            <i class="bi bi-plus-circle-fill fs-6"></i>
+            <span>Create Order</span>
+        </button>
+    </div>
+</div>
+
+<!-- Empty State Container -->
+<div class="card border-0 shadow-sm rounded-4 text-center py-5 px-3" style="background: #ffffff;">
+    <div class="card-body d-flex flex-column align-items-center justify-content-center py-5">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-light mb-3" style="width: 84px; height: 84px; border: 2px dashed #cbd5e1;">
+            <i class="bi bi-cart-check fs-1 text-primary"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-2">No Supplier Orders Yet</h4>
+        <p class="text-muted mx-auto mb-4" style="max-width: 480px; font-size: 0.95rem;">
+            This is the Supplier Orders section. Here you will be able to place new purchase orders to your suppliers, track delivery progress, and reconcile invoices.
+        </p>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-controller="Supplier" asp-action="List" class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-medium d-inline-flex align-items-center gap-2">
+                <i class="bi bi-truck"></i> View Suppliers
+            </a>
+            <a asp-controller="Dashboard" asp-action="Index" class="btn btn-primary rounded-3 px-3 py-2 fw-medium d-inline-flex align-items-center gap-2">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
