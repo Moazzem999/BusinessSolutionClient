@@ -1,22 +1,13 @@
 /* ==========================================================================
    Business Solution Client - Create SO (Supplier Order) JavaScript
-   Handles Supplier Autocomplete, Dynamic Line Items, Real-time Balances,
-   and POST https://localhost:7148/api/SupplierOrders
+   Handles Supplier Autocomplete, Product Autocomplete per line item,
+   Dynamic Line Items, Real-time Balances, and POST https://localhost:7148/api/SupplierOrders
    ========================================================================== */
 
 let supplierSearchDebounceTimer = null;
 let currentFocusedSuggestionIndex = -1;
 let supplierMap = {};
-let productList = [];
 let itemRowCounter = 0;
-
-// Standard fallback products in case API is empty or offline
-const DEFAULT_PRODUCTS = [
-    { id: 1, name: "Jacket", details: "Winter collection jacket", unitPrice: 100 },
-    { id: 2, name: "Hudi", details: "Cotton hoodie", unitPrice: 100 },
-    { id: 3, name: "Trouser", details: "Regular fit trouser", unitPrice: 100 },
-    { id: 4, name: "Suif Shirt", details: "Full sleeve formal shirt", unitPrice: 100 }
-];
 
 document.addEventListener('DOMContentLoaded', () => {
     initCreateSOPage();
@@ -25,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /**
  * Initializes the Create SO page components
  */
-async function initCreateSOPage() {
+function initCreateSOPage() {
     // 1. Set today's date in order date input
     const orderDateInput = document.getElementById('order-date');
     if (orderDateInput && !orderDateInput.value) {
@@ -35,13 +26,10 @@ async function initCreateSOPage() {
     // 2. Initialize Supplier Combobox & Keyboard navigation
     initSupplierAutocomplete();
 
-    // 3. Preload Products catalog
-    await preloadProducts();
-
-    // 4. Initialize first item row
+    // 3. Initialize Order Items table & add first row
     initOrderItemsTable();
 
-    // 5. Initialize Form Submission
+    // 4. Initialize Form Submission
     initCreateSOForm();
 }
 
@@ -115,7 +103,7 @@ function escapeHtml(text) {
  * Generates initials from a name (e.g., "Md Abdul Wadud" -> "MA")
  */
 function getInitials(name) {
-    if (!name || typeof name !== 'string') return 'SP';
+    if (!name || typeof name !== 'string') return 'PR';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
     return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -150,14 +138,14 @@ function initSupplierAutocomplete() {
             if (currentFocusedSuggestionIndex >= items.length) {
                 currentFocusedSuggestionIndex = 0; // Wrap around to top
             }
-            updateSuggestionFocus(items);
+            updateSupplierSuggestionFocus(items);
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             currentFocusedSuggestionIndex--;
             if (currentFocusedSuggestionIndex < 0) {
                 currentFocusedSuggestionIndex = items.length - 1; // Wrap around to bottom
             }
-            updateSuggestionFocus(items);
+            updateSupplierSuggestionFocus(items);
         } else if (e.key === 'Enter') {
             if (currentFocusedSuggestionIndex >= 0 && currentFocusedSuggestionIndex < items.length) {
                 e.preventDefault();
@@ -166,7 +154,7 @@ function initSupplierAutocomplete() {
                 selectSupplier(supplierId);
             }
         } else if (e.key === 'Escape') {
-            closeSuggestionsMenu();
+            closeSupplierSuggestionsMenu();
         }
     });
 
@@ -184,7 +172,7 @@ function initSupplierAutocomplete() {
         }
 
         if (val.length < 3) {
-            closeSuggestionsMenu();
+            closeSupplierSuggestionsMenu();
             if (val.length === 0) {
                 if (hiddenInput) hiddenInput.value = '';
                 document.getElementById('supplier-previous-balance').value = '0';
@@ -211,12 +199,12 @@ function initSupplierAutocomplete() {
     // Hide dropdown when clicking outside search container
     document.addEventListener('click', (e) => {
         if (container && !container.contains(e.target)) {
-            closeSuggestionsMenu();
+            closeSupplierSuggestionsMenu();
         }
     });
 }
 
-function updateSuggestionFocus(items) {
+function updateSupplierSuggestionFocus(items) {
     items.forEach((item, index) => {
         const titleEl = item.querySelector('.item-title');
         const badgeEl = item.querySelector('.item-badge');
@@ -235,7 +223,7 @@ function updateSuggestionFocus(items) {
     });
 }
 
-function closeSuggestionsMenu() {
+function closeSupplierSuggestionsMenu() {
     const menu = document.getElementById('supplier-suggestions-menu');
     if (menu) {
         menu.classList.add('d-none');
@@ -377,7 +365,7 @@ function selectSupplier(supplierId) {
     }
 
     if (clearBtn) clearBtn.classList.remove('d-none');
-    closeSuggestionsMenu();
+    closeSupplierSuggestionsMenu();
 
     // Recalculate totals with the new previous balance
     calculateOverallTotals();
@@ -403,89 +391,14 @@ function clearSupplierSelection() {
         clearBtn.classList.add('d-none');
     }
 
-    closeSuggestionsMenu();
+    closeSupplierSuggestionsMenu();
     calculateOverallTotals();
 }
 
 /* ==========================================================================
-   Product Preloading & Order Items Management
+   Order Items & Dynamic Product Search Combobox
+   GET https://localhost:7148/api/Products/GetByName/{name}
    ========================================================================== */
-
-/**
- * Loads products from GET /api/Products/GetAll?PageNumber=1&PageSize=1000
- */
-async function preloadProducts() {
-    const token = getAuthToken();
-    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
-    const endpoint = `${baseUrl}/Products/GetAll?PageNumber=1&PageSize=1000`;
-
-    try {
-        console.log('Preloading Products from:', endpoint);
-        const headers = { 'accept': '*/*' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const response = await fetch(endpoint, {
-            method: 'GET',
-            headers: headers
-        });
-
-        if (response.ok) {
-            const resData = await response.json();
-            if (resData) {
-                let items = [];
-                if (Array.isArray(resData.data)) {
-                    items = resData.data;
-                } else if (resData.data && Array.isArray(resData.data.items)) {
-                    items = resData.data.items;
-                } else if (Array.isArray(resData.items)) {
-                    items = resData.items;
-                }
-
-                if (items && items.length > 0) {
-                    productList = items.map(p => ({
-                        id: p.id ?? p.Id,
-                        name: p.name || p.Name || `Product #${p.id ?? p.Id}`,
-                        details: p.details || p.Details || '',
-                        unitPrice: parseFloat(p.unitPrice || p.price || 100) || 100
-                    }));
-                }
-            }
-        }
-    } catch (err) {
-        console.warn('Could not fetch products catalog from API, falling back to defaults:', err);
-    }
-
-    // Fallback if empty
-    if (!productList || productList.length === 0) {
-        productList = [...DEFAULT_PRODUCTS];
-    }
-
-    // Refresh all select dropdowns that are already rendered
-    updateAllProductDropdowns();
-}
-
-/**
- * Generates options HTML for product select elements
- */
-function getProductOptionsHtml(selectedId = '') {
-    let options = `<option value="">-- Choose Product --</option>`;
-    productList.forEach(prod => {
-        const isSelected = selectedId && String(prod.id) === String(selectedId) ? 'selected' : '';
-        options += `<option value="${prod.id}" ${isSelected} data-price="${prod.unitPrice}">#${prod.id} - ${escapeHtml(prod.name)}</option>`;
-    });
-    return options;
-}
-
-/**
- * Updates all product select dropdowns with the latest productList
- */
-function updateAllProductDropdowns() {
-    const selects = document.querySelectorAll('.item-product-select');
-    selects.forEach(select => {
-        const currentVal = select.value;
-        select.innerHTML = getProductOptionsHtml(currentVal);
-    });
-}
 
 /**
  * Sets up Order Items table and buttons
@@ -506,7 +419,7 @@ function initOrderItemsTable() {
 }
 
 /**
- * Appends a new item row to the Order Items table
+ * Appends a new item row to the Order Items table with Product Searchbox
  */
 function addItemRow(initialData = null) {
     const tbody = document.getElementById('order-items-body');
@@ -519,6 +432,7 @@ function addItemRow(initialData = null) {
     tr.className = 'item-row';
 
     const defaultProductId = initialData ? initialData.productId : '';
+    const defaultProductName = initialData ? initialData.productName : '';
     const defaultRemarks = initialData ? initialData.remarks : '';
     const defaultQty = initialData ? initialData.quantity : 1;
     const defaultPrice = initialData ? initialData.unitPrice : 100;
@@ -528,24 +442,49 @@ function addItemRow(initialData = null) {
         <td class="ps-4 fw-semibold text-secondary row-index-cell" style="width: 45px;">
             1
         </td>
-        <td style="min-width: 200px;">
-            <select class="form-select rounded-3 item-product-select" required>
-                ${getProductOptionsHtml(defaultProductId)}
-            </select>
+        <td style="min-width: 260px; width: 32%;">
+            <div class="position-relative product-search-container">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted ps-2.5">
+                        <i class="bi bi-box-seam"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control bg-light border-start-0 ps-1 product-search-input" 
+                           placeholder="Search product (e.g. 'hud')..." 
+                           value="${escapeHtml(defaultProductName)}" 
+                           ${defaultProductName ? `data-selected-name="${escapeHtml(defaultProductName)}"` : ''}
+                           autocomplete="off" 
+                           required>
+                    <input type="hidden" class="item-product-id" name="productId" value="${defaultProductId}">
+                    <button type="button" 
+                            class="btn btn-light border border-start-0 text-muted btn-clear-product ${defaultProductId ? '' : 'd-none'}" 
+                            title="Clear Product">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </button>
+                </div>
+
+                <!-- Product Autocomplete Suggestions Menu -->
+                <div class="product-suggestions-menu position-absolute start-0 w-100 shadow-lg border border-secondary-subtle rounded-3 p-0 mt-1 overflow-auto bg-white d-none" 
+                     style="max-height: 240px; z-index: 1060; top: 100%; min-width: 260px;">
+                    <div class="list-group list-group-flush small product-suggestions-list">
+                        <!-- Dynamic product items injected on typing -->
+                    </div>
+                </div>
+            </div>
         </td>
-        <td style="min-width: 170px;">
+        <td style="min-width: 200px; width: 25%;">
             <input type="text" class="form-control rounded-3 item-remarks" placeholder="Remarks / Specs" value="${escapeHtml(defaultRemarks)}">
         </td>
-        <td style="width: 100px;">
+        <td style="width: 120px;">
             <input type="number" min="1" step="1" class="form-control text-center rounded-3 item-quantity" value="${defaultQty}" required>
         </td>
-        <td style="width: 130px;">
+        <td style="width: 150px;">
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted small px-2">৳</span>
                 <input type="number" min="0" step="0.01" class="form-control text-end rounded-end item-unit-price" value="${defaultPrice}" required>
             </div>
         </td>
-        <td style="width: 140px;">
+        <td style="width: 160px;">
             <input type="text" class="form-control text-end fw-bold bg-light rounded-3 item-line-total" value="৳ ${defaultTotal}" readonly>
         </td>
         <td class="pe-4 text-center" style="width: 50px;">
@@ -557,23 +496,13 @@ function addItemRow(initialData = null) {
 
     tbody.appendChild(tr);
 
-    // Bind event listeners on inputs
-    const productSelect = tr.querySelector('.item-product-select');
+    // Initialize Product Searchbox for this row
+    initRowProductAutocomplete(tr);
+
+    // Bind Quantity, Price, and Remove event listeners
     const qtyInput = tr.querySelector('.item-quantity');
     const priceInput = tr.querySelector('.item-unit-price');
     const removeBtn = tr.querySelector('.btn-remove-item');
-
-    // On product change, optionally set default price if 0 or default
-    productSelect.addEventListener('change', (e) => {
-        const selectedOption = e.target.options[e.target.selectedIndex];
-        if (selectedOption && selectedOption.dataset.price) {
-            const price = parseFloat(selectedOption.dataset.price);
-            if (!isNaN(price) && (parseFloat(priceInput.value) === 0 || parseFloat(priceInput.value) === 100)) {
-                priceInput.value = price;
-            }
-        }
-        calculateRowTotal(tr);
-    });
 
     qtyInput.addEventListener('input', () => calculateRowTotal(tr));
     priceInput.addEventListener('input', () => calculateRowTotal(tr));
@@ -585,17 +514,278 @@ function addItemRow(initialData = null) {
             reindexRows();
             calculateOverallTotals();
         } else {
-            // If only one row, reset it instead of removing
-            productSelect.value = '';
+            // If only one row, reset it
+            const searchInput = tr.querySelector('.product-search-input');
+            const hiddenInput = tr.querySelector('.item-product-id');
+            const clearBtn = tr.querySelector('.btn-clear-product');
+
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.removeAttribute('data-selected-name');
+            }
+            if (hiddenInput) {
+                hiddenInput.value = '';
+            }
+            if (clearBtn) {
+                clearBtn.classList.add('d-none');
+            }
             tr.querySelector('.item-remarks').value = '';
             qtyInput.value = '1';
-            priceInput.value = '0';
+            priceInput.value = '100';
             calculateRowTotal(tr);
         }
     });
 
     reindexRows();
     calculateRowTotal(tr);
+}
+
+/**
+ * Initializes Product Searchable Combobox for a specific table row
+ * Calls GET https://localhost:7148/api/Products/GetByName/{name}
+ */
+function initRowProductAutocomplete(tr) {
+    const searchInput = tr.querySelector('.product-search-input');
+    const hiddenInput = tr.querySelector('.item-product-id');
+    const clearBtn = tr.querySelector('.btn-clear-product');
+    const menu = tr.querySelector('.product-suggestions-menu');
+    const list = tr.querySelector('.product-suggestions-list');
+    const container = tr.querySelector('.product-search-container');
+    const priceInput = tr.querySelector('.item-unit-price');
+
+    if (!searchInput || !menu || !list || !container) return;
+
+    let searchDebounceTimer = null;
+    let focusedIndex = -1;
+
+    function closeMenu() {
+        menu.classList.add('d-none');
+        menu.style.display = 'none';
+        container.classList.remove('active-dropdown');
+        tr.style.zIndex = '';
+        focusedIndex = -1;
+    }
+
+    function openMenu() {
+        menu.classList.remove('d-none');
+        menu.style.display = 'block';
+        container.classList.add('active-dropdown');
+        tr.style.zIndex = '1060';
+    }
+
+    // Keyboard navigation (ArrowDown, ArrowUp, Enter, Escape)
+    searchInput.addEventListener('keydown', (e) => {
+        const items = list.querySelectorAll('.product-suggestion-item');
+        if (!items || items.length === 0 || menu.classList.contains('d-none') || menu.style.display === 'none') {
+            return;
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            focusedIndex++;
+            if (focusedIndex >= items.length) focusedIndex = 0;
+            updateFocus(items, focusedIndex);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            focusedIndex--;
+            if (focusedIndex < 0) focusedIndex = items.length - 1;
+            updateFocus(items, focusedIndex);
+        } else if (e.key === 'Enter') {
+            if (focusedIndex >= 0 && focusedIndex < items.length) {
+                e.preventDefault();
+                const selectedBtn = items[focusedIndex];
+                const prodId = selectedBtn.getAttribute('data-id');
+                const prodName = selectedBtn.getAttribute('data-name');
+                const prodPrice = selectedBtn.getAttribute('data-price');
+                applyProductSelection(prodId, prodName, prodPrice);
+            }
+        } else if (e.key === 'Escape') {
+            closeMenu();
+        }
+    });
+
+    function updateFocus(items, idx) {
+        items.forEach((item, i) => {
+            const titleEl = item.querySelector('.item-title');
+            if (i === idx) {
+                item.classList.add('active', 'bg-primary', 'text-white');
+                item.classList.remove('bg-white');
+                if (titleEl) titleEl.classList.add('text-white');
+                item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            } else {
+                item.classList.remove('active', 'bg-primary', 'text-white');
+                if (titleEl) titleEl.classList.remove('text-white');
+            }
+        });
+    }
+
+    function applyProductSelection(prodId, prodName, prodPrice) {
+        searchInput.value = prodName;
+        searchInput.setAttribute('data-selected-name', prodName);
+        hiddenInput.value = prodId;
+
+        if (clearBtn) clearBtn.classList.remove('d-none');
+        closeMenu();
+
+        // If product has a unit price, set it
+        if (prodPrice) {
+            const parsedPrice = parseFloat(prodPrice);
+            if (!isNaN(parsedPrice) && parsedPrice > 0 && (parseFloat(priceInput.value) === 0 || parseFloat(priceInput.value) === 100)) {
+                priceInput.value = parsedPrice;
+            }
+        }
+
+        calculateRowTotal(tr);
+    }
+
+    // Input event with 300ms debounce
+    searchInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        focusedIndex = -1;
+
+        // If user changed input, reset hidden ID
+        if (hiddenInput.value && val !== searchInput.getAttribute('data-selected-name')) {
+            hiddenInput.value = '';
+            if (clearBtn) clearBtn.classList.add('d-none');
+            calculateRowTotal(tr);
+        }
+
+        if (val.length < 2) {
+            closeMenu();
+            if (val.length === 0) {
+                hiddenInput.value = '';
+                if (clearBtn) clearBtn.classList.add('d-none');
+                calculateRowTotal(tr);
+            }
+            return;
+        }
+
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+            queryProductsByName(val);
+        }, 300);
+    });
+
+    // Clear button event
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            searchInput.removeAttribute('data-selected-name');
+            hiddenInput.value = '';
+            clearBtn.classList.add('d-none');
+            closeMenu();
+            calculateRowTotal(tr);
+            searchInput.focus();
+        });
+    }
+
+    // Click outside closes menu
+    document.addEventListener('click', (e) => {
+        if (!container.contains(e.target)) {
+            closeMenu();
+        }
+    });
+
+    /**
+     * Calls GET /api/Products/GetByName/{query}
+     */
+    async function queryProductsByName(nameQuery) {
+        focusedIndex = -1;
+        const token = getAuthToken();
+        const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+        const endpoint = `${baseUrl}/Products/GetByName/${encodeURIComponent(nameQuery)}`;
+
+        list.innerHTML = `
+            <div class="p-3 text-center text-muted small">
+                <span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span> Searching products...
+            </div>
+        `;
+        openMenu();
+
+        try {
+            console.log('Searching products from:', endpoint);
+            const headers = {
+                'Content-Type': 'application/json',
+                'accept': '*/*'
+            };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: headers
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const resData = await response.json();
+            console.log('Product Search API Response:', resData);
+
+            if (resData && resData.succeeded && Array.isArray(resData.data)) {
+                const products = resData.data;
+
+                if (products.length === 0) {
+                    list.innerHTML = `
+                        <div class="p-3 text-center text-muted small">
+                            <i class="bi bi-info-circle me-1"></i> No products found for "<strong>${escapeHtml(nameQuery)}</strong>".
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = products.map(prod => {
+                    const initials = getInitials(prod.name);
+                    let imgHtml = `<div class="emp-initials-avatar fs-6 fw-bold" style="width:32px;height:32px;background-color:#eff6ff;color:#2563eb;">${initials}</div>`;
+
+                    if (prod.imagePath && prod.imagePath.trim() !== '') {
+                        const fullImgUrl = resolveImageUrl(prod.imagePath);
+                        imgHtml = `<img src="${fullImgUrl}" alt="${escapeHtml(prod.name)}" class="rounded-circle object-fit-cover shadow-sm" style="width: 32px; height: 32px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-6 fw-bold\\' style=\\'width:32px;height:32px;background-color:#eff6ff;color:#2563eb;\\'>${initials}</div>';">`;
+                    }
+
+                    const priceVal = prod.unitPrice || prod.price || '';
+
+                    return `
+                        <button type="button" 
+                                class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 border-0 product-suggestion-item" 
+                                data-id="${prod.id}" 
+                                data-name="${escapeHtml(prod.name)}"
+                                data-price="${priceVal}">
+                            <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                                ${imgHtml}
+                                <div class="text-truncate">
+                                    <div class="fw-semibold text-dark text-truncate small mb-0 item-title">${escapeHtml(prod.name)}</div>
+                                    <div class="text-muted small text-truncate item-subtitle" style="font-size: 0.72rem;">
+                                        ${prod.details ? escapeHtml(prod.details) : `ID #${prod.id}`}
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="badge bg-light text-secondary border flex-shrink-0">ID #${prod.id}</span>
+                        </button>
+                    `;
+                }).join('');
+
+                list.querySelectorAll('.product-suggestion-item').forEach(btn => {
+                    const handleSelection = (e) => {
+                        e.preventDefault();
+                        const pId = btn.getAttribute('data-id');
+                        const pName = btn.getAttribute('data-name');
+                        const pPrice = btn.getAttribute('data-price');
+                        applyProductSelection(pId, pName, pPrice);
+                    };
+                    btn.addEventListener('mousedown', handleSelection);
+                    btn.addEventListener('click', handleSelection);
+                });
+
+            } else {
+                list.innerHTML = `<div class="p-3 text-center text-muted small">${escapeHtml(resData.message) || 'Failed to load products.'}</div>`;
+            }
+
+        } catch (err) {
+            console.error('Error searching products by name:', err);
+            list.innerHTML = `<div class="p-3 text-center text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>Could not connect to product API.</div>`;
+        }
+    }
 }
 
 /**
@@ -611,11 +801,6 @@ function reindexRows() {
     const itemsCountText = document.getElementById('items-count-text');
     if (itemsCountText) {
         itemsCountText.textContent = `${rows.length} ${rows.length === 1 ? 'item' : 'items'}`;
-    }
-
-    const summaryItemsCount = document.getElementById('summary-items-count');
-    if (summaryItemsCount) {
-        summaryItemsCount.textContent = `${rows.length} product ${rows.length === 1 ? 'line' : 'lines'}`;
     }
 }
 
@@ -723,15 +908,16 @@ function initCreateSOForm() {
 
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
-            const productSelect = row.querySelector('.item-product-select');
+            const productIdInput = row.querySelector('.item-product-id');
+            const searchInput = row.querySelector('.product-search-input');
             const remarksInput = row.querySelector('.item-remarks');
             const qtyInput = row.querySelector('.item-quantity');
             const priceInput = row.querySelector('.item-unit-price');
 
-            const productId = parseInt(productSelect.value, 10);
+            const productId = parseInt(productIdInput ? productIdInput.value : '', 10);
             if (!productId || isNaN(productId) || productId <= 0) {
-                showFormError(`Please choose a product for line #${i + 1}.`);
-                productSelect.focus();
+                showFormError(`Please search and select a valid product for line #${i + 1}.`);
+                if (searchInput) searchInput.focus();
                 return;
             }
 

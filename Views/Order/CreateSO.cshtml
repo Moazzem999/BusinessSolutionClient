@@ -120,13 +120,22 @@
                 <span>Add Item</span>
             </button>
         </div>
+<style>
+    .item-row {
+        position: relative;
+    }
+    .product-search-container.active-dropdown {
+        z-index: 1070;
+    }
+</style>
+
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="table-responsive" style="min-height: 280px; overflow-x: auto; overflow-y: visible;">
                 <table class="table table-hover align-middle mb-0" id="order-items-table">
                     <thead class="bg-light">
                         <tr>
                             <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="width: 45px;">#</th>
-                            <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 240px; width: 30%;">Product<span class="text-danger">*</span></th>
+                            <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 260px; width: 32%;">Product <span class="text-danger">*</span></th>
                             <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 200px; width: 25%;">Remarks</th>
                             <th class="text-secondary small fw-semibold text-uppercase text-center" style="width: 120px;">Qty<span class="text-danger">*</span></th>
                             <th class="text-secondary small fw-semibold text-uppercase text-end" style="width: 150px;">Price<span class="text-danger">*</span></th>
