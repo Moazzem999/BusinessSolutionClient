@@ -414,6 +414,30 @@ function initOrderItemsTable() {
         btnAddBottom.addEventListener('click', () => addItemRow());
     }
 
+    // Global listener: prevent mouse wheel scrolling on Qty and Price number inputs
+    document.addEventListener('wheel', (e) => {
+        if (e.target && (e.target.classList.contains('item-quantity') || e.target.classList.contains('item-unit-price') || e.target.classList.contains('no-spinner'))) {
+            e.preventDefault();
+            if (document.activeElement === e.target) {
+                e.target.blur();
+            }
+            window.scrollBy({
+                top: e.deltaY,
+                left: e.deltaX,
+                behavior: 'auto'
+            });
+        }
+    }, { passive: false });
+
+    // Global listener: prevent ArrowUp and ArrowDown from stepping/scrolling numbers
+    document.addEventListener('keydown', (e) => {
+        if (e.target && (e.target.classList.contains('item-quantity') || e.target.classList.contains('item-unit-price') || e.target.classList.contains('no-spinner'))) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+            }
+        }
+    });
+
     // Add first row by default
     addItemRow();
 }
@@ -503,6 +527,28 @@ function addItemRow(initialData = null) {
     const qtyInput = tr.querySelector('.item-quantity');
     const priceInput = tr.querySelector('.item-unit-price');
     const removeBtn = tr.querySelector('.btn-remove-item');
+
+    // Prevent mouse wheel scrolling & Arrow keys on Qty and Price directly on the elements
+    [qtyInput, priceInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (document.activeElement === input) {
+                input.blur();
+            }
+            window.scrollBy({
+                top: e.deltaY,
+                left: e.deltaX,
+                behavior: 'auto'
+            });
+        }, { passive: false });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+            }
+        });
+    });
 
     qtyInput.addEventListener('input', () => calculateRowTotal(tr));
     priceInput.addEventListener('input', () => calculateRowTotal(tr));

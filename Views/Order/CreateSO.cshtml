@@ -144,6 +144,16 @@
     input.no-spinner {
         -moz-appearance: textfield;
         appearance: textfield;
+        overflow: hidden;
+    }
+
+    /* Prevent scrolling or wrapping on Qty and Price table columns */
+    #order-items-table th:nth-child(4),
+    #order-items-table td:nth-child(4),
+    #order-items-table th:nth-child(5),
+    #order-items-table td:nth-child(5) {
+        white-space: nowrap;
+        overflow: hidden;
     }
 </style>
 
