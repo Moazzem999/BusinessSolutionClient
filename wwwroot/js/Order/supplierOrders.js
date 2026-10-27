@@ -1159,11 +1159,20 @@ window.printOrderDetails = function(orderParam) {
                 .items-table tbody tr:nth-child(even) {
                     background-color: #fafbfc;
                 }
-                .items-table tfoot td {
+                .items-table tfoot td,
+                .items-table .total-row td {
                     padding: 12px 14px;
-                    background-color: #f8fafc;
+                    background-color: #f8fafc !important;
                     border-top: 2px solid #cbd5e1;
+                    border-bottom: 2px solid #cbd5e1;
                     font-size: 0.95rem;
+                }
+                .items-table tbody tr.total-row {
+                    background-color: #f8fafc !important;
+                }
+                .items-table .total-row {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
                 }
                 .signature-section {
                     margin-top: 60px;
@@ -1199,6 +1208,17 @@ window.printOrderDetails = function(orderParam) {
                         padding: 25px !important;
                         max-width: 100% !important;
                         margin: 0 !important;
+                    }
+                    .items-table tfoot {
+                        display: none !important;
+                    }
+                    .items-table .total-row {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                    }
+                    .signature-section {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
                     }
                     .no-print {
                         display: none !important;
@@ -1309,15 +1329,13 @@ window.printOrderDetails = function(orderParam) {
                     </thead>
                     <tbody>
                         ${itemsRowsHtml}
-                    </tbody>
-                    <tfoot>
-                        <tr>
+                        <tr class="total-row">
                             <td colspan="3" class="text-end fw-bold text-dark">Total:</td>
                             <td class="text-center fw-bold text-dark">${totalQty}</td>
                             <td></td>
                             <td class="text-end fw-bold text-primary fs-6">৳ ${formatCurrency(finalTotal)}</td>
                         </tr>
-                    </tfoot>
+                    </tbody>
                 </table>
 
                 <!-- Signatures -->
