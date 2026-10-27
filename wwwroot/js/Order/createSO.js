@@ -879,7 +879,7 @@ function initCreateSOForm() {
         }
         if (btnSpinner) btnSpinner.classList.add('d-none');
         if (btnIcon) btnIcon.classList.remove('d-none');
-        if (btnText) btnText.textContent = 'Submit Supplier Order';
+        if (btnText) btnText.textContent = 'Create Order';
     }
 
     // Direct click guard to prevent fast repeat clicks
@@ -1041,7 +1041,7 @@ function initCreateSOForm() {
             if (response.ok && resData && (resData.succeeded === true || resData.statusCode === 200 || resData.statusCode === 201)) {
                 if (successMsg) successMsg.textContent = resData.message || 'Supplier order created successfully!';
                 if (successAlert) successAlert.classList.remove('d-none');
-                if (btnText) btnText.textContent = 'Created! Redirecting...';
+                if (btnText) btnText.textContent = 'Processing...';
 
                 // Keep button disabled and isSubmitting = true permanently so user cannot submit again
                 setTimeout(() => {
