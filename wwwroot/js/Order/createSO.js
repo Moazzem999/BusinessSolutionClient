@@ -1041,7 +1041,7 @@ function initCreateSOForm() {
             if (response.ok && resData && (resData.succeeded === true || resData.statusCode === 200 || resData.statusCode === 201)) {
                 if (successMsg) successMsg.textContent = resData.message || 'Supplier order created successfully!';
                 if (successAlert) successAlert.classList.remove('d-none');
-                if (btnText) btnText.textContent = 'Order Created! Redirecting...';
+                if (btnText) btnText.textContent = 'Created! Redirecting...';
 
                 // Keep button disabled and isSubmitting = true permanently so user cannot submit again
                 setTimeout(() => {
