@@ -712,4 +712,16 @@ html, body {
   --navbar-text: #ffffff;
   --navbar-icon-color: #fecdd3;
   --navbar-hover-bg: rgba(255, 255, 255, 0.18);
+}
+
+/* Remove number input spinners */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }

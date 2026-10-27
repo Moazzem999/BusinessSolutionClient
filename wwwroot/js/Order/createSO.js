@@ -476,12 +476,12 @@ function addItemRow(initialData = null) {
             <input type="text" class="form-control rounded-3 item-remarks" placeholder="Remarks / Specs" value="${escapeHtml(defaultRemarks)}">
         </td>
         <td style="width: 120px;">
-            <input type="number" min="1" step="1" class="form-control text-center rounded-3 item-quantity" value="${defaultQty}" required>
+            <input type="number" min="1" step="1" class="form-control text-center rounded-3 item-quantity no-spinner" value="${defaultQty}" required>
         </td>
         <td style="width: 150px;">
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted small px-2">৳</span>
-                <input type="number" min="0" step="0.01" class="form-control text-end rounded-end item-unit-price" value="${defaultPrice}" required>
+                <input type="number" min="0" step="0.01" class="form-control text-end rounded-end item-unit-price no-spinner" value="${defaultPrice}" required>
             </div>
         </td>
         <td style="width: 160px;">
@@ -1014,7 +1014,7 @@ function initCreateSOForm() {
         }
         if (btnSpinner) btnSpinner.classList.remove('d-none');
         if (btnIcon) btnIcon.classList.add('d-none');
-        if (btnText) btnText.textContent = 'Submitting Order...';
+        if (btnText) btnText.textContent = 'Processing...';
 
         const token = getAuthToken();
         const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
