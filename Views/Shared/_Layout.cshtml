@@ -141,6 +141,10 @@
                                 <i class="bi bi-receipt"></i>
                                 <span>Supplier Orders</span>
                             </a>
+                            <a asp-controller="Order" asp-action="CreateSO" class="sidebar-sublink @(isOrdersActive && currentAction == "CreateSO" ? "active" : "")">
+                                <i class="bi bi-cart-plus"></i>
+                                <span>Create SO</span>
+                            </a>
                         </div>
                     </div>
                 </div>
