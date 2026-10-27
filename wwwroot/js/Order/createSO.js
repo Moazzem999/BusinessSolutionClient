@@ -404,42 +404,34 @@ function renderSelectedSupplierCard(supplier) {
     }
 
     const balance = Number(supplier.currentBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const address = supplier.presentAddress || supplier.permanentAddress || 'Address not specified';
+    const address = supplier.presentAddress || supplier.permanentAddress || '';
 
     cardContainer.innerHTML = `
-        <div class="card border border-primary-subtle shadow-sm rounded-4 overflow-hidden mt-2" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);">
-            <div class="card-body p-3 p-md-4">
-                <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
-                    <div class="d-flex align-items-center gap-3">
+        <div class="card border border-primary-subtle shadow-sm rounded-3 overflow-hidden mt-2" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);">
+            <div class="card-body p-2 p-md-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2.5">
                         ${avatarHtml}
                         <div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-                                <h6 class="fw-bold text-dark mb-0 fs-5">${escapeHtml(supplier.name)}</h6>
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-0.5">
+                                <span class="fw-bold text-dark fs-6">${escapeHtml(supplier.name)}</span>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 small">
                                     <i class="bi bi-check-circle-fill me-1"></i>Selected
                                 </span>
-                                <span class="badge bg-light text-secondary border rounded-pill px-2 py-1 small">ID #${supplier.id}</span>
+                                <span class="badge bg-light text-secondary border rounded-pill px-2 py-0.5 small">ID #${supplier.id}</span>
                             </div>
-                            <div class="text-muted small d-flex align-items-center gap-3 flex-wrap">
+                            <div class="text-muted small d-flex align-items-center gap-3 flex-wrap" style="font-size: 0.8rem;">
                                 <span><i class="bi bi-shop text-primary me-1"></i><strong>${escapeHtml(supplier.shopName || '—')}</strong></span>
                                 ${supplier.mobile ? `<span><i class="bi bi-telephone text-primary me-1"></i>${escapeHtml(supplier.mobile)}</span>` : ''}
-                                ${supplier.email ? `<span><i class="bi bi-envelope text-primary me-1"></i>${escapeHtml(supplier.email)}</span>` : ''}
-                            </div>
-                            <div class="text-muted small mt-1">
-                                <i class="bi bi-geo-alt text-secondary me-1"></i>${escapeHtml(address)}
+                                <span><i class="bi bi-wallet2 text-primary me-1"></i>Balance: <strong class="text-dark">৳ ${balance}</strong></span>
+                                ${address ? `<span><i class="bi bi-geo-alt text-secondary me-1"></i>${escapeHtml(address)}</span>` : ''}
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex flex-row flex-md-column align-items-end justify-content-between w-100 w-md-auto gap-2 border-top border-md-top-0 pt-2 pt-md-0">
-                        <div class="text-start text-md-end">
-                            <div class="text-muted small fw-medium">Current Balance</div>
-                            <div class="fs-5 fw-bold text-primary">৳ ${balance}</div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-3 py-1 fw-medium d-inline-flex align-items-center gap-1 shadow-sm" onclick="clearSupplierSelection()">
-                            <i class="bi bi-x-circle"></i>
-                            <span>Change</span>
-                        </button>
-                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1 small fw-medium d-inline-flex align-items-center gap-1 shadow-sm" onclick="clearSupplierSelection()">
+                        <i class="bi bi-x-circle"></i>
+                        <span>Change</span>
+                    </button>
                 </div>
             </div>
         </div>
