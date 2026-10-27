@@ -863,26 +863,58 @@ function initCreateSOForm() {
     const form = document.getElementById('create-so-form');
     if (!form) return;
 
+    let isSubmitting = false;
+    const btnSubmit = document.getElementById('btn-submit-order');
+    const btnSpinner = document.getElementById('btn-spinner');
+    const btnIcon = document.getElementById('btn-icon');
+    const btnText = document.getElementById('btn-text');
+
+    // Helper to reset button state only on validation or network/server failure
+    function resetSubmitButton() {
+        isSubmitting = false;
+        if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.classList.remove('disabled');
+            btnSubmit.style.pointerEvents = '';
+        }
+        if (btnSpinner) btnSpinner.classList.add('d-none');
+        if (btnIcon) btnIcon.classList.remove('d-none');
+        if (btnText) btnText.textContent = 'Submit Supplier Order';
+    }
+
+    // Direct click guard to prevent fast repeat clicks
+    if (btnSubmit) {
+        btnSubmit.addEventListener('click', (e) => {
+            if (isSubmitting || btnSubmit.disabled) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
+            }
+        });
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+
+        // Prevent multiple submissions if already processing
+        if (isSubmitting) {
+            return;
+        }
 
         const errorAlert = document.getElementById('create-error-alert');
         const errorMsg = document.getElementById('create-error-message');
         const successAlert = document.getElementById('create-success-alert');
         const successMsg = document.getElementById('create-success-message');
-        const btnSubmit = document.getElementById('btn-submit-order');
-        const btnSpinner = document.getElementById('btn-spinner');
-        const btnIcon = document.getElementById('btn-icon');
-        const btnText = document.getElementById('btn-text');
 
         // Hide previous alerts
-        errorAlert.classList.add('d-none');
-        successAlert.classList.add('d-none');
+        if (errorAlert) errorAlert.classList.add('d-none');
+        if (successAlert) successAlert.classList.add('d-none');
 
         // 1. Validate Supplier
         const supplierIdVal = document.getElementById('supplier-id')?.value;
         const supplierId = parseInt(supplierIdVal, 10);
         if (!supplierId || isNaN(supplierId) || supplierId <= 0) {
+            resetSubmitButton();
             showFormError('Please search and select a valid supplier from the dropdown.');
             document.getElementById('supplier-search-input')?.focus();
             return;
@@ -891,6 +923,7 @@ function initCreateSOForm() {
         // 2. Validate Order Date
         const orderDate = document.getElementById('order-date')?.value;
         if (!orderDate) {
+            resetSubmitButton();
             showFormError('Please select a valid order date.');
             document.getElementById('order-date')?.focus();
             return;
@@ -899,6 +932,7 @@ function initCreateSOForm() {
         // 3. Validate & Build Order Details
         const rows = document.querySelectorAll('#order-items-body .item-row');
         if (!rows || rows.length === 0) {
+            resetSubmitButton();
             showFormError('Please add at least one product item to the order.');
             return;
         }
@@ -916,6 +950,7 @@ function initCreateSOForm() {
 
             const productId = parseInt(productIdInput ? productIdInput.value : '', 10);
             if (!productId || isNaN(productId) || productId <= 0) {
+                resetSubmitButton();
                 showFormError(`Please search and select a valid product for line #${i + 1}.`);
                 if (searchInput) searchInput.focus();
                 return;
@@ -923,6 +958,7 @@ function initCreateSOForm() {
 
             const quantity = parseFloat(qtyInput.value) || 0;
             if (quantity <= 0) {
+                resetSubmitButton();
                 showFormError(`Please enter a quantity greater than zero for line #${i + 1}.`);
                 qtyInput.focus();
                 return;
@@ -930,6 +966,7 @@ function initCreateSOForm() {
 
             const unitPrice = parseFloat(priceInput.value);
             if (isNaN(unitPrice) || unitPrice < 0) {
+                resetSubmitButton();
                 showFormError(`Please enter a valid unit price (≥ 0) for line #${i + 1}.`);
                 priceInput.focus();
                 return;
@@ -968,11 +1005,16 @@ function initCreateSOForm() {
 
         console.log('Submitting Supplier Order payload:', payload);
 
-        // UI Loading state
-        btnSubmit.disabled = true;
-        btnSpinner.classList.remove('d-none');
-        btnIcon.classList.add('d-none');
-        btnText.textContent = 'Submitting Order...';
+        // Lock form submission and update UI to loading state immediately
+        isSubmitting = true;
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.classList.add('disabled');
+            btnSubmit.style.pointerEvents = 'none';
+        }
+        if (btnSpinner) btnSpinner.classList.remove('d-none');
+        if (btnIcon) btnIcon.classList.add('d-none');
+        if (btnText) btnText.textContent = 'Submitting Order...';
 
         const token = getAuthToken();
         const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
@@ -997,26 +1039,24 @@ function initCreateSOForm() {
             console.log('Supplier Order Create Response:', resData);
 
             if (response.ok && resData && (resData.succeeded === true || resData.statusCode === 200 || resData.statusCode === 201)) {
-                successMsg.textContent = resData.message || 'Supplier order created successfully!';
-                successAlert.classList.remove('d-none');
+                if (successMsg) successMsg.textContent = resData.message || 'Supplier order created successfully!';
+                if (successAlert) successAlert.classList.remove('d-none');
+                if (btnText) btnText.textContent = 'Order Created! Redirecting...';
 
-                // Redirect to Supplier Orders list after brief delay
+                // Keep button disabled and isSubmitting = true permanently so user cannot submit again
                 setTimeout(() => {
                     window.location.href = '/Order/SupplierOrders';
                 }, 1000);
             } else {
                 const message = (resData && resData.message) ? resData.message : `Failed to create supplier order (Status ${response.status})`;
                 showFormError(message);
+                resetSubmitButton();
             }
 
         } catch (err) {
             console.error('Error submitting supplier order:', err);
             showFormError(`Could not connect to API (${err.message}). Ensure backend server is running.`);
-        } finally {
-            btnSubmit.disabled = false;
-            btnSpinner.classList.add('d-none');
-            btnIcon.classList.remove('d-none');
-            btnText.textContent = 'Submit Supplier Order';
+            resetSubmitButton();
         }
     });
 }
