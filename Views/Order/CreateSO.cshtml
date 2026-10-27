@@ -9,7 +9,7 @@
         <h1 class="page-title d-flex align-items-center gap-2">
             <i class="bi bi-cart-plus-fill text-primary"></i> Create SO
         </h1>
-        <p class="page-subtitle mb-0">Create and process new purchase orders.</p>
+        <p class="page-subtitle mb-0">Create and process new purchase orders with supplier catalog.</p>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <a asp-controller="Order" asp-action="SupplierOrders" class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-medium d-inline-flex align-items-center gap-2 shadow-sm">
@@ -19,17 +19,91 @@
     </div>
 </div>
 
-<!-- Empty Page Container / Starter Card -->
-<div class="card border-0 shadow-sm rounded-4 mb-4" style="background: #ffffff;">
-    <div class="card-body p-4 p-md-5 text-center">
-        <div class="py-5">
-            <div class="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle mb-3" style="width: 72px; height: 72px;">
-                <i class="bi bi-cart-plus fs-1"></i>
+<!-- Main Form Container -->
+<div class="row g-4">
+    <!-- Step 1: Supplier Selection Card -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4" style="background: #ffffff;">
+            <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle fw-bold" style="width: 28px; height: 28px; font-size: 0.85rem;">1</span>
+                    <h5 class="card-title fw-bold text-dark mb-0 fs-6">Supplier Information</h5>
+                </div>
+                <span class="badge bg-light text-secondary border">Required</span>
             </div>
-            <h4 class="fw-bold text-dark mb-2">Create SO</h4>
-            <p class="text-muted mb-0 mx-auto" style="max-width: 480px;">
-                This page is ready for your Purchase Order creation form and workflow.
-            </p>
+
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <!-- Supplier Searchable Combobox -->
+                    <div class="col-12 col-lg-8 position-relative" id="supplier-search-container">
+                        <label for="supplier-search-input" class="form-label text-dark small fw-semibold">
+                            Supplier <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted ps-3">
+                                <i class="bi bi-person-search"></i>
+                            </span>
+                            <input type="text" 
+                                   id="supplier-search-input" 
+                                   class="form-control bg-light border-start-0 ps-1" 
+                                   placeholder="Type supplier name (min 3 chars to search)..." 
+                                   autocomplete="off" 
+                                   required>
+                            <input type="hidden" id="supplier-id" name="supplierId">
+                            <button type="button" 
+                                    id="btn-clear-supplier" 
+                                    class="btn btn-light border border-start-0 text-muted d-none" 
+                                    title="Clear Supplier Selection">
+                                <i class="bi bi-x-circle-fill"></i>
+                            </button>
+                        </div>
+                        <div class="form-text small text-muted">
+                            Search by supplier or shop name (e.g. <em>abdul</em>, <em>makka</em>). Keyboard navigation enabled (↑ / ↓ / Enter).
+                        </div>
+
+                        <!-- Autocomplete Suggestions Menu -->
+                        <div id="supplier-suggestions-menu" 
+                             class="position-absolute start-0 w-100 shadow-lg border border-secondary-subtle rounded-3 p-0 mt-1 overflow-auto bg-white d-none" 
+                             style="max-height: 280px; z-index: 1060; top: 100%;">
+                            <div id="supplier-suggestions-list" class="list-group list-group-flush small">
+                                <!-- Dynamic suggestions injected via createSO.js -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selected Supplier Summary Card -->
+                <div id="selected-supplier-card" class="mt-4 d-none">
+                    <!-- Dynamic selected supplier card injected via createSO.js -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Order Details Placeholder Section -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4" style="background: #ffffff;">
+            <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle fw-bold" style="width: 28px; height: 28px; font-size: 0.85rem;">2</span>
+                    <h5 class="card-title fw-bold text-dark mb-0 fs-6">Order Items & Summary</h5>
+                </div>
+                <span class="badge bg-light text-muted border">Next</span>
+            </div>
+            <div class="card-body p-4 text-center py-5">
+                <div class="text-muted mb-2">
+                    <i class="bi bi-box-seam fs-1 text-secondary opacity-50"></i>
+                </div>
+                <h6 class="fw-semibold text-dark">Order Items Section</h6>
+                <p class="text-muted small mb-0">Select a supplier above to begin adding products and order details.</p>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        const API_BASE_URL = "@apiBaseUrl";
+    </script>
+    <script src="~/js/Order/createSO.js" asp-append-version="true"></script>
+}
