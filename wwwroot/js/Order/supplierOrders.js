@@ -1612,6 +1612,12 @@ function exportToPdf() {
         doc.setTextColor(100);
         doc.text(`Generated on: ${new Date().toLocaleString()} | Total Orders: ${ordersList.length}`, 14, 22);
 
+        // Calculate sum of Total Amount across all exported orders
+        const totalSum = ordersList.reduce((sum, o) => {
+            const amount = Number(o.totalAmount !== undefined ? o.totalAmount : (o.TotalAmount !== undefined ? o.TotalAmount : 0));
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+
         const tableHeaders = [['PO Number', 'Supplier', 'Shop', 'Order Date', 'Items', 'Total Amount']];
         const tableRows = ordersList.map(o => [
             o.orderNo || o.OrderNo || `PO-${o.id}`,
@@ -1625,12 +1631,23 @@ function exportToPdf() {
         doc.autoTable({
             head: tableHeaders,
             body: tableRows,
+            foot: [[
+                { content: 'Total Amount', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
+                { content: `BDT ${formatCurrency(totalSum)}`, styles: { halign: 'left', fontStyle: 'bold' } }
+            ]],
+            showFoot: 'lastPage',
             startY: 28,
             theme: 'grid',
             headStyles: {
                 fillColor: [37, 99, 235],
                 textColor: [255, 255, 255],
                 fontStyle: 'bold'
+            },
+            footStyles: {
+                fillColor: [241, 245, 249],
+                textColor: [15, 23, 42],
+                fontStyle: 'bold',
+                fontSize: 9.5
             },
             styles: {
                 fontSize: 9,
@@ -1661,6 +1678,12 @@ function exportToExcel() {
     }
 
     try {
+        // Calculate sum of Total Amount across all exported orders
+        const totalSum = ordersList.reduce((sum, o) => {
+            const amount = Number(o.totalAmount !== undefined ? o.totalAmount : (o.TotalAmount !== undefined ? o.TotalAmount : 0));
+            return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+
         const rows = ordersList.map(o => ({
             'PO Number': o.orderNo || o.OrderNo || `PO-${o.id}`,
             'Supplier Name': o.supplierName || o.SupplierName || '',
@@ -1671,7 +1694,30 @@ function exportToExcel() {
             'Notes': o.notes || o.Notes || ''
         }));
 
+        // Append summary row with Sum of Total Amount at the very last row
+        rows.push({
+            'PO Number': 'Total Amount',
+            'Supplier Name': '',
+            'Shop Name': '',
+            'Order Date': '',
+            'Items': '',
+            'Total Amount': totalSum,
+            'Notes': ''
+        });
+
         const ws = XLSX.utils.json_to_sheet(rows);
+
+        // Auto-fit column widths for clear presentation
+        ws['!cols'] = [
+            { wch: 18 }, // PO Number
+            { wch: 22 }, // Supplier Name
+            { wch: 22 }, // Shop Name
+            { wch: 15 }, // Order Date
+            { wch: 12 }, // Items
+            { wch: 16 }, // Total Amount
+            { wch: 25 }  // Notes
+        ];
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'SupplierOrders');
 
