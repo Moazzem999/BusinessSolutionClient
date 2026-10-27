@@ -1,5 +1,5 @@
 @{
-    ViewData["Title"] = "Create SO";
+    ViewData["Title"] = "Create Supplier Order";
     var apiBaseUrl = ViewBag.ApiBaseUrl ?? "https://localhost:7148/api";
 }
 
@@ -7,99 +7,210 @@
 <div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
     <div>
         <h1 class="page-title d-flex align-items-center gap-2">
-            <i class="bi bi-cart-plus-fill text-primary"></i> Create SO
+            <i class="bi bi-cart-plus-fill text-primary"></i> Create Supplier Order
         </h1>
-        <p class="page-subtitle mb-0">Create and process new purchase orders with supplier catalog.</p>
+        <p class="page-subtitle mb-0">Create and submit a purchase order with itemized lines and real-time balance calculations.</p>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <a asp-controller="Order" asp-action="SupplierOrders" class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-medium d-inline-flex align-items-center gap-2 shadow-sm">
-            <i class="bi bi-receipt"></i>
-            <span>Supplier Orders</span>
+            <i class="bi bi-arrow-left"></i>
+            <span>Back to Orders</span>
         </a>
     </div>
 </div>
 
-<!-- Main Form Container -->
-<div class="row g-4">
-    <!-- Step 1: Supplier Selection Card -->
-    <div class="col-12">
-        <div class="card border-0 shadow-sm rounded-4" style="background: #ffffff;">
-            <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle fw-bold" style="width: 28px; height: 28px; font-size: 0.85rem;">1</span>
-                    <h5 class="card-title fw-bold text-dark mb-0 fs-6">Supplier Information</h5>
+<!-- Alert Boxes -->
+<div id="create-error-alert" class="alert alert-danger d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
+    <span id="create-error-message">Error submitting supplier order.</span>
+    <button type="button" class="btn-close ms-auto" aria-label="Close" onclick="document.getElementById('create-error-alert').classList.add('d-none');"></button>
+</div>
+
+<div id="create-success-alert" class="alert alert-success d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-check-circle-fill fs-5 flex-shrink-0"></i>
+    <span id="create-success-message">Supplier order created successfully! Redirecting...</span>
+</div>
+
+<!-- Main Form -->
+<form id="create-so-form" autocomplete="off">
+    <div class="row g-4">
+        <!-- Left Column: Supplier & Order Items -->
+        <div class="col-12 col-xl-8">
+            <!-- 1. Supplier & Order Information Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: #ffffff;">
+                <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle fw-bold" style="width: 26px; height: 26px; font-size: 0.8rem;">1</span>
+                        <h5 class="card-title fw-bold text-dark mb-0 fs-6">Supplier & Order Details</h5>
+                    </div>
                 </div>
-                <span class="badge bg-light text-secondary border">Required</span>
-            </div>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <!-- Supplier Searchable Combobox -->
+                        <div class="col-12 position-relative" id="supplier-search-container">
+                            <label for="supplier-search-input" class="form-label text-dark small fw-semibold">
+                                Search Supplier <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted ps-3">
+                                    <i class="bi bi-person-search"></i>
+                                </span>
+                                <input type="text" 
+                                       id="supplier-search-input" 
+                                       class="form-control bg-light border-start-0 ps-1" 
+                                       placeholder="Type supplier name (min 3 chars to search, e.g. 'abdul')..." 
+                                       autocomplete="off" 
+                                       required>
+                                <input type="hidden" id="supplier-id" name="supplierId">
+                                <input type="hidden" id="supplier-previous-balance" name="supplierPreviousBalance" value="0">
+                                <button type="button" 
+                                        id="btn-clear-supplier" 
+                                        class="btn btn-light border border-start-0 text-muted d-none" 
+                                        title="Clear Supplier Selection">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </button>
+                            </div>
 
-            <div class="card-body p-4">
-                <div class="row g-3">
-                    <!-- Supplier Searchable Combobox -->
-                    <div class="col-12 col-lg-8 position-relative" id="supplier-search-container">
-                        <label for="supplier-search-input" class="form-label text-dark small fw-semibold">
-                            Supplier <span class="text-danger">*</span>
-                        </label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0 text-muted ps-3">
-                                <i class="bi bi-person-search"></i>
-                            </span>
-                            <input type="text" 
-                                   id="supplier-search-input" 
-                                   class="form-control bg-light border-start-0 ps-1" 
-                                   placeholder="Type supplier name (min 3 chars to search)..." 
-                                   autocomplete="off" 
-                                   required>
-                            <input type="hidden" id="supplier-id" name="supplierId">
-                            <button type="button" 
-                                    id="btn-clear-supplier" 
-                                    class="btn btn-light border border-start-0 text-muted d-none" 
-                                    title="Clear Supplier Selection">
-                                <i class="bi bi-x-circle-fill"></i>
-                            </button>
-                        </div>
-                        <div class="form-text small text-muted">
-                            Search by supplier or shop name (e.g. <em>abdul</em>, <em>makka</em>). Keyboard navigation enabled (↑ / ↓ / Enter).
+                            <!-- Autocomplete Suggestions Menu -->
+                            <div id="supplier-suggestions-menu" 
+                                 class="position-absolute start-0 w-100 shadow-lg border border-secondary-subtle rounded-3 p-0 mt-1 overflow-auto bg-white d-none" 
+                                 style="max-height: 280px; z-index: 1060; top: 100%;">
+                                <div id="supplier-suggestions-list" class="list-group list-group-flush small">
+                                    <!-- Dynamic suggestions -->
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Autocomplete Suggestions Menu -->
-                        <div id="supplier-suggestions-menu" 
-                             class="position-absolute start-0 w-100 shadow-lg border border-secondary-subtle rounded-3 p-0 mt-1 overflow-auto bg-white d-none" 
-                             style="max-height: 280px; z-index: 1060; top: 100%;">
-                            <div id="supplier-suggestions-list" class="list-group list-group-flush small">
-                                <!-- Dynamic suggestions injected via createSO.js -->
+                        <!-- Selected Supplier Summary Card -->
+                        <div id="selected-supplier-card" class="col-12 d-none">
+                            <!-- Injected by createSO.js -->
+                        </div>
+
+                        <!-- Order Date -->
+                        <div class="col-md-6 mt-3">
+                            <label for="order-date" class="form-label text-dark small fw-semibold">
+                                Order Date <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted">
+                                    <i class="bi bi-calendar-event"></i>
+                                </span>
+                                <input type="date" class="form-control rounded-end" id="order-date" name="orderDate" required>
+                            </div>
+                        </div>
+
+                        <!-- Notes / Remarks -->
+                        <div class="col-md-6 mt-3">
+                            <label for="order-notes" class="form-label text-dark small fw-semibold">
+                                Order Notes / Instructions
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted">
+                                    <i class="bi bi-chat-text"></i>
+                                </span>
+                                <input type="text" class="form-control rounded-end" id="order-notes" name="notes" placeholder="e.g. Urgent shipment, deliver before 5 PM">
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Selected Supplier Summary Card -->
-                <div id="selected-supplier-card" class="mt-4 d-none">
-                    <!-- Dynamic selected supplier card injected via createSO.js -->
+            <!-- 2. Order Items Card -->
+            <div class="card border-0 shadow-sm rounded-4 mb-4" style="background: #ffffff;">
+                <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle fw-bold" style="width: 26px; height: 26px; font-size: 0.8rem;">2</span>
+                        <h5 class="card-title fw-bold text-dark mb-0 fs-6">Order Items & Products</h5>
+                    </div>
+                    <button type="button" id="btn-add-item" class="btn btn-primary btn-sm rounded-3 px-3 py-1.5 fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Add Item</span>
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="order-items-table">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="width: 45px;">#</th>
+                                    <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 200px;">Product <span class="text-danger">*</span></th>
+                                    <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 170px;">Remarks</th>
+                                    <th class="text-secondary small fw-semibold text-uppercase text-center" style="width: 100px;">Qty <span class="text-danger">*</span></th>
+                                    <th class="text-secondary small fw-semibold text-uppercase text-end" style="width: 130px;">Price<span class="text-danger">*</span></th>
+                                    <th class="text-secondary small fw-semibold text-uppercase text-end" style="width: 140px;">Total</th>
+                                    <th class="pe-4 text-secondary small fw-semibold text-uppercase text-center" style="width: 50px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="order-items-body">
+                                <!-- Dynamic item rows injected by createSO.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-3 bg-light bg-opacity-50 border-top d-flex align-items-center justify-content-between">
+                        <button type="button" id="btn-add-item-bottom" class="btn btn-outline-primary btn-sm rounded-3 px-3 fw-medium d-inline-flex align-items-center gap-1.5">
+                            <i class="bi bi-plus-circle"></i>
+                            <span>Add Another Item</span>
+                        </button>
+                        <div class="text-muted small">
+                            <span id="items-count-text">1 item</span> in this order
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Order Financial Summary & Submission -->
+        <div class="col-12 col-xl-4">
+            <div class="card border-0 shadow-sm rounded-4 sticky-top" style="top: 20px; background: #ffffff;">
+                <div class="card-header bg-white border-bottom py-3 px-4">
+                    <h5 class="card-title fw-bold text-dark mb-0 fs-6 d-flex align-items-center gap-2">
+                        <i class="bi bi-receipt text-primary fs-5"></i> Financial Summary
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Balance Breakdown List -->
+                    <div class="d-flex flex-column gap-3 mb-4">
+                        <div class="d-flex align-items-center justify-content-between pb-2 border-bottom">
+                            <span class="text-muted small fw-medium">Supplier Previous Balance</span>
+                            <span class="fw-semibold text-dark fs-6" id="summary-prev-balance">৳ 0.00</span>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between pb-2 border-bottom">
+                            <div>
+                                <span class="text-muted small fw-medium">Order Total Amount</span>
+                                <div class="text-muted" style="font-size: 0.75rem;" id="summary-items-count">0 product lines</div>
+                            </div>
+                            <span class="fw-bold text-primary fs-5" id="summary-order-total">৳ 0.00</span>
+                        </div>
+
+                        <div class="p-3 rounded-3 bg-primary bg-opacity-10 border border-primary-subtle">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-bold text-primary small text-uppercase">New Supplier Balance</span>
+                                <span class="fw-bold text-primary fs-5" id="summary-new-balance">৳ 0.00</span>
+                            </div>
+                            <div class="text-muted small" style="font-size: 0.75rem;">
+                                Previous Balance + Order Total = Estimated Supplier Balance
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit & Actions -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" id="btn-submit-order" class="btn btn-primary rounded-3 py-2.5 fw-bold d-inline-flex align-items-center justify-content-center gap-2 shadow">
+                            <span id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                            <i class="bi bi-check2-circle fs-5" id="btn-icon"></i>
+                            <span id="btn-text">Submit Supplier Order</span>
+                        </button>
+
+                        <a asp-controller="Order" asp-action="SupplierOrders" class="btn btn-outline-secondary rounded-3 py-2 fw-medium text-center">
+                            Cancel
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Step 2: Order Details Placeholder Section -->
-    <div class="col-12">
-        <div class="card border-0 shadow-sm rounded-4" style="background: #ffffff;">
-            <div class="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="d-inline-flex align-items-center justify-content-center bg-secondary text-white rounded-circle fw-bold" style="width: 28px; height: 28px; font-size: 0.85rem;">2</span>
-                    <h5 class="card-title fw-bold text-dark mb-0 fs-6">Order Items & Summary</h5>
-                </div>
-                <span class="badge bg-light text-muted border">Next</span>
-            </div>
-            <div class="card-body p-4 text-center py-5">
-                <div class="text-muted mb-2">
-                    <i class="bi bi-box-seam fs-1 text-secondary opacity-50"></i>
-                </div>
-                <h6 class="fw-semibold text-dark">Order Items Section</h6>
-                <p class="text-muted small mb-0">Select a supplier above to begin adding products and order details.</p>
-            </div>
-        </div>
-    </div>
-</div>
+</form>
 
 @section Scripts {
     <script>
