@@ -179,7 +179,6 @@ function initSupplierAutocomplete() {
         if (hiddenInput && hiddenInput.value && val !== searchInput.getAttribute('data-selected-name')) {
             hiddenInput.value = '';
             document.getElementById('supplier-previous-balance').value = '0';
-            hideSelectedSupplierCard();
             calculateOverallTotals();
             if (clearBtn) clearBtn.classList.add('d-none');
         }
@@ -189,7 +188,6 @@ function initSupplierAutocomplete() {
             if (val.length === 0) {
                 if (hiddenInput) hiddenInput.value = '';
                 document.getElementById('supplier-previous-balance').value = '0';
-                hideSelectedSupplierCard();
                 calculateOverallTotals();
                 if (clearBtn) clearBtn.classList.add('d-none');
             }
@@ -381,71 +379,8 @@ function selectSupplier(supplierId) {
     if (clearBtn) clearBtn.classList.remove('d-none');
     closeSuggestionsMenu();
 
-    // Render the Selected Supplier summary card
-    renderSelectedSupplierCard(supplier);
-
     // Recalculate totals with the new previous balance
     calculateOverallTotals();
-}
-
-/**
- * Displays the selected supplier's full details card
- */
-function renderSelectedSupplierCard(supplier) {
-    const cardContainer = document.getElementById('selected-supplier-card');
-    if (!cardContainer) return;
-
-    const initials = getInitials(supplier.name);
-    let avatarHtml = `<div class="emp-initials-avatar fs-4 fw-bold" style="width: 52px; height: 52px; background-color: #dbeafe; color: #1e40af;">${initials}</div>`;
-
-    if (supplier.imagePath && supplier.imagePath.trim() !== '') {
-        const fullImgUrl = resolveImageUrl(supplier.imagePath);
-        avatarHtml = `<img src="${fullImgUrl}" alt="${escapeHtml(supplier.name)}" class="rounded-circle object-fit-cover shadow-sm" style="width: 52px; height: 52px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-4 fw-bold\\' style=\\'width:52px;height:52px;background-color:#dbeafe;color:#1e40af;\\'>${initials}</div>';">`;
-    }
-
-    const balance = Number(supplier.currentBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const address = supplier.presentAddress || supplier.permanentAddress || '';
-
-    cardContainer.innerHTML = `
-        <div class="card border border-primary-subtle shadow-sm rounded-3 overflow-hidden mt-2" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);">
-            <div class="card-body p-2 p-md-3">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <div class="d-flex align-items-center gap-2.5">
-                        ${avatarHtml}
-                        <div>
-                            <div class="d-flex align-items-center gap-2 flex-wrap mb-0.5">
-                                <span class="fw-bold text-dark fs-6">${escapeHtml(supplier.name)}</span>
-                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-0.5 small">
-                                    <i class="bi bi-check-circle-fill me-1"></i>Selected
-                                </span>
-                                <span class="badge bg-light text-secondary border rounded-pill px-2 py-0.5 small">ID #${supplier.id}</span>
-                            </div>
-                            <div class="text-muted small d-flex align-items-center gap-3 flex-wrap" style="font-size: 0.8rem;">
-                                <span><i class="bi bi-shop text-primary me-1"></i><strong>${escapeHtml(supplier.shopName || '—')}</strong></span>
-                                ${supplier.mobile ? `<span><i class="bi bi-telephone text-primary me-1"></i>${escapeHtml(supplier.mobile)}</span>` : ''}
-                                <span><i class="bi bi-wallet2 text-primary me-1"></i>Balance: <strong class="text-dark">৳ ${balance}</strong></span>
-                                ${address ? `<span><i class="bi bi-geo-alt text-secondary me-1"></i>${escapeHtml(address)}</span>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1 small fw-medium d-inline-flex align-items-center gap-1 shadow-sm" onclick="clearSupplierSelection()">
-                        <i class="bi bi-x-circle"></i>
-                        <span>Change</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    cardContainer.classList.remove('d-none');
-}
-
-function hideSelectedSupplierCard() {
-    const cardContainer = document.getElementById('selected-supplier-card');
-    if (cardContainer) {
-        cardContainer.innerHTML = '';
-        cardContainer.classList.add('d-none');
-    }
 }
 
 function clearSupplierSelection() {
@@ -469,7 +404,6 @@ function clearSupplierSelection() {
     }
 
     closeSuggestionsMenu();
-    hideSelectedSupplierCard();
     calculateOverallTotals();
 }
 
