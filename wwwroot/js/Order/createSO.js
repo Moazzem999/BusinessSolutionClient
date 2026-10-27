@@ -434,8 +434,8 @@ function addItemRow(initialData = null) {
     const defaultProductId = initialData ? initialData.productId : '';
     const defaultProductName = initialData ? initialData.productName : '';
     const defaultRemarks = initialData ? initialData.remarks : '';
-    const defaultQty = initialData ? initialData.quantity : 1;
-    const defaultPrice = initialData ? initialData.unitPrice : 100;
+    const defaultQty = initialData ? initialData.quantity : 0;
+    const defaultPrice = initialData ? initialData.unitPrice : 0;
     const defaultTotal = (defaultQty * defaultPrice).toFixed(2);
 
     tr.innerHTML = `
@@ -476,12 +476,12 @@ function addItemRow(initialData = null) {
             <input type="text" class="form-control rounded-3 item-remarks" placeholder="Remarks / Specs" value="${escapeHtml(defaultRemarks)}">
         </td>
         <td style="width: 120px;">
-            <input type="number" min="1" step="1" class="form-control text-center rounded-3 item-quantity no-spinner" value="${defaultQty}" required>
+            <input type="number" min="1" class="form-control text-center rounded-3 item-quantity no-spinner" value="${defaultQty}" required>
         </td>
         <td style="width: 150px;">
             <div class="input-group">
                 <span class="input-group-text bg-light text-muted small px-2">৳</span>
-                <input type="number" min="0" step="0.01" class="form-control text-end rounded-end item-unit-price no-spinner" value="${defaultPrice}" required>
+                <input type="number" min="0" class="form-control text-end rounded-end item-unit-price no-spinner" value="${defaultPrice}" required>
             </div>
         </td>
         <td style="width: 160px;">
@@ -530,8 +530,8 @@ function addItemRow(initialData = null) {
                 clearBtn.classList.add('d-none');
             }
             tr.querySelector('.item-remarks').value = '';
-            qtyInput.value = '1';
-            priceInput.value = '100';
+            qtyInput.value = '0';
+            priceInput.value = '0';
             calculateRowTotal(tr);
         }
     });
