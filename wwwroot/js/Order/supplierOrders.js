@@ -61,8 +61,8 @@ const SAMPLE_ORDERS_DATA = [
             }
         ],
         id: 12,
-        createdOn: "2026-10-18T18:56:53.3334024",
-        updatedOn: "2026-10-18T20:23:14.3030369",
+        createdOn: new Date().toISOString(),
+        updatedOn: new Date().toISOString(),
         createdBy: 1,
         updatedBy: 1,
         status: 1
@@ -182,6 +182,35 @@ function formatDate(dateStr) {
 }
 
 /**
+ * Checks if a given date string is within 2 days of current time
+ */
+function isWithinTwoDays(dateStr) {
+    if (!dateStr) return false;
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return false;
+
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+
+        // If created in the future (due to minor clock or timezone offset), treat as valid/recent
+        if (diffMs < 0) return true;
+
+        // 2 days in milliseconds: 2 * 24 * 60 * 60 * 1000 = 172,800,000 ms (48 hours)
+        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+        if (diffMs <= twoDaysMs) return true;
+
+        // Also check calendar days (e.g. today, yesterday, or 2 days ago)
+        const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const calendarDays = Math.round((nowDate.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24));
+        return calendarDays <= 2;
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
  * Formats numbers into currency presentation (e.g. 50,300.00)
  */
 function formatCurrency(amount) {
@@ -238,7 +267,9 @@ function showToast(message, type = 'info') {
     toastMsg.innerText = message;
 
     if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-        const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+        const toast = bootstrap.Toast.getOrCreateInstance
+            ? bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 5000 })
+            : (bootstrap.Toast.getInstance(toastEl) || new bootstrap.Toast(toastEl, { delay: 5000 }));
         toast.show();
     }
 }
@@ -621,6 +652,10 @@ function renderSupplierOrdersTable(orders) {
         const details = order.orderDetails || order.OrderDetails || [];
         const itemsCount = Array.isArray(details) ? details.length : 0;
 
+        // Conditionally determine if order was created within 2 days
+        const createdOnRaw = order.createdOn || order.CreatedOn || order.orderDate || order.OrderDate;
+        const canDelete = isWithinTwoDays(createdOnRaw);
+
         tr.innerHTML = `
             <td class="ps-4">
                 <span class="badge bg-primary-subtle text-primary fw-bold font-monospace px-2.5 py-1 rounded-2">
@@ -659,12 +694,14 @@ function renderSupplierOrdersTable(orders) {
                     <button type="button" class="btn btn-outline-primary rounded-2 me-1" onclick="printOrderDetails(${index})" title="Print Order">
                         <i class="bi bi-printer-fill"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-info rounded-2 me-1" onclick="viewOrderDetails(${index})" title="View Details">
+                    <button type="button" class="btn btn-outline-info rounded-2 ${canDelete ? 'me-1' : ''}" onclick="viewOrderDetails(${index})" title="View Details">
                         <i class="bi bi-eye-fill"></i>
                     </button>
+                    ${canDelete ? `
                     <button type="button" class="btn btn-outline-danger rounded-2" onclick="confirmDeleteOrder('${escapeHtml(orderId)}', '${escapeHtml(orderNo)}')" title="Delete Order">
                         <i class="bi bi-trash-fill"></i>
                     </button>
+                    ` : ''}
                 </div>
             </td>
         `;
@@ -674,10 +711,71 @@ function renderSupplierOrdersTable(orders) {
 }
 
 /**
+ * Safely hides delete order confirmation modal
+ */
+function hideDeleteOrderModal() {
+    if (deleteOrderModalInstance) {
+        deleteOrderModalInstance.hide();
+    }
+    const modalEl = document.getElementById('deleteOrderModal');
+    if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const instance = bootstrap.Modal.getInstance(modalEl);
+        if (instance) {
+            instance.hide();
+        }
+    }
+}
+
+/**
+ * Extracts descriptive message from API response object
+ */
+function extractServerMessage(resData, fallbackMessage = '') {
+    if (!resData) return fallbackMessage;
+    if (typeof resData === 'string' && resData.trim()) return resData.trim();
+    if (typeof resData.message === 'string' && resData.message.trim()) return resData.message.trim();
+    if (typeof resData.Message === 'string' && resData.Message.trim()) return resData.Message.trim();
+
+    // Messages array
+    const messages = resData.messages || resData.Messages;
+    if (Array.isArray(messages) && messages.length > 0) {
+        const text = messages.filter(m => typeof m === 'string' && m.trim()).join(' ');
+        if (text) return text;
+    }
+
+    // Errors object or array (ASP.NET ValidationProblemDetails)
+    if (resData.errors) {
+        if (Array.isArray(resData.errors)) {
+            const text = resData.errors.filter(Boolean).join(' ');
+            if (text) return text;
+        } else if (typeof resData.errors === 'object') {
+            const vals = Object.values(resData.errors).flat().filter(Boolean);
+            if (vals.length > 0) return vals.join(' ');
+        }
+    }
+
+    if (typeof resData.title === 'string' && resData.title.trim()) {
+        return resData.title.trim();
+    }
+
+    return fallbackMessage;
+}
+
+/**
  * Opens delete confirmation modal for the selected supplier order
  */
 window.confirmDeleteOrder = function(id, orderNo) {
     ensureTableStructureAndModal();
+
+    // Verify order is within 2 days before opening confirmation
+    const targetOrder = ordersList.find(o => String(o.id || o.Id) === String(id));
+    if (targetOrder) {
+        const createdOnRaw = targetOrder.createdOn || targetOrder.CreatedOn || targetOrder.orderDate || targetOrder.OrderDate;
+        if (!isWithinTwoDays(createdOnRaw)) {
+            showToast('Orders older than 2 days cannot be deleted.', 'warning');
+            return;
+        }
+    }
+
     deleteOrderId = id;
 
     const noEl = document.getElementById('delete-order-no');
@@ -691,27 +789,26 @@ window.confirmDeleteOrder = function(id, orderNo) {
         errEl.classList.remove('d-flex');
     }
 
-    if (deleteOrderModalInstance) {
+    const modalEl = document.getElementById('deleteOrderModal');
+    if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        deleteOrderModalInstance = bootstrap.Modal.getOrCreateInstance
+            ? bootstrap.Modal.getOrCreateInstance(modalEl)
+            : (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl));
         deleteOrderModalInstance.show();
-    } else {
-        const modalEl = document.getElementById('deleteOrderModal');
-        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            deleteOrderModalInstance = new bootstrap.Modal(modalEl);
-            deleteOrderModalInstance.show();
-        }
     }
 };
 
 /**
  * Executes delete request to backend API: DELETE /api/SupplierOrders/{id}
+ * Shows the server response in toast info (like whether it was deleted or not).
  */
 async function executeDeleteOrder() {
     if (!deleteOrderId) return;
 
+    const targetOrderId = deleteOrderId;
     const btnConfirm = document.getElementById('btn-confirm-delete-order');
     const btnText = document.getElementById('btn-confirm-delete-order-text');
     const errEl = document.getElementById('delete-order-error');
-    const errText = document.getElementById('delete-order-error-text');
 
     if (errEl) {
         errEl.classList.add('d-none');
@@ -724,7 +821,7 @@ async function executeDeleteOrder() {
 
     const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
     const token = getAuthToken();
-    const endpoint = `${baseUrl}/SupplierOrders/${deleteOrderId}`;
+    const endpoint = `${baseUrl}/SupplierOrders/${targetOrderId}`;
 
     try {
         console.log('Deleting Supplier Order at:', endpoint);
@@ -738,62 +835,95 @@ async function executeDeleteOrder() {
             headers: headers
         });
 
+        // Parse response body if JSON
+        let resData = null;
+        try {
+            resData = await response.json();
+            console.log('Delete Supplier Order API Response:', resData);
+        } catch (_) {
+            // Response might not be JSON (e.g. 204 No Content)
+        }
+
         if (response.status === 401) {
             throw new Error('Unauthorized (401). Please sign in with an authorized account.');
         }
 
-        if (!response.ok) {
-            let errorMsg = `Server error HTTP ${response.status}`;
-            try {
-                const resJson = await response.json();
-                if (resJson && (resJson.message || resJson.Message)) {
-                    errorMsg = resJson.message || resJson.Message;
-                }
-            } catch (_) {
-                // If not JSON, use default errorMsg
+        // Determine if server response indicates successful deletion
+        // Backend Result<bool> structure: { succeeded: bool, message: string, data: bool, statusCode: int }
+        let isDeleted = false;
+        if (response.ok) {
+            if (!resData) {
+                isDeleted = true;
+            } else if (typeof resData.succeeded === 'boolean') {
+                isDeleted = resData.succeeded;
+            } else if (typeof resData.Succeeded === 'boolean') {
+                isDeleted = resData.Succeeded;
+            } else if (typeof resData.isSuccess === 'boolean') {
+                isDeleted = resData.isSuccess;
+            } else if (typeof resData.IsSuccess === 'boolean') {
+                isDeleted = resData.IsSuccess;
+            } else if (resData.data === false || resData.Data === false) {
+                isDeleted = false;
+            } else if (resData.statusCode && (resData.statusCode < 200 || resData.statusCode >= 300)) {
+                isDeleted = false;
+            } else {
+                isDeleted = true;
             }
-            throw new Error(errorMsg);
+        } else {
+            isDeleted = false;
         }
 
-        // Also remove from SAMPLE_ORDERS_DATA if present
-        const sampleIdx = SAMPLE_ORDERS_DATA.findIndex(o => String(o.id) === String(deleteOrderId));
-        if (sampleIdx !== -1) {
-            SAMPLE_ORDERS_DATA.splice(sampleIdx, 1);
-        }
+        // Extract message returned by server
+        const fallbackMsg = isDeleted
+            ? 'Supplier order deleted successfully.'
+            : `Failed to delete supplier order (Status ${response.status}).`;
+        const serverMessage = extractServerMessage(resData, fallbackMsg);
 
-        // Close modal
-        if (deleteOrderModalInstance) {
-            deleteOrderModalInstance.hide();
-        }
+        // Hide delete confirmation modal so the user returns to the page and sees the toast info
+        hideDeleteOrderModal();
 
-        showToast('Supplier order deleted successfully!', 'success');
-        loadSupplierOrders();
+        if (isDeleted) {
+            // Remove from sample dataset if present
+            const sampleIdx = SAMPLE_ORDERS_DATA.findIndex(o => String(o.id) === String(targetOrderId));
+            if (sampleIdx !== -1) {
+                SAMPLE_ORDERS_DATA.splice(sampleIdx, 1);
+            }
+
+            // Show success toast with server response
+            showToast(serverMessage, 'success');
+
+            // Refresh orders table from server
+            loadSupplierOrders();
+        } else {
+            // Show failure toast with server response message (e.g. why order could not be deleted)
+            showToast(serverMessage, 'danger');
+        }
 
     } catch (error) {
         console.warn('API delete failed, checking sample fallback:', error);
 
-        // If in sample fallback mode (or 401), allow deleting from local sample list for seamless user demo
-        const sampleIdx = SAMPLE_ORDERS_DATA.findIndex(o => String(o.id) === String(deleteOrderId));
-        if (sampleIdx !== -1 && (error.message.includes('401') || error.message.includes('Failed to fetch') || error.message.includes('NetworkError'))) {
+        hideDeleteOrderModal();
+
+        // If in sample fallback mode (offline / network error), allow demo delete
+        const sampleIdx = SAMPLE_ORDERS_DATA.findIndex(o => String(o.id) === String(targetOrderId));
+        const isNetworkError = error.message.includes('401') ||
+                               error.message.includes('Failed to fetch') ||
+                               error.message.includes('NetworkError') ||
+                               error.message.includes('Network connection');
+
+        if (sampleIdx !== -1 && isNetworkError) {
             SAMPLE_ORDERS_DATA.splice(sampleIdx, 1);
-            if (deleteOrderModalInstance) {
-                deleteOrderModalInstance.hide();
-            }
             showToast('Order removed from sample dataset.', 'info');
             loadSupplierOrders();
             return;
         }
 
-        if (errEl && errText) {
-            errText.innerText = error.message || 'Failed to delete supplier order.';
-            errEl.classList.remove('d-none');
-            errEl.classList.add('d-flex');
-        } else {
-            showToast(error.message || 'Failed to delete order', 'danger');
-        }
+        const errorMsg = error.message || 'Failed to delete supplier order.';
+        showToast(errorMsg, 'danger');
     } finally {
         if (btnConfirm) btnConfirm.disabled = false;
         if (btnText) btnText.innerText = 'Delete';
+        deleteOrderId = null;
     }
 }
 
