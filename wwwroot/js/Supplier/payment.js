@@ -25,6 +25,9 @@ let deletePaymentModalInstance = null;
 let deletePaymentId = null;
 let searchDebounceTimer = null;
 let suppliersCache = [];
+let supplierSearchDebounceTimer = null;
+let currentFocusedSuggestionIndex = -1;
+let supplierMap = {};
 
 // Sample fallback suppliers matching GET /api/Suppliers/GetAll
 const SAMPLE_SUPPLIERS = [
@@ -531,6 +534,362 @@ function initPaymentEvents() {
 }
 
 /**
+ * Helper to resolve supplier image URL
+ */
+function resolveImageUrl(path) {
+    if (!path || typeof path !== 'string' || path.trim() === '') return '';
+    path = path.trim();
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+        return path;
+    }
+    const baseUrl = getApiBaseUrl();
+    let host = '';
+    try {
+        const urlObj = new URL(baseUrl);
+        host = urlObj.origin;
+    } catch (_) {
+        host = window.location.origin;
+    }
+    if (!path.startsWith('/')) {
+        path = '/' + path;
+    }
+    return `${host}${path}`;
+}
+
+/**
+ * Returns initials from full name
+ */
+function getInitials(name) {
+    if (!name || typeof name !== 'string') return 'SP';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+/* ==========================================================================
+   Supplier Combobox & Search Functionality (Same as CreateSO)
+   GET https://localhost:7148/api/Suppliers/GetByName/{name}
+   ========================================================================== */
+
+function initSupplierAutocomplete() {
+    const searchInput = document.getElementById('supplier-search-input');
+    const hiddenInput = document.getElementById('supplier-id');
+    const clearBtn = document.getElementById('btn-clear-supplier');
+    const menu = document.getElementById('supplier-suggestions-menu');
+    const container = document.getElementById('supplier-search-container');
+
+    if (!searchInput || !menu) return;
+
+    // Handle Keyboard Navigation (ArrowUp, ArrowDown, Enter, Escape)
+    searchInput.addEventListener('keydown', (e) => {
+        const list = document.getElementById('supplier-suggestions-list');
+        if (!list) return;
+
+        const items = list.querySelectorAll('.supplier-suggestion-item');
+        if (!items || items.length === 0 || menu.classList.contains('d-none') || menu.style.display === 'none') {
+            return;
+        }
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            currentFocusedSuggestionIndex++;
+            if (currentFocusedSuggestionIndex >= items.length) {
+                currentFocusedSuggestionIndex = 0; // Wrap around to top
+            }
+            updateSupplierSuggestionFocus(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            currentFocusedSuggestionIndex--;
+            if (currentFocusedSuggestionIndex < 0) {
+                currentFocusedSuggestionIndex = items.length - 1; // Wrap around to bottom
+            }
+            updateSupplierSuggestionFocus(items);
+        } else if (e.key === 'Enter') {
+            if (currentFocusedSuggestionIndex >= 0 && currentFocusedSuggestionIndex < items.length) {
+                e.preventDefault();
+                const selectedBtn = items[currentFocusedSuggestionIndex];
+                const supplierId = selectedBtn.getAttribute('data-id');
+                selectSupplier(supplierId);
+            }
+        } else if (e.key === 'Escape') {
+            closeSupplierSuggestionsMenu();
+        }
+    });
+
+    // Handle user typing
+    searchInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim();
+        currentFocusedSuggestionIndex = -1;
+
+        // If user changed input, reset hidden ID unless matches selected
+        if (hiddenInput && hiddenInput.value && val !== searchInput.getAttribute('data-selected-name')) {
+            hiddenInput.value = '';
+            const prevBalInput = document.getElementById('payment-prev-balance-input');
+            if (prevBalInput) prevBalInput.value = '0.00';
+            const summaryText = document.getElementById('create-payment-summary-text');
+            if (summaryText) summaryText.innerText = 'Select a supplier and enter amount';
+            recalculatePaymentBalances();
+            if (clearBtn) clearBtn.classList.add('d-none');
+        }
+
+        if (val.length < 3) {
+            closeSupplierSuggestionsMenu();
+            if (val.length === 0) {
+                if (hiddenInput) hiddenInput.value = '';
+                const prevBalInput = document.getElementById('payment-prev-balance-input');
+                if (prevBalInput) prevBalInput.value = '0.00';
+                const summaryText = document.getElementById('create-payment-summary-text');
+                if (summaryText) summaryText.innerText = 'Select a supplier and enter amount';
+                recalculatePaymentBalances();
+                if (clearBtn) clearBtn.classList.add('d-none');
+            }
+            return;
+        }
+
+        clearTimeout(supplierSearchDebounceTimer);
+        supplierSearchDebounceTimer = setTimeout(() => {
+            searchSuppliersByName(val);
+        }, 300);
+    });
+
+    // Handle Clear Button click
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            clearSupplierSelection();
+            searchInput.focus();
+        });
+    }
+
+    // Hide dropdown when clicking outside search container
+    document.addEventListener('click', (e) => {
+        if (container && !container.contains(e.target)) {
+            closeSupplierSuggestionsMenu();
+        }
+    });
+}
+
+function updateSupplierSuggestionFocus(items) {
+    items.forEach((item, index) => {
+        const titleEl = item.querySelector('.item-title');
+        const badgeEl = item.querySelector('.item-badge');
+
+        if (index === currentFocusedSuggestionIndex) {
+            item.classList.add('active', 'bg-primary', 'text-white');
+            item.classList.remove('bg-white');
+            if (titleEl) titleEl.classList.add('text-white');
+            if (badgeEl) badgeEl.classList.add('bg-white', 'text-primary');
+            item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        } else {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+            if (titleEl) titleEl.classList.remove('text-white');
+            if (badgeEl) badgeEl.classList.remove('bg-white', 'text-primary');
+        }
+    });
+}
+
+function closeSupplierSuggestionsMenu() {
+    const menu = document.getElementById('supplier-suggestions-menu');
+    if (menu) {
+        menu.classList.add('d-none');
+        menu.style.display = 'none';
+    }
+    currentFocusedSuggestionIndex = -1;
+}
+
+/**
+ * Calls API GET /api/Suppliers/GetByName/{name}
+ */
+async function searchSuppliersByName(nameQuery) {
+    const list = document.getElementById('supplier-suggestions-list');
+    const menu = document.getElementById('supplier-suggestions-menu');
+    if (!list || !menu) return;
+
+    currentFocusedSuggestionIndex = -1;
+    const token = getAuthToken();
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const endpoint = `${baseUrl}/Suppliers/GetByName/${encodeURIComponent(nameQuery)}`;
+
+    list.innerHTML = `
+        <div class="p-3 text-center text-muted small">
+            <span class="spinner-border spinner-border-sm text-primary me-2" role="status"></span> Searching suppliers...
+        </div>
+    `;
+    menu.classList.remove('d-none');
+    menu.style.display = 'block';
+
+    try {
+        console.log('Searching Suppliers from:', endpoint);
+        const headers = {
+            'Content-Type': 'application/json',
+            'accept': '*/*'
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const resData = await response.json();
+
+        if (resData && resData.succeeded && Array.isArray(resData.data)) {
+            const suppliers = resData.data;
+
+            if (suppliers.length === 0) {
+                list.innerHTML = `
+                    <div class="p-3 text-center text-muted small">
+                        <i class="bi bi-info-circle me-1"></i> No suppliers found for "<strong>${escapeHtml(nameQuery)}</strong>".
+                    </div>
+                `;
+                return;
+            }
+
+            renderSupplierSuggestions(suppliers, list);
+
+        } else {
+            const matches = SAMPLE_SUPPLIERS.filter(s => 
+                (s.name && s.name.toLowerCase().includes(nameQuery.toLowerCase())) ||
+                (s.shopName && s.shopName.toLowerCase().includes(nameQuery.toLowerCase()))
+            );
+            if (matches.length > 0) {
+                renderSupplierSuggestions(matches, list);
+            } else {
+                list.innerHTML = `<div class="p-3 text-center text-muted small">${escapeHtml(resData?.message) || 'No suppliers found.'}</div>`;
+            }
+        }
+
+    } catch (err) {
+        console.warn('Error searching suppliers by name, checking sample fallback:', err);
+        const matches = SAMPLE_SUPPLIERS.filter(s => 
+            (s.name && s.name.toLowerCase().includes(nameQuery.toLowerCase())) ||
+            (s.shopName && s.shopName.toLowerCase().includes(nameQuery.toLowerCase()))
+        );
+        if (matches.length > 0) {
+            renderSupplierSuggestions(matches, list);
+        } else {
+            list.innerHTML = `<div class="p-3 text-center text-muted small"><i class="bi bi-info-circle me-1"></i> No suppliers found for "<strong>${escapeHtml(nameQuery)}</strong>".</div>`;
+        }
+    }
+}
+
+function renderSupplierSuggestions(suppliers, list) {
+    list.innerHTML = suppliers.map(supplier => {
+        supplierMap[supplier.id] = supplier;
+        const initials = getInitials(supplier.name);
+        let imgHtml = `<div class="emp-initials-avatar fs-6 fw-bold" style="width:34px;height:34px;background-color:#eff6ff;color:#2563eb;">${initials}</div>`;
+
+        if (supplier.imagePath && supplier.imagePath.trim() !== '') {
+            const fullImgUrl = resolveImageUrl(supplier.imagePath);
+            imgHtml = `<img src="${fullImgUrl}" alt="${escapeHtml(supplier.name)}" class="rounded-circle object-fit-cover shadow-sm" style="width: 34px; height: 34px;" onerror="this.onerror=null; this.outerHTML='<div class=\\'emp-initials-avatar fs-6 fw-bold\\' style=\\'width:34px;height:34px;background-color:#eff6ff;color:#2563eb;\\'>${initials}</div>';">`;
+        }
+
+        const balance = Number(supplier.currentBalance || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+        return `
+            <button type="button" 
+                    class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2 rounded-2 border-0 supplier-suggestion-item" 
+                    data-id="${supplier.id}" 
+                    data-name="${escapeHtml(supplier.name)}">
+                <div class="d-flex align-items-center gap-2 overflow-hidden me-2">
+                    ${imgHtml}
+                    <div class="text-truncate">
+                        <div class="fw-semibold text-dark text-truncate small mb-0 item-title">${escapeHtml(supplier.name)}</div>
+                        <div class="text-muted small text-truncate item-subtitle" style="font-size: 0.75rem;">
+                            <i class="bi bi-shop me-1 text-secondary"></i>${escapeHtml(supplier.shopName || 'No Shop')}
+                            ${supplier.mobile ? `<span class="mx-1 text-muted">•</span><i class="bi bi-telephone me-1 text-secondary"></i>${escapeHtml(supplier.mobile)}` : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-end flex-shrink-0">
+                    <span class="badge bg-light text-primary border item-badge">৳ ${balance}</span>
+                    <div class="text-muted small" style="font-size: 0.7rem;">ID #${supplier.id}</div>
+                </div>
+            </button>
+        `;
+    }).join('');
+
+    list.querySelectorAll('.supplier-suggestion-item').forEach(btn => {
+        const handleSelection = (e) => {
+            e.preventDefault();
+            const supplierId = btn.getAttribute('data-id');
+            selectSupplier(supplierId);
+        };
+        btn.addEventListener('mousedown', handleSelection);
+        btn.addEventListener('click', handleSelection);
+    });
+}
+
+/**
+ * Handles selecting a supplier from suggestion list
+ */
+function selectSupplier(supplierId) {
+    const supplier = supplierMap[supplierId];
+    if (!supplier) return;
+
+    const searchInput = document.getElementById('supplier-search-input');
+    const hiddenInput = document.getElementById('supplier-id');
+    const prevBalanceInput = document.getElementById('payment-prev-balance-input');
+    const clearBtn = document.getElementById('btn-clear-supplier');
+    const summaryText = document.getElementById('create-payment-summary-text');
+
+    if (searchInput) {
+        searchInput.value = supplier.name;
+        searchInput.setAttribute('data-selected-name', supplier.name);
+    }
+    if (hiddenInput) {
+        hiddenInput.value = supplier.id;
+    }
+    if (prevBalanceInput) {
+        const bal = Number(supplier.currentBalance !== undefined ? supplier.currentBalance : 0);
+        prevBalanceInput.value = bal.toFixed(2);
+    }
+    if (summaryText) {
+        const shopText = supplier.shopName ? ` (${supplier.shopName})` : '';
+        summaryText.innerText = `${supplier.name}${shopText}`;
+    }
+
+    if (clearBtn) clearBtn.classList.remove('d-none');
+    closeSupplierSuggestionsMenu();
+
+    // Recalculate totals with the new previous balance
+    recalculatePaymentBalances();
+}
+
+function clearSupplierSelection() {
+    const searchInput = document.getElementById('supplier-search-input');
+    const hiddenInput = document.getElementById('supplier-id');
+    const prevBalanceInput = document.getElementById('payment-prev-balance-input');
+    const clearBtn = document.getElementById('btn-clear-supplier');
+    const summaryText = document.getElementById('create-payment-summary-text');
+
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.removeAttribute('data-selected-name');
+    }
+    if (hiddenInput) {
+        hiddenInput.value = '';
+    }
+    if (prevBalanceInput) {
+        prevBalanceInput.value = '0.00';
+    }
+    if (summaryText) {
+        summaryText.innerText = 'Select a supplier and enter amount';
+    }
+    if (clearBtn) {
+        clearBtn.classList.add('d-none');
+    }
+
+    closeSupplierSuggestionsMenu();
+    recalculatePaymentBalances();
+}
+
+/**
  * Initializes Create Payment Modal, form inputs, dynamic balance recalculation, and submit handler
  */
 function initCreatePaymentModal() {
@@ -545,11 +904,17 @@ function initCreatePaymentModal() {
         }
     }
 
+    // Initialize Search Supplier Autocomplete (same as CreateSO)
+    initSupplierAutocomplete();
+
     if (createModalEl) {
         createModalEl.addEventListener('show.bs.modal', () => {
             // Reset form
             const form = document.getElementById('create-payment-form');
             if (form) form.reset();
+
+            // Clear search combobox
+            clearSupplierSelection();
 
             // Set default date to current local datetime
             const dateInput = document.getElementById('payment-date-input');
@@ -577,26 +942,6 @@ function initCreatePaymentModal() {
             if (summaryText) summaryText.innerText = 'Select a supplier and enter amount';
             if (previewPrev) previewPrev.innerText = '৳ 0.00';
             if (previewNew) previewNew.innerText = '৳ 0.00';
-
-            // Load suppliers
-            loadSuppliersDropdown();
-        });
-    }
-
-    // Recalculate on Supplier Change
-    const supplierSelect = document.getElementById('payment-supplier-select');
-    if (supplierSelect) {
-        supplierSelect.addEventListener('change', () => {
-            const selectedOpt = supplierSelect.selectedOptions[0];
-            const prevBal = selectedOpt ? parseFloat(selectedOpt.dataset.balance || '0') : 0;
-            const prevBalInput = document.getElementById('payment-prev-balance-input');
-            if (prevBalInput) prevBalInput.value = prevBal.toFixed(2);
-
-            const supplierName = selectedOpt ? selectedOpt.text.split(' - [Bal')[0] : '';
-            const summaryText = document.getElementById('create-payment-summary-text');
-            if (summaryText) summaryText.innerText = supplierName || 'Supplier selected';
-
-            recalculatePaymentBalances();
         });
     }
 
@@ -633,67 +978,13 @@ function recalculatePaymentBalances() {
 }
 
 /**
- * Loads suppliers list into the select dropdown in the Create Payment modal
- */
-async function loadSuppliersDropdown() {
-    const selectEl = document.getElementById('payment-supplier-select');
-    if (!selectEl) return;
-
-    if (selectEl.options.length <= 1) {
-        selectEl.innerHTML = '<option value="" selected disabled>Loading suppliers...</option>';
-    }
-
-    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
-    const token = getAuthToken();
-    const endpoint = `${baseUrl}/Suppliers/GetAll?PageNumber=1&PageSize=100`;
-
-    try {
-        const headers = { 'accept': '*/*' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const response = await fetch(endpoint, { method: 'GET', headers: headers });
-        let items = [];
-
-        if (response.ok) {
-            const resData = await response.json();
-            if (resData) {
-                if (Array.isArray(resData.data?.items)) items = resData.data.items;
-                else if (Array.isArray(resData.data)) items = resData.data;
-                else if (Array.isArray(resData.items)) items = resData.items;
-                else if (Array.isArray(resData)) items = resData;
-            }
-        }
-
-        if (items && items.length > 0) {
-            suppliersCache = items;
-        } else {
-            suppliersCache = SAMPLE_SUPPLIERS;
-        }
-    } catch (_) {
-        suppliersCache = SAMPLE_SUPPLIERS;
-    }
-
-    let optionsHtml = '<option value="" selected disabled>Select a supplier...</option>';
-    suppliersCache.forEach(s => {
-        const id = s.id || s.Id;
-        const name = s.name || s.Name || 'Unknown';
-        const shop = s.shopName || s.ShopName || '';
-        const bal = s.currentBalance !== undefined ? s.currentBalance : (s.CurrentBalance !== undefined ? s.CurrentBalance : 0);
-        const shopText = shop ? ` (${shop})` : '';
-        optionsHtml += `<option value="${id}" data-balance="${bal}">${escapeHtml(name)}${escapeHtml(shopText)} - [Bal: ৳ ${formatCurrency(bal)}]</option>`;
-    });
-
-    selectEl.innerHTML = optionsHtml;
-}
-
-/**
  * Handles Create Payment Form submission:
  * POST /api/SupplierPayments
  */
 async function handleCreatePaymentSubmit(e) {
     e.preventDefault();
 
-    const supplierSelect = document.getElementById('payment-supplier-select');
+    const supplierIdVal = document.getElementById('supplier-id')?.value;
     const dateInput = document.getElementById('payment-date-input');
     const prevBalInput = document.getElementById('payment-prev-balance-input');
     const amountInput = document.getElementById('payment-amount-input');
@@ -709,18 +1000,19 @@ async function handleCreatePaymentSubmit(e) {
 
     if (errEl) errEl.classList.add('d-none');
 
-    const supplierId = supplierSelect ? parseInt(supplierSelect.value, 10) : 0;
+    const supplierId = supplierIdVal ? parseInt(supplierIdVal, 10) : 0;
     const paymentAmount = amountInput ? parseFloat(amountInput.value) : 0;
     const prevBalance = prevBalInput ? (parseFloat(prevBalInput.value) || 0) : 0;
     const newBalance = newBalInput ? (parseFloat(newBalInput.value) || 0) : (prevBalance - paymentAmount);
     const remarks = remarksInput ? remarksInput.value.trim() : '';
     const paymentDateVal = dateInput ? dateInput.value : '';
 
-    if (!supplierId || isNaN(supplierId)) {
+    if (!supplierId || isNaN(supplierId) || supplierId <= 0) {
         if (errEl && errText) {
-            errText.innerText = 'Please select a valid supplier.';
+            errText.innerText = 'Please search and select a valid supplier from the dropdown.';
             errEl.classList.remove('d-none');
         }
+        document.getElementById('supplier-search-input')?.focus();
         return;
     }
 
@@ -822,7 +1114,7 @@ async function handleCreatePaymentSubmit(e) {
         showToast(serverMessage, 'success');
 
         // Add to local sample fallback data if previewing
-        const selectedSupplier = suppliersCache.find(s => (s.id || s.Id) === supplierId);
+        const selectedSupplier = supplierMap[supplierId] || suppliersCache.find(s => (s.id || s.Id) === supplierId) || SAMPLE_SUPPLIERS.find(s => (s.id || s.Id) === supplierId);
         const newPaymentItem = {
             id: resData?.data || (Date.now() % 10000),
             supplierId: supplierId,
@@ -850,7 +1142,7 @@ async function handleCreatePaymentSubmit(e) {
 
         if (isNetworkOrAuth) {
             // Local fallback preview creation
-            const selectedSupplier = suppliersCache.find(s => (s.id || s.Id) === supplierId);
+            const selectedSupplier = supplierMap[supplierId] || suppliersCache.find(s => (s.id || s.Id) === supplierId) || SAMPLE_SUPPLIERS.find(s => (s.id || s.Id) === supplierId);
             const newPaymentItem = {
                 id: (Date.now() % 10000),
                 supplierId: supplierId,
