@@ -1224,7 +1224,17 @@ function exportToPdf() {
         doc.text(`Generated on: ${nowStr} | Total Records: ${transactionsList.length}`, 40, 62);
 
         // Build Table Rows
-        const head = [["Date", "Transaction No", "Supplier", "Shop", "Order Ref", "Amount", "Payment", "Prev Bal", "New Bal"]];
+        const head = [[
+            "Date",
+            "Transaction No",
+            "Supplier",
+            "Shop",
+            "Order Ref",
+            { content: "Amount", styles: { halign: 'right' } },
+            { content: "Payment", styles: { halign: 'right' } },
+            { content: "Prev Bal", styles: { halign: 'right' } },
+            { content: "New Bal", styles: { halign: 'right' } }
+        ]];
         const body = transactionsList.map(item => [
             formatDate(item.transactionDate || item.createdOn),
             item.transactionNo || '—',
@@ -1262,6 +1272,11 @@ function exportToPdf() {
                 6: { halign: 'right', cellWidth: 75 },
                 7: { halign: 'right', cellWidth: 75 },
                 8: { halign: 'right', cellWidth: 75 }
+            },
+            didParseCell: function(data) {
+                if (data.section === 'head' && [5, 6, 7, 8].includes(data.column.index)) {
+                    data.cell.styles.halign = 'right';
+                }
             },
             margin: { left: 40, right: 40 }
         });
