@@ -385,7 +385,6 @@ function initTransactionLogEvents() {
     const pdfBtn = document.getElementById('btn-export-pdf');
     const excelBtn = document.getElementById('btn-export-excel');
     const printModalBtn = document.getElementById('btn-modal-print-transaction');
-    const printOrderModalBtn = document.getElementById('btn-modal-print-order');
 
     // Bootstrap Modal Instances
     const modalEl = document.getElementById('transactionDetailsModal');
@@ -486,15 +485,6 @@ function initTransactionLogEvents() {
     if (printModalBtn) {
         printModalBtn.addEventListener('click', () => {
             window.printTransactionVoucher();
-        });
-    }
-
-    // Print Supplier Order Details Modal
-    if (printOrderModalBtn) {
-        printOrderModalBtn.addEventListener('click', () => {
-            if (window.printOrderDetails) {
-                window.printOrderDetails(currentSelectedOrder);
-            }
         });
     }
 
