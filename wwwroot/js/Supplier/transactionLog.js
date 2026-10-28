@@ -775,12 +775,10 @@ function renderTransactionsTable(items) {
                 <!-- Order Reference -->
                 <td>
                     ${orderNo ? `
-                        <button type="button" class="btn btn-link p-0 badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2.5 py-1.5 fw-bold btn-order-details" 
+                        <button type="button" class="btn-order-details" 
                             data-order-id="${item.supplierOrderId || ''}" 
                             data-order-no="${escapeHtml(orderNo)}"
-                            title="Click to view details of ${escapeHtml(orderNo)}">
-                            <i class="bi bi-receipt me-1"></i>${escapeHtml(orderNo)}
-                        </button>
+                            title="Click to view details of ${escapeHtml(orderNo)}">${escapeHtml(orderNo)}</button>
                     ` : `
                         <span class="badge bg-light text-muted border px-2 py-1 fw-normal" style="font-size: 0.75rem;">
                             Direct / Ledger
