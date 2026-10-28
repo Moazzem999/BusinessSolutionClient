@@ -146,22 +146,22 @@
     </div>
 </div>
 
-<!-- Transaction Details Receipt Modal -->
-<div class="modal fade" id="transactionDetailsModal" tabindex="-1" aria-labelledby="transactionDetailsModalLabel" aria-hidden="true">
+<!-- Supplier Order Details Modal -->
+<div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-labelledby="orderDetailsModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
-                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="transactionDetailsModalLabel">
-                    <i class="bi bi-receipt text-primary"></i> Transaction Voucher: <span id="modal-transaction-no" class="text-primary font-monospace"></span>
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="orderDetailsModalLabel">
+                    <i class="bi bi-receipt text-primary"></i> Order: <span id="modal-order-no" class="text-primary font-monospace"></span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4" id="modal-transaction-details-content">
-                <!-- Dynamically rendered transaction voucher details -->
+            <div class="modal-body p-4" id="modal-order-details-content">
+                <!-- Dynamically rendered order summary and items table -->
             </div>
             <div class="modal-footer border-top-0 pt-0 px-4 pb-4 d-flex justify-content-between">
-                <button type="button" class="btn btn-outline-secondary rounded-3 px-3" id="btn-modal-print-transaction">
-                    <i class="bi bi-printer me-1"></i> Print Voucher
+                <button type="button" class="btn btn-outline-secondary rounded-3 px-3" id="btn-modal-print-order">
+                    <i class="bi bi-printer me-1"></i> Print
                 </button>
                 <button type="button" class="btn btn-secondary rounded-3 px-4" data-bs-dismiss="modal">Close</button>
             </div>
@@ -190,6 +190,18 @@
     }
     .transaction-ref-badge:hover {
         background-color: #e2e8f0 !important;
+    }
+    .btn-order-details {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+    }
+    .btn-order-details:hover {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        border-color: #2563eb !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
     }
     .balance-flow-box {
         display: inline-flex;

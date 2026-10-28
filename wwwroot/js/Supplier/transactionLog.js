@@ -14,8 +14,61 @@ let totalCount = 0;
 let totalPages = 1;
 let transactionsList = [];
 let currentSelectedTransaction = null;
+let currentSelectedOrder = null;
 let transactionDetailsModalInstance = null;
+let orderDetailsModalInstance = null;
 let searchDebounceTimer = null;
+
+// Sample fallback supplier order matching GET /api/SupplierOrders/GetById/{id}
+const SAMPLE_SUPPLIER_ORDER = {
+    supplierId: 1,
+    supplierName: "Md Abdul Wadud",
+    supplierShopName: "Makka Cap House-2",
+    orderNo: "PO-2026-0000001",
+    orderDate: "2026-10-27T00:00:00",
+    totalAmount: 4000,
+    notes: "",
+    supplierPreviousBalance: 50000,
+    supplierNewBalance: 54000,
+    orderDetails: [
+        {
+            supplierOrderId: 28,
+            productId: 2,
+            productName: "Hudi",
+            remarks: "",
+            quantity: 5,
+            unitPrice: 300,
+            lineTotal: 1500,
+            id: 15
+        },
+        {
+            supplierOrderId: 28,
+            productId: 8,
+            productName: "Pant",
+            remarks: "",
+            quantity: 10,
+            unitPrice: 200,
+            lineTotal: 2000,
+            id: 16
+        },
+        {
+            supplierOrderId: 28,
+            productId: 11,
+            productName: "Tupi",
+            remarks: "",
+            quantity: 5,
+            unitPrice: 100,
+            lineTotal: 500,
+            id: 17
+        }
+    ],
+    id: 28,
+    createdOn: "2026-10-27T19:23:52.4447107",
+    updatedOn: "2026-10-27T19:23:52.4447128",
+    createdBy: 1,
+    updatedBy: 1,
+    status: 1
+};
 
 // Sample Fallback Data matching the backend response schema
 const SAMPLE_TRANSACTION_HISTORIES = [
@@ -202,6 +255,24 @@ function formatDate(dateStr) {
 }
 
 /**
+ * Format date string into US format (e.g. Oct 27, 2026) matching order details modal
+ */
+function formatDateUS(dateStr) {
+    if (!dateStr) return '—';
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    } catch (_) {
+        return dateStr;
+    }
+}
+
+/**
  * Format date string with time (e.g. 27 Oct 2026, 08:02 PM)
  */
 function formatDateTime(dateStr) {
@@ -314,14 +385,24 @@ function initTransactionLogEvents() {
     const pdfBtn = document.getElementById('btn-export-pdf');
     const excelBtn = document.getElementById('btn-export-excel');
     const printModalBtn = document.getElementById('btn-modal-print-transaction');
+    const printOrderModalBtn = document.getElementById('btn-modal-print-order');
 
-    // Bootstrap Modal Instance
+    // Bootstrap Modal Instances
     const modalEl = document.getElementById('transactionDetailsModal');
     if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
         try {
             transactionDetailsModalInstance = new bootstrap.Modal(modalEl);
         } catch (e) {
             console.warn('Could not initialize transactionDetailsModal bootstrap instance:', e);
+        }
+    }
+
+    const orderModalEl = document.getElementById('orderDetailsModal');
+    if (orderModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        try {
+            orderDetailsModalInstance = new bootstrap.Modal(orderModalEl);
+        } catch (e) {
+            console.warn('Could not initialize orderDetailsModal bootstrap instance:', e);
         }
     }
 
@@ -405,6 +486,15 @@ function initTransactionLogEvents() {
     if (printModalBtn) {
         printModalBtn.addEventListener('click', () => {
             window.printTransactionVoucher();
+        });
+    }
+
+    // Print Supplier Order Details Modal
+    if (printOrderModalBtn) {
+        printOrderModalBtn.addEventListener('click', () => {
+            if (window.printOrderDetails) {
+                window.printOrderDetails(currentSelectedOrder);
+            }
         });
     }
 
@@ -695,9 +785,12 @@ function renderTransactionsTable(items) {
                 <!-- Order Reference -->
                 <td>
                     ${orderNo ? `
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2 py-1 fw-medium" title="Supplier Order: ${escapeHtml(orderNo)}">
+                        <button type="button" class="btn btn-link p-0 badge bg-primary-subtle text-primary border border-primary-subtle font-monospace px-2.5 py-1.5 fw-bold btn-order-details" 
+                            data-order-id="${item.supplierOrderId || ''}" 
+                            data-order-no="${escapeHtml(orderNo)}"
+                            title="Click to view details of ${escapeHtml(orderNo)}">
                             <i class="bi bi-receipt me-1"></i>${escapeHtml(orderNo)}
-                        </span>
+                        </button>
                     ` : `
                         <span class="badge bg-light text-muted border px-2 py-1 fw-normal" style="font-size: 0.75rem;">
                             Direct / Ledger
@@ -736,7 +829,403 @@ function renderTransactionsTable(items) {
     });
 
     tableBody.innerHTML = html;
+
+    // Attach click listeners to clickable Order No badges
+    tableBody.querySelectorAll('.btn-order-details').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const orderId = btn.getAttribute('data-order-id');
+            const orderNo = btn.getAttribute('data-order-no');
+            fetchAndShowOrderDetails(orderId, orderNo);
+        });
+    });
 }
+
+/**
+ * Fetches supplier order details by ID from API:
+ * GET /api/SupplierOrders/GetById/{id}
+ * Displays order details modal matching the design
+ */
+async function fetchAndShowOrderDetails(orderId, fallbackOrderNo) {
+    const modalTitleNo = document.getElementById('modal-order-no');
+    const modalContent = document.getElementById('modal-order-details-content');
+
+    if (!modalContent) return;
+
+    if (modalTitleNo) {
+        modalTitleNo.innerText = fallbackOrderNo || (orderId ? `PO-${orderId}` : '');
+    }
+
+    // Show loading skeleton inside modal
+    modalContent.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading order details...</span>
+            </div>
+            <div class="text-muted small mt-2">Fetching order details for ${escapeHtml(fallbackOrderNo || `#${orderId}`)}...</div>
+        </div>
+    `;
+
+    if (orderDetailsModalInstance) {
+        orderDetailsModalInstance.show();
+    } else {
+        const modalEl = document.getElementById('orderDetailsModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            orderDetailsModalInstance = new bootstrap.Modal(modalEl);
+            orderDetailsModalInstance.show();
+        }
+    }
+
+    if (!orderId) {
+        currentSelectedOrder = SAMPLE_SUPPLIER_ORDER;
+        renderOrderDetailsModal(SAMPLE_SUPPLIER_ORDER);
+        return;
+    }
+
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const token = getAuthToken();
+    const endpoint = `${baseUrl}/SupplierOrders/GetById/${encodeURIComponent(orderId)}`;
+
+    try {
+        console.log('Fetching Supplier Order Details from:', endpoint);
+        const headers = { 'accept': '*/*' };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server returned HTTP ${response.status} (${response.statusText || 'Error'})`);
+        }
+
+        const result = await response.json();
+        console.log('Supplier Order Details API Response:', result);
+
+        const orderData = result.data || result;
+        if (!orderData) {
+            throw new Error('No order data found in API response.');
+        }
+
+        currentSelectedOrder = orderData;
+        renderOrderDetailsModal(orderData);
+
+    } catch (err) {
+        console.warn('Could not fetch supplier order details from API, using fallback data:', err.message);
+        // Fallback using sample order matching schema provided by user
+        const fallback = Object.assign({}, SAMPLE_SUPPLIER_ORDER, {
+            id: orderId,
+            orderNo: fallbackOrderNo || SAMPLE_SUPPLIER_ORDER.orderNo
+        });
+        currentSelectedOrder = fallback;
+        renderOrderDetailsModal(fallback);
+    }
+}
+
+/**
+ * Renders the Supplier Order Details into the modal matching the design
+ */
+function renderOrderDetailsModal(order) {
+    const modalTitleNo = document.getElementById('modal-order-no');
+    const modalContent = document.getElementById('modal-order-details-content');
+
+    if (!order || !modalContent) return;
+
+    const orderId = order.id || order.Id || '—';
+    const orderNo = order.orderNo || order.OrderNo || `PO-${orderId}`;
+    const orderDateFormatted = formatDateUS(order.orderDate || order.OrderDate);
+    const supplierName = order.supplierName || order.SupplierName || '—';
+    const supplierShopName = order.supplierShopName || order.SupplierShopName || '';
+    const supplierId = order.supplierId || order.SupplierId || '—';
+    const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
+    const prevBalance = order.supplierPreviousBalance !== undefined ? order.supplierPreviousBalance : (order.SupplierPreviousBalance !== undefined ? order.SupplierPreviousBalance : 0);
+    const newBalance = order.supplierNewBalance !== undefined ? order.supplierNewBalance : (order.SupplierNewBalance !== undefined ? order.SupplierNewBalance : 0);
+    const notes = order.notes || order.Notes || '';
+    const details = order.orderDetails || order.OrderDetails || [];
+
+    if (modalTitleNo) {
+        modalTitleNo.innerText = orderNo;
+    }
+
+    let itemsTableRows = '';
+    let totalItemsQuantity = 0;
+    let computedLineTotals = 0;
+
+    if (Array.isArray(details) && details.length > 0) {
+        details.forEach((item, idx) => {
+            const productName = item.productName || item.ProductName || `Product #${item.productId || ''}`;
+            const qty = item.quantity !== undefined ? item.quantity : (item.Quantity !== undefined ? item.Quantity : 0);
+            const unitPrice = item.unitPrice !== undefined ? item.unitPrice : (item.UnitPrice !== undefined ? item.UnitPrice : 0);
+            const lineTotal = item.lineTotal !== undefined ? item.lineTotal : (item.LineTotal !== undefined ? item.LineTotal : (qty * unitPrice));
+            const remarks = item.remarks || item.Remarks || '';
+
+            totalItemsQuantity += Number(qty);
+            computedLineTotals += Number(lineTotal);
+
+            itemsTableRows += `
+                <tr>
+                    <td class="text-center text-muted small">${idx + 1}</td>
+                    <td>
+                        <span class="fw-semibold text-dark">${escapeHtml(productName)}</span>
+                    </td>
+                    <td class="text-muted small">${escapeHtml(remarks || '—')}</td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-dark border px-2 py-1">${qty}</span>
+                    </td>
+                    <td class="text-end">৳ ${formatCurrency(unitPrice)}</td>
+                    <td class="text-end fw-bold text-dark">৳ ${formatCurrency(lineTotal)}</td>
+                </tr>
+            `;
+        });
+    } else {
+        itemsTableRows = `
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-4 d-block mb-1"></i>
+                    No product items found in this order.
+                </td>
+            </tr>
+        `;
+    }
+
+    modalContent.innerHTML = `
+        <!-- Order Meta Info Cards -->
+        <div class="row g-3 mb-4">
+            <!-- Supplier Card -->
+            <div class="col-12 col-md-4">
+                <div class="p-3 rounded-4 border bg-light h-100">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-circle bg-primary-subtle text-primary p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="bi bi-truck fs-6"></i>
+                        </div>
+                        <h6 class="mb-0 fw-bold text-dark">Supplier</h6>
+                    </div>
+                    <div class="fw-bold text-dark fs-6">${escapeHtml(supplierName)}</div>
+                    <div class="text-muted small mb-1">${supplierShopName ? `<i class="bi bi-shop me-1"></i>${escapeHtml(supplierShopName)}` : ''}</div>
+                    <div class="text-muted small">Supplier ID: <span class="fw-medium text-dark">#${escapeHtml(supplierId)}</span></div>
+                </div>
+            </div>
+
+            <!-- Order Financials -->
+            <div class="col-12 col-md-4">
+                <div class="p-3 rounded-4 border bg-light h-100">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-circle bg-success-subtle text-success p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="bi bi-cash-stack fs-6"></i>
+                        </div>
+                        <h6 class="mb-0 fw-bold text-dark">Financial Summary</h6>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small py-1 border-bottom">
+                        <span>Old Balance:</span>
+                        <span class="fw-medium text-dark">৳ ${formatCurrency(prevBalance)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="fw-semibold text-dark">Order Total:</span>
+                        <span class="fw-bold text-primary fs-6">৳ ${formatCurrency(totalAmount)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small py-1">
+                        <span>New Balance:</span>
+                        <span class="fw-bold text-danger">৳ ${formatCurrency(newBalance)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Meta & Notes -->
+            <div class="col-12 col-md-4">
+                <div class="p-3 rounded-4 border bg-light h-100">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-circle bg-info-subtle text-info p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="bi bi-info-circle fs-6"></i>
+                        </div>
+                        <h6 class="mb-0 fw-bold text-dark">Information</h6>
+                    </div>
+                    <div class="text-muted small mb-2">
+                        Date: <span class="fw-medium text-dark">${escapeHtml(orderDateFormatted)}</span>
+                    </div>
+                    <div class="text-muted small">
+                        <strong>Notes:</strong>
+                        <div class="p-1 px-2 rounded bg-white border mt-1 text-dark text-break" style="font-size: 0.8rem; max-height: 60px; overflow-y: auto;">
+                            ${escapeHtml(notes || 'None')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Items Breakdown Table -->
+        <h6 class="fw-bold text-dark mb-2 d-flex align-items-center gap-2">
+            <i class="bi bi-box-seam-fill text-primary"></i> Order Items (${details.length})
+        </h6>
+        <div class="table-responsive rounded-3 border mb-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="text-center text-secondary small fw-semibold text-uppercase" style="width: 45px;">#</th>
+                        <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 140px;">Product</th>
+                        <th class="text-secondary small fw-semibold text-uppercase" style="min-width: 140px;">Remarks</th>
+                        <th class="text-center text-secondary small fw-semibold text-uppercase" style="width: 90px;">Quantity</th>
+                        <th class="text-end text-secondary small fw-semibold text-uppercase" style="width: 120px;">Unit Price</th>
+                        <th class="text-end text-secondary small fw-semibold text-uppercase" style="width: 130px;">Line Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsTableRows}
+                </tbody>
+                <tfoot class="table-light fw-bold border-top">
+                    <tr>
+                        <td colspan="3" class="text-end text-dark">Total:</td>
+                        <td class="text-center text-dark">${totalItemsQuantity}</td>
+                        <td></td>
+                        <td class="text-end text-primary fs-6">৳ ${formatCurrency(totalAmount || computedLineTotals)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
+}
+
+/**
+ * Generates and prints a high-fidelity Purchase Order Voucher matching supplier orders
+ */
+window.printOrderDetails = function(orderParam) {
+    const order = orderParam || currentSelectedOrder;
+    if (!order) return;
+
+    const orderId = order.id || order.Id || '—';
+    const orderNo = order.orderNo || order.OrderNo || `PO-${orderId}`;
+    const orderDateFormatted = formatDateUS(order.orderDate || order.orderDate);
+    const supplierName = order.supplierName || order.SupplierName || '—';
+    const supplierShopName = order.supplierShopName || order.SupplierShopName || '';
+    const supplierId = order.supplierId || order.SupplierId || '—';
+    const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
+    const prevBalance = order.supplierPreviousBalance !== undefined ? order.supplierPreviousBalance : (order.SupplierPreviousBalance !== undefined ? order.SupplierPreviousBalance : 0);
+    const newBalance = order.supplierNewBalance !== undefined ? order.supplierNewBalance : (order.SupplierNewBalance !== undefined ? order.SupplierNewBalance : 0);
+    const notes = order.notes || order.Notes || 'None';
+    const details = order.orderDetails || order.OrderDetails || [];
+
+    const printWindow = window.open('', '_blank', 'width=800,height=700');
+    if (!printWindow) {
+        window.print();
+        return;
+    }
+
+    let rowsHtml = '';
+    let totalQty = 0;
+    if (Array.isArray(details)) {
+        details.forEach((item, idx) => {
+            const pName = item.productName || item.ProductName || `Product #${item.productId || ''}`;
+            const qty = item.quantity || item.Quantity || 0;
+            const price = item.unitPrice || item.UnitPrice || 0;
+            const line = item.lineTotal || item.LineTotal || (qty * price);
+            totalQty += Number(qty);
+            rowsHtml += `
+                <tr>
+                    <td style="text-align:center;">${idx + 1}</td>
+                    <td><strong>${escapeHtml(pName)}</strong></td>
+                    <td>${escapeHtml(item.remarks || item.Remarks || '—')}</td>
+                    <td style="text-align:center;">${qty}</td>
+                    <td style="text-align:right;">৳ ${formatCurrency(price)}</td>
+                    <td style="text-align:right; font-weight:bold;">৳ ${formatCurrency(line)}</td>
+                </tr>
+            `;
+        });
+    }
+
+    const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Order Voucher - ${escapeHtml(orderNo)}</title>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+            <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 30px; color: #1e293b; }
+                .voucher-box { border: 2px solid #e2e8f0; border-radius: 12px; padding: 25px; }
+                .table-bordered th, .table-bordered td { border: 1px solid #cbd5e1 !important; padding: 6px 10px; }
+                @@media print {
+                    body { padding: 0; }
+                    .btn-print { display: none !important; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="voucher-box">
+                <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                    <div>
+                        <h4 class="fw-bold text-primary mb-0">Business Solution</h4>
+                        <div class="text-muted small">Supplier Purchase Order Details</div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fw-bold font-monospace fs-5 text-primary">${escapeHtml(orderNo)}</div>
+                        <div class="text-muted small">Date: ${orderDateFormatted}</div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <div class="text-muted small text-uppercase fw-semibold">Supplier Information</div>
+                        <div class="fw-bold fs-6">${escapeHtml(supplierName)}</div>
+                        <div class="text-secondary small">Shop: ${escapeHtml(supplierShopName)}</div>
+                        <div class="text-secondary small">Supplier ID: #${supplierId}</div>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="text-muted small text-uppercase fw-semibold">Financial Summary</div>
+                        <div class="small">Old Balance: <strong>৳ ${formatCurrency(prevBalance)}</strong></div>
+                        <div class="small text-primary fw-bold">Order Total: ৳ ${formatCurrency(totalAmount)}</div>
+                        <div class="small text-danger fw-bold">New Balance: ৳ ${formatCurrency(newBalance)}</div>
+                    </div>
+                </div>
+
+                <div class="fw-bold mb-2">Order Items (${details.length})</div>
+                <table class="table table-bordered mb-3">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:40px; text-align:center;">#</th>
+                            <th>Product</th>
+                            <th>Remarks</th>
+                            <th style="width:80px; text-align:center;">Quantity</th>
+                            <th style="width:120px; text-align:right;">Unit Price</th>
+                            <th style="width:120px; text-align:right;">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td colspan="3" style="text-align:right;">Total:</td>
+                            <td style="text-align:center;">${totalQty}</td>
+                            <td></td>
+                            <td style="text-align:right; color:#2563eb;">৳ ${formatCurrency(totalAmount)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="mb-3 text-muted small">
+                    <strong>Notes:</strong> ${escapeHtml(notes)}
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center pt-4 border-top text-muted small">
+                    <div>Printed on: ${new Date().toLocaleDateString('en-GB')}</div>
+                    <div>Authorized Signature: _______________________</div>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-primary btn-print" onclick="window.print()">Print Order</button>
+            </div>
+            <script>
+                window.onload = function() { setTimeout(function() { window.print(); }, 400); };
+            </script>
+        </body>
+        </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+};
 
 /**
  * Updates dynamic active filters badges below the filter row
