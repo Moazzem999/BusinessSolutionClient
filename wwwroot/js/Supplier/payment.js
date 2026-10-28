@@ -916,16 +916,14 @@ function initCreatePaymentModal() {
             // Clear search combobox
             clearSupplierSelection();
 
-            // Set default date to current local datetime
+            // Set default date to current local date
             const dateInput = document.getElementById('payment-date-input');
             if (dateInput) {
                 const now = new Date();
                 const year = now.getFullYear();
                 const month = String(now.getMonth() + 1).padStart(2, '0');
                 const day = String(now.getDate()).padStart(2, '0');
-                const hours = String(now.getHours()).padStart(2, '0');
-                const mins = String(now.getMinutes()).padStart(2, '0');
-                dateInput.value = `${year}-${month}-${day}T${hours}:${mins}`;
+                dateInput.value = `${year}-${month}-${day}`;
             }
 
             // Reset balances & error
@@ -1038,6 +1036,20 @@ async function handleCreatePaymentSubmit(e) {
     if (btnSpinner) btnSpinner.classList.remove('d-none');
     if (btnIcon) btnIcon.classList.add('d-none');
 
+    let paymentDateIso = '';
+    try {
+        const now = new Date();
+        const parts = paymentDateVal.split('-');
+        if (parts.length === 3) {
+            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), now.getHours(), now.getMinutes(), now.getSeconds());
+            paymentDateIso = d.toISOString();
+        } else {
+            paymentDateIso = new Date(paymentDateVal).toISOString();
+        }
+    } catch (_) {
+        paymentDateIso = new Date().toISOString();
+    }
+
     const payload = {
         id: 0,
         supplierId: supplierId,
@@ -1045,7 +1057,7 @@ async function handleCreatePaymentSubmit(e) {
         remarks: remarks || '',
         supplierPreviousBalance: prevBalance,
         supplierNewBalance: newBalance,
-        paymentDate: new Date(paymentDateVal).toISOString()
+        paymentDate: paymentDateIso
     };
 
     const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
