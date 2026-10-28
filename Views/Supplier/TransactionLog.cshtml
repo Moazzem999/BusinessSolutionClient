@@ -9,39 +9,245 @@
         <h1 class="page-title d-flex align-items-center gap-2">
             <i class="bi bi-clock-history text-primary"></i> Supplier Transaction Log
         </h1>
-        <p class="page-subtitle mb-0">Track and monitor supplier payments, balance settlements, and financial transaction records.</p>
+        <p class="page-subtitle mb-0">Audit and track supplier financial transaction histories.</p>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
-        <a asp-controller="Supplier" asp-action="List" class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-medium d-inline-flex align-items-center gap-2 shadow-sm">
-            <i class="bi bi-arrow-left"></i>
-            <span>Supplier List</span>
-        </a>
+        <button type="button" id="btn-export-pdf" class="btn btn-outline-danger rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" title="Export transactions to PDF">
+            <i class="bi bi-file-earmark-pdf-fill fs-6 text-danger"></i>
+            <span>Download PDF</span>
+        </button>
+        <button type="button" id="btn-export-excel" class="btn btn-outline-success rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" title="Export transactions to Excel">
+            <i class="bi bi-file-earmark-excel-fill fs-6 text-success"></i>
+            <span>Download Excel</span>
+        </button>
     </div>
 </div>
 
-<!-- Empty Page Content Card -->
-<div class="card border-0 shadow-sm rounded-4" style="background: #ffffff;">
-    <div class="card-body p-5 text-center">
-        <div class="my-5">
-            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary mb-3" style="width: 80px; height: 80px;">
-                <i class="bi bi-clock-history fs-1"></i>
+<!-- Search & Filter Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" style="background: #ffffff;">
+    <div class="card-body p-3 p-md-4">
+        <form id="transaction-filter-form" class="row g-2 g-md-3 align-items-end">
+            <!-- Search Text -->
+            <div class="col-12 col-md-4 col-lg-3">
+                <label for="search-input" class="form-label text-muted small fw-medium mb-1">Search Term</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted ps-3">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" id="search-input" class="form-control bg-light border-start-0 ps-1" placeholder="PO#, Trans#, Supplier..." autocomplete="off">
+                </div>
             </div>
-            <h4 class="fw-bold text-dark mb-2">Transaction Log</h4>
-            <p class="text-muted mx-auto" style="max-width: 480px;">
-                This page is currently empty and prepared for supplier transaction logs, payment histories, and ledger audits.
-            </p>
-            <div class="d-inline-flex gap-2 mt-2">
-                <a asp-controller="Supplier" asp-action="List" class="btn btn-primary rounded-3 px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
-                    <i class="bi bi-truck"></i>
-                    <span>Manage Suppliers</span>
-                </a>
+
+            <!-- Supplier Filter Dropdown -->
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                <label for="supplier-filter-select" class="form-label text-muted small fw-medium mb-1">Supplier</label>
+                <select id="supplier-filter-select" class="form-select bg-light">
+                    <option value="">All Suppliers</option>
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+
+            <!-- Supplier Order ID Filter -->
+            <div class="col-6 col-sm-6 col-md-4 col-lg-2">
+                <label for="order-id-input" class="form-label text-muted small fw-medium mb-1">Supplier Order ID</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted ps-2 pe-2">
+                        <i class="bi bi-hash"></i>
+                    </span>
+                    <input type="number" id="order-id-input" class="form-control bg-light border-start-0 ps-1" placeholder="e.g. 36" min="1">
+                </div>
+            </div>
+
+            <!-- From Date -->
+            <div class="col-6 col-sm-6 col-md-3 col-lg-2">
+                <label for="from-date-input" class="form-label text-muted small fw-medium mb-1">From Date</label>
+                <input type="date" id="from-date-input" class="form-control bg-light">
+            </div>
+
+            <!-- To Date -->
+            <div class="col-6 col-sm-6 col-md-3 col-lg-2">
+                <label for="to-date-input" class="form-label text-muted small fw-medium mb-1">To Date</label>
+                <input type="date" id="to-date-input" class="form-control bg-light">
+            </div>
+
+            <!-- Filter Buttons -->
+            <div class="col-12 d-flex flex-wrap align-items-center justify-content-between gap-2 pt-2 border-top mt-3">
+                <div class="d-flex align-items-center gap-2" id="active-filter-badges">
+                    <!-- Dynamic badges shown when filters are active -->
+                </div>
+                <div class="d-flex align-items-center gap-2 ms-auto">
+                    <button type="submit" id="btn-search" class="btn btn-primary rounded-3 px-3 fw-medium d-inline-flex align-items-center gap-2 shadow-sm" title="Apply Filters">
+                        <i class="bi bi-filter"></i>
+                        <span>Apply Filters</span>
+                    </button>
+                    <button type="button" id="btn-reset" class="btn btn-outline-secondary rounded-3 px-3 fw-medium d-inline-flex align-items-center gap-2" title="Reset all filters">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                        <span>Reset</span>
+                    </button>
+                    <div class="vr mx-1 d-none d-sm-block" style="height: 24px;"></div>
+                    <label for="page-size-select" class="form-label text-muted small mb-0 fw-medium d-none d-sm-inline">Rows:</label>
+                    <select id="page-size-select" class="form-select form-select-sm rounded-3" style="width: 80px;">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Alert Box for API connection errors -->
+<div id="api-error-alert" class="alert alert-danger d-none rounded-3 mb-4 shadow-sm align-items-center justify-content-between" role="alert">
+    <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <span id="api-error-message">Failed to connect to backend server.</span>
+    </div>
+    <button type="button" id="btn-retry-api" class="btn btn-sm btn-outline-danger rounded-2 px-3 fw-medium">
+        <i class="bi bi-arrow-clockwise me-1"></i> Retry
+    </button>
+</div>
+
+<!-- Transactions Table Card -->
+<div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: #ffffff;">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 transaction-list-table">
+            <thead class="bg-light">
+                <tr>
+                    <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Date</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 170px;">Transaction Ref</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 220px;">Supplier</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 150px;">Order No</th>
+                    <th class="text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 130px;">Amount (Bill)</th>
+                    <th class="text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 130px;">Payment</th>
+                    <th class="text-center text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 210px;">Balance Flow</th>
+                    <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 90px;">Action</th>
+                </tr>
+            </thead>
+            <tbody id="transactions-table-body">
+                <!-- Loading Skeleton -->
+                <tr id="transactions-loading-row">
+                    <td colspan="8" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="text-muted small mt-2">Fetching transaction histories...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Empty State Container -->
+    <div id="transactions-empty-state" class="text-center py-5 d-none">
+        <div class="mb-3 text-muted" style="font-size: 3rem;">
+            <i class="bi bi-clock-history"></i>
+        </div>
+        <h5 class="fw-semibold text-dark mb-1">No Transaction Records Found</h5>
+        <p class="text-muted small mb-0">Try clearing filters, searching by a different term, or expanding your date range.</p>
+        <button type="button" class="btn btn-outline-primary btn-sm rounded-3 mt-3 px-3" onclick="document.getElementById('btn-reset').click()">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Clear All Filters
+        </button>
+    </div>
+
+    <!-- Table Footer / Pagination -->
+    <div class="card-footer bg-white border-top-0 p-3 p-md-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+        <div id="pagination-info" class="text-muted small">
+            Showing 0 to 0 of 0 entries
+        </div>
+        <nav aria-label="Transaction List Pagination">
+            <ul id="pagination-list" class="pagination pagination-sm mb-0 gap-1">
+                <!-- Dynamic Pagination Buttons -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Transaction Details Receipt Modal -->
+<div class="modal fade" id="transactionDetailsModal" tabindex="-1" aria-labelledby="transactionDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="transactionDetailsModalLabel">
+                    <i class="bi bi-receipt text-primary"></i> Transaction Voucher: <span id="modal-transaction-no" class="text-primary font-monospace"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="modal-transaction-details-content">
+                <!-- Dynamically rendered transaction voucher details -->
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4 d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-secondary rounded-3 px-3" id="btn-modal-print-transaction">
+                    <i class="bi bi-printer me-1"></i> Print Voucher
+                </button>
+                <button type="button" class="btn btn-secondary rounded-3 px-4" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Toast Notification Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+    <div id="app-toast" class="toast align-items-center text-white border-0 rounded-3 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2 py-3 px-3 fs-6">
+                <i id="toast-icon" class="bi fs-5"></i>
+                <span id="toast-message"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .transaction-ref-badge {
+        font-size: 0.82rem;
+        letter-spacing: 0.3px;
+        transition: background-color 0.2s ease;
+    }
+    .transaction-ref-badge:hover {
+        background-color: #e2e8f0 !important;
+    }
+    .balance-flow-box {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.85rem;
+    }
+    @@media print {
+        body > *:not(.modal) {
+            display: none !important;
+        }
+        .modal {
+            position: static !important;
+            display: block !important;
+            overflow: visible !important;
+        }
+        .modal-dialog {
+            max-width: 100% !important;
+            margin: 0 !important;
+        }
+        .modal-content {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .modal-footer, .btn-close, .app-sidebar, .top-navbar, .page-header-row, .card-footer, .toast-container {
+            display: none !important;
+        }
+    }
+</style>
+
 @section Scripts {
     <script>
         const API_BASE_URL = "@apiBaseUrl";
     </script>
+    <!-- jsPDF & AutoTable for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Supplier Transaction Log Client Script -->
+    <script src="~/js/Supplier/transactionLog.js" asp-append-version="true"></script>
 }
