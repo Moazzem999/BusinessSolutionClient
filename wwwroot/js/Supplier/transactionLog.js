@@ -781,7 +781,7 @@ function renderTransactionsTable(items) {
                             title="Click to view details of ${escapeHtml(orderNo)}">${escapeHtml(orderNo)}</button>
                     ` : `
                         <span class="badge bg-light text-muted border px-2 py-1 fw-normal" style="font-size: 0.75rem;">
-                            Direct / Ledger
+                            Payment
                         </span>
                     `}
                 </td>
@@ -1483,7 +1483,7 @@ window.printTransactionVoucher = function() {
                     </div>
                     <div class="col-6 text-end">
                         <div class="text-muted small text-uppercase">Order Reference</div>
-                        <div class="fw-bold font-monospace">${escapeHtml(item.supplierOrderNo || 'Direct / Ledger')}</div>
+                        <div class="fw-bold font-monospace">${escapeHtml(item.supplierOrderNo || 'Payment')}</div>
                         ${item.supplierOrderId ? `<div class="text-secondary small">Order ID: #${item.supplierOrderId}</div>` : ''}
                     </div>
                 </div>
