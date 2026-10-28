@@ -8,8 +8,6 @@
 let currentPage = 1;
 let pageSize = 10;
 let searchTerm = '';
-let supplierId = '';
-let supplierOrderId = '';
 let fromDate = '';
 let toDate = '';
 let totalCount = 0;
@@ -18,7 +16,6 @@ let transactionsList = [];
 let currentSelectedTransaction = null;
 let transactionDetailsModalInstance = null;
 let searchDebounceTimer = null;
-let suppliersCache = [];
 
 // Sample Fallback Data matching the backend response schema
 const SAMPLE_TRANSACTION_HISTORIES = [
@@ -108,17 +105,16 @@ if (document.readyState === 'loading') {
 }
 
 /**
- * Initializes page components, URL query params, suppliers dropdown, and fetches records
+ * Initializes page components, URL query params, and fetches records
  */
 function initTransactionLogPage() {
     parseUrlParameters();
     initTransactionLogEvents();
-    loadSuppliersForFilter();
     loadTransactionHistories();
 }
 
 /**
- * Reads any query parameters passed via URL (e.g., ?SupplierId=5&SupplierOrderId=36)
+ * Reads any query parameters passed via URL (e.g., ?SearchTerm=...&FromDate=...)
  */
 function parseUrlParameters() {
     try {
@@ -126,13 +122,6 @@ function parseUrlParameters() {
 
         if (urlParams.has('SearchTerm')) searchTerm = urlParams.get('SearchTerm') || '';
         else if (urlParams.has('searchTerm')) searchTerm = urlParams.get('searchTerm') || '';
-
-        if (urlParams.has('SupplierId')) supplierId = urlParams.get('SupplierId') || '';
-        else if (urlParams.has('supplierId')) supplierId = urlParams.get('supplierId') || '';
-
-        if (urlParams.has('SupplierOrderId')) supplierOrderId = urlParams.get('SupplierOrderId') || '';
-        else if (urlParams.has('supplierOrderId')) supplierOrderId = urlParams.get('supplierOrderId') || '';
-        else if (urlParams.has('orderId')) supplierOrderId = urlParams.get('orderId') || '';
 
         if (urlParams.has('FromDate')) fromDate = urlParams.get('FromDate') || '';
         else if (urlParams.has('fromDate')) fromDate = urlParams.get('fromDate') || '';
@@ -146,9 +135,6 @@ function parseUrlParameters() {
         // Sync inputs with parsed params
         const searchInput = document.getElementById('search-input');
         if (searchInput && searchTerm) searchInput.value = searchTerm;
-
-        const orderIdInput = document.getElementById('order-id-input');
-        if (orderIdInput && supplierOrderId) orderIdInput.value = supplierOrderId;
 
         const fromDateInput = document.getElementById('from-date-input');
         if (fromDateInput && fromDate) fromDateInput.value = fromDate;
@@ -319,8 +305,6 @@ function copyToClipboard(text, label = 'Transaction reference') {
 function initTransactionLogEvents() {
     const filterForm = document.getElementById('transaction-filter-form');
     const searchInput = document.getElementById('search-input');
-    const supplierSelect = document.getElementById('supplier-filter-select');
-    const orderIdInput = document.getElementById('order-id-input');
     const fromDateInput = document.getElementById('from-date-input');
     const toDateInput = document.getElementById('to-date-input');
     const resetBtn = document.getElementById('btn-reset');
@@ -359,20 +343,6 @@ function initTransactionLogEvents() {
         });
     }
 
-    // Supplier Select Change
-    if (supplierSelect) {
-        supplierSelect.addEventListener('change', () => {
-            applyFilters();
-        });
-    }
-
-    // Supplier Order ID Input Change
-    if (orderIdInput) {
-        orderIdInput.addEventListener('change', () => {
-            applyFilters();
-        });
-    }
-
     // Date Filters Change
     if (fromDateInput) {
         fromDateInput.addEventListener('change', () => {
@@ -389,8 +359,6 @@ function initTransactionLogEvents() {
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
             if (searchInput) searchInput.value = '';
-            if (supplierSelect) supplierSelect.value = '';
-            if (orderIdInput) orderIdInput.value = '';
             if (fromDateInput) fromDateInput.value = '';
             if (toDateInput) toDateInput.value = '';
 
@@ -428,7 +396,6 @@ function initTransactionLogEvents() {
     }
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
-            loadSuppliersForFilter();
             loadTransactionHistories();
             showToast('Refreshed transaction log.', 'info');
         });
@@ -451,71 +418,14 @@ function initTransactionLogEvents() {
 }
 
 /**
- * Loads list of suppliers to populate the supplier filter dropdown
- */
-async function loadSuppliersForFilter() {
-    const supplierSelect = document.getElementById('supplier-filter-select');
-    if (!supplierSelect) return;
-
-    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
-    const token = getAuthToken();
-    const endpoint = `${baseUrl}/Suppliers/GetAll?PageNumber=1&PageSize=200`;
-
-    try {
-        const headers = { 'accept': '*/*' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const response = await fetch(endpoint, { method: 'GET', headers: headers });
-        if (!response.ok) return;
-
-        const result = await response.json();
-        let suppliers = [];
-        if (result && result.data && Array.isArray(result.data.items)) {
-            suppliers = result.data.items;
-        } else if (result && Array.isArray(result.data)) {
-            suppliers = result.data;
-        } else if (Array.isArray(result)) {
-            suppliers = result;
-        }
-
-        suppliersCache = suppliers;
-
-        // Build options
-        let optionsHtml = '<option value="">All Suppliers</option>';
-        suppliers.forEach(s => {
-            const id = s.id || s.Id;
-            const name = s.name || s.Name || 'Unknown';
-            const shop = s.shopName || s.ShopName || '';
-            const label = shop ? `${escapeHtml(name)} — ${escapeHtml(shop)}` : escapeHtml(name);
-            const isSelected = String(id) === String(supplierId) ? 'selected' : '';
-            optionsHtml += `<option value="${id}" ${isSelected}>${label}</option>`;
-        });
-
-        supplierSelect.innerHTML = optionsHtml;
-
-        // If supplierId was preset, ensure it's selected
-        if (supplierId && supplierSelect.value !== String(supplierId)) {
-            supplierSelect.value = supplierId;
-        }
-
-    } catch (err) {
-        console.warn('Could not populate suppliers filter dropdown:', err);
-    }
-}
-
-/**
  * Collects current filter inputs and triggers reload
  */
 function applyFilters() {
     const searchInput = document.getElementById('search-input');
-    const supplierSelect = document.getElementById('supplier-filter-select');
-    const orderIdInput = document.getElementById('order-id-input');
     const fromDateInput = document.getElementById('from-date-input');
     const toDateInput = document.getElementById('to-date-input');
 
     searchTerm = searchInput ? searchInput.value.trim() : '';
-    supplierId = supplierSelect ? supplierSelect.value.trim() : '';
-    supplierOrderId = orderIdInput ? orderIdInput.value.trim() : '';
     fromDate = fromDateInput ? fromDateInput.value.trim() : '';
     toDate = toDateInput ? toDateInput.value.trim() : '';
 
@@ -563,12 +473,6 @@ async function loadTransactionHistories() {
 
     if (searchTerm && searchTerm.trim() !== '') {
         queryParams.append('SearchTerm', searchTerm.trim());
-    }
-    if (supplierId && supplierId.trim() !== '') {
-        queryParams.append('SupplierId', supplierId.trim());
-    }
-    if (supplierOrderId && supplierOrderId.trim() !== '') {
-        queryParams.append('SupplierOrderId', supplierOrderId.trim());
     }
     if (fromDate && fromDate.trim() !== '') {
         queryParams.append('FromDate', fromDate.trim());
@@ -665,12 +569,6 @@ async function loadTransactionHistories() {
                 if (!sName.includes(term) && !shop.includes(term) && !po.includes(term) && !tx.includes(term)) {
                     match = false;
                 }
-            }
-            if (supplierId && String(item.supplierId) !== String(supplierId)) {
-                match = false;
-            }
-            if (supplierOrderId && String(item.supplierOrderId) !== String(supplierOrderId)) {
-                match = false;
             }
             return match;
         });
@@ -880,29 +778,6 @@ function updateActiveFilterBadges() {
         `;
     }
 
-    if (supplierId) {
-        let supName = `Supplier #${supplierId}`;
-        const found = suppliersCache.find(s => String(s.id || s.Id) === String(supplierId));
-        if (found) {
-            supName = found.shopName ? `${found.name} (${found.shopName})` : found.name;
-        }
-        badgesHtml += `
-            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-2 py-1 small">
-                <i class="bi bi-truck text-primary"></i> ${escapeHtml(supName)}
-                <button type="button" class="btn-close btn-close-sm p-0 ms-1" style="font-size: 0.65rem;" onclick="clearSingleFilter('supplier')"></button>
-            </span>
-        `;
-    }
-
-    if (supplierOrderId) {
-        badgesHtml += `
-            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-2 py-1 small">
-                Order ID: #${escapeHtml(supplierOrderId)}
-                <button type="button" class="btn-close btn-close-sm p-0 ms-1" style="font-size: 0.65rem;" onclick="clearSingleFilter('orderId')"></button>
-            </span>
-        `;
-    }
-
     if (fromDate || toDate) {
         badgesHtml += `
             <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-2 py-1 small">
@@ -923,14 +798,6 @@ function clearSingleFilter(type) {
         const el = document.getElementById('search-input');
         if (el) el.value = '';
         searchTerm = '';
-    } else if (type === 'supplier') {
-        const el = document.getElementById('supplier-filter-select');
-        if (el) el.value = '';
-        supplierId = '';
-    } else if (type === 'orderId') {
-        const el = document.getElementById('order-id-input');
-        if (el) el.value = '';
-        supplierOrderId = '';
     } else if (type === 'date') {
         const fromEl = document.getElementById('from-date-input');
         const toEl = document.getElementById('to-date-input');
