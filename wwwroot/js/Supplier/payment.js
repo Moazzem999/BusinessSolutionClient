@@ -43,7 +43,7 @@ const SAMPLE_PAYMENTS_DATA = [
         supplierName: "Monir Hossain",
         supplierShopName: "Modina Clothing",
         payment: 5000,
-        remarks: "Invoice Payment",
+        remarks: "Invoice Payment #INV-1029",
         transactionNo: "20261028-e2b7f28b92",
         transactionDate: "2026-10-28T15:16:21.174",
         supplierPreviousBalance: -8000,
@@ -182,7 +182,7 @@ function getAuthToken() {
 
 /**
  * Format date string into user-friendly localized format (e.g. 28 Oct 2026)
- * Note: Time portion is explicitly omitted per user requirements.
+ * Note: Time portion is omitted to keep the table clean.
  */
 function formatDate(dateStr) {
     if (!dateStr) return '—';
@@ -229,6 +229,21 @@ function formatCurrency(amount) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
+}
+
+/**
+ * Safely extract remarks text from item supporting various backend casings
+ */
+function getRemarksText(item) {
+    if (!item) return '';
+    let val = '';
+    if (item.remarks !== undefined && item.remarks !== null) val = item.remarks;
+    else if (item.Remarks !== undefined && item.Remarks !== null) val = item.Remarks;
+    else if (item.notes !== undefined && item.notes !== null) val = item.notes;
+    else if (item.Notes !== undefined && item.Notes !== null) val = item.Notes;
+    else if (item.remark !== undefined && item.remark !== null) val = item.remark;
+    else if (item.Remark !== undefined && item.Remark !== null) val = item.Remark;
+    return String(val).trim();
 }
 
 /**
@@ -442,10 +457,10 @@ async function loadSupplierPayments() {
     }
     if (emptyState) emptyState.classList.add('d-none');
 
-    // Show loading skeleton
+    // Show loading skeleton (7 columns including Action)
     tableBody.innerHTML = `
         <tr id="payments-loading-row">
-            <td colspan="6" class="text-center py-5">
+            <td colspan="7" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -557,7 +572,7 @@ async function loadSupplierPayments() {
                 const sName = (item.supplierName || '').toLowerCase();
                 const shop = (item.supplierShopName || '').toLowerCase();
                 const tx = (item.transactionNo || '').toLowerCase();
-                const rem = (item.remarks || '').toLowerCase();
+                const rem = getRemarksText(item).toLowerCase();
                 if (!sName.includes(term) && !shop.includes(term) && !tx.includes(term) && !rem.includes(term)) {
                     match = false;
                 }
@@ -619,10 +634,14 @@ function updateKpiCards(items, totalRecordsCount) {
 
 /**
  * Renders payment rows into table body
- * Requirements:
- * 1. No action column
- * 2. No (৳) icon in table rows
- * 3. Date column is date-only (no time portion)
+ * Design, fonts, and text sizes strictly mirror TransactionLog tables:
+ * - Date: fw-semibold text-dark
+ * - Transaction Ref: bg-light text-dark border font-monospace px-2 py-1 transaction-ref-badge
+ * - Supplier: avatar-circle-sm (36x36), fw-bold text-dark, small shop badge (0.72rem)
+ * - Remarks: clearly visible text-secondary small fw-medium
+ * - Payment: fw-bold text-success font-monospace
+ * - Balance Flow: text-muted font-monospace small -> fw-bold font-monospace ${balColorClass}
+ * - Action Column: Preview button linking to voucher modal
  */
 function renderPaymentsTable(items) {
     const tableBody = document.getElementById('payments-table-body');
@@ -644,17 +663,22 @@ function renderPaymentsTable(items) {
         const dateFormatted = formatDate(item.transactionDate || item.createdOn);
         const supplierName = item.supplierName || 'N/A';
         const shopName = item.supplierShopName || '';
-        const remarks = (item.remarks && item.remarks !== 'string') ? item.remarks : '—';
+        const remarksText = getRemarksText(item);
         const payment = Number(item.payment || 0);
         const prevBal = Number(item.supplierPreviousBalance || 0);
         const newBal = Number(item.supplierNewBalance || 0);
 
-        // Initials for avatar
+        // Initials for avatar matching TransactionLog
         const initials = supplierName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SP';
+
+        // Balance direction styling matching TransactionLog
+        const balanceIncreased = newBal > prevBal;
+        const balanceDecreased = newBal < prevBal;
+        const balColorClass = balanceIncreased ? 'text-primary' : (balanceDecreased ? 'text-success' : 'text-dark');
 
         html += `
             <tr class="payment-row" data-id="${id}">
-                <!-- Date (Date only, no time portion) -->
+                <!-- Date -->
                 <td class="ps-4">
                     <span class="fw-semibold text-dark">${dateFormatted}</span>
                 </td>
@@ -662,53 +686,68 @@ function renderPaymentsTable(items) {
                 <!-- Transaction Ref -->
                 <td>
                     <div class="d-inline-flex align-items-center gap-1">
-                        <span class="badge bg-light text-primary border font-monospace px-2 py-1 transaction-ref-badge" role="button" onclick="viewPaymentDetails(${id})" title="Click to view payment voucher">
+                        <span class="badge bg-light text-dark border font-monospace px-2 py-1 transaction-ref-badge" role="button" onclick="copyToClipboard('${escapeHtml(transNo)}', 'Transaction No')" title="Click to copy">
                             ${escapeHtml(transNo)}
                         </span>
-                        <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="copyToClipboard('${escapeHtml(transNo)}', 'Transaction Ref')" title="Copy Reference">
+                        <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="copyToClipboard('${escapeHtml(transNo)}', 'Transaction No')" title="Copy Reference">
                             <i class="bi bi-clipboard"></i>
                         </button>
                     </div>
                 </td>
 
-                <!-- Supplier -->
+                <!-- Supplier Info -->
                 <td>
                     <div class="d-flex align-items-center gap-2">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary-subtle text-primary fw-bold flex-shrink-0" style="width: 34px; height: 34px; font-size: 0.8rem;">
-                            ${escapeHtml(initials)}
+                        <div class="avatar-circle-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style="width: 36px; height: 36px; font-size: 13px;">
+                            ${initials}
                         </div>
                         <div class="overflow-hidden">
-                            <div class="fw-semibold text-dark text-truncate" style="max-width: 175px;" title="${escapeHtml(supplierName)}">
+                            <div class="fw-bold text-dark text-truncate mb-0" style="max-width: 180px;" title="${escapeHtml(supplierName)}">
                                 ${escapeHtml(supplierName)}
                             </div>
-                            ${shopName ? `<span class="badge bg-secondary-subtle text-secondary small py-0 px-2 fw-normal">${escapeHtml(shopName)}</span>` : ''}
+                            ${shopName ? `
+                                <span class="badge bg-light text-secondary border fw-normal rounded-pill px-2 py-0 small" style="font-size: 0.72rem;">
+                                    <i class="bi bi-shop me-1"></i>${escapeHtml(shopName)}
+                                </span>
+                            ` : ''}
                         </div>
                     </div>
                 </td>
 
-                <!-- Remarks -->
+                <!-- Remarks (Clearly visible text) -->
                 <td>
-                    <span class="text-muted small text-truncate d-inline-block" style="max-width: 170px;" title="${escapeHtml(remarks)}">
-                        ${escapeHtml(remarks)}
-                    </span>
+                    ${remarksText ? `
+                        <span class="text-secondary small fw-medium d-inline-block text-truncate" style="max-width: 180px;" title="${escapeHtml(remarksText)}">
+                            ${escapeHtml(remarksText)}
+                        </span>
+                    ` : `
+                        <span class="text-muted small">—</span>
+                    `}
                 </td>
 
-                <!-- Payment (Right aligned, NO currency icon in table row) -->
+                <!-- Payment (Credit) -->
                 <td class="text-end">
-                    <span class="fw-bold text-success">${formatCurrency(payment)}</span>
+                    ${payment > 0 ? `
+                        <span class="fw-bold text-success font-monospace">${formatCurrency(payment)}</span>
+                    ` : `
+                        <span class="text-muted font-monospace small">0.00</span>
+                    `}
                 </td>
 
-                <!-- Balance Flow (Centered, NO currency icon in table row) -->
-                <td class="pe-4 text-center">
+                <!-- Balance Flow -->
+                <td class="text-center">
                     <div class="balance-flow-box justify-content-center">
-                        <span class="badge bg-light text-secondary border px-2 py-1 font-monospace" title="Previous Balance">
-                            ${formatCurrency(prevBal)}
-                        </span>
-                        <i class="bi bi-arrow-right text-muted mx-1"></i>
-                        <span class="badge bg-light text-dark border px-2 py-1 font-monospace fw-semibold" title="New Balance">
-                            ${formatCurrency(newBal)}
-                        </span>
+                        <span class="text-muted font-monospace small" title="Previous Balance">${formatCurrency(prevBal)}</span>
+                        <i class="bi bi-arrow-right text-secondary small"></i>
+                        <span class="fw-bold font-monospace ${balColorClass}" title="New Balance">${formatCurrency(newBal)}</span>
                     </div>
+                </td>
+
+                <!-- Action (Preview) -->
+                <td class="pe-4 text-end">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-2 d-inline-flex align-items-center gap-1 px-2 py-1" onclick="viewPaymentDetails(${id})" title="Preview Payment Voucher">
+                        <i class="bi bi-eye-fill"></i>
+                    </button>
                 </td>
             </tr>
         `;
@@ -929,7 +968,7 @@ window.viewPaymentDetails = function(paymentId) {
         const prevBal = Number(item.supplierPreviousBalance || 0);
         const newBal = Number(item.supplierNewBalance || 0);
         const payment = Number(item.payment || 0);
-        const remarks = (item.remarks && item.remarks !== 'string') ? item.remarks : 'None';
+        const remarksText = getRemarksText(item) || 'None';
         const dateFormatted = formatDateTime(item.transactionDate || item.createdOn);
 
         modalContentEl.innerHTML = `
@@ -987,7 +1026,7 @@ window.viewPaymentDetails = function(paymentId) {
                             Payment ID: <span class="fw-medium text-dark">#${item.id}</span>
                         </div>
                         <div class="text-muted small">
-                            Notes: <span class="badge bg-white text-dark border fw-normal">${escapeHtml(remarks)}</span>
+                            Notes: <span class="badge bg-white text-dark border fw-normal">${escapeHtml(remarksText)}</span>
                         </div>
                     </div>
                 </div>
@@ -1021,7 +1060,7 @@ window.viewPaymentDetails = function(paymentId) {
                             </tr>
                             <tr>
                                 <th class="bg-light text-secondary">Remarks</th>
-                                <td colspan="3">${escapeHtml(remarks)}</td>
+                                <td colspan="3">${escapeHtml(remarksText)}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1061,7 +1100,7 @@ function exportToExcel() {
             "Date": formatDate(item.transactionDate || item.createdOn),
             "Supplier Name": item.supplierName || '',
             "Supplier Shop": item.supplierShopName || '',
-            "Remarks": (item.remarks && item.remarks !== 'string') ? item.remarks : '',
+            "Remarks": getRemarksText(item),
             "Payment (BDT)": Number(item.payment || 0),
             "Previous Balance (BDT)": Number(item.supplierPreviousBalance || 0),
             "New Balance (BDT)": Number(item.supplierNewBalance || 0),
@@ -1128,7 +1167,7 @@ function exportToPdf() {
             item.transactionNo || '—',
             item.supplierName || '—',
             item.supplierShopName || '—',
-            (item.remarks && item.remarks !== 'string') ? item.remarks : '—',
+            getRemarksText(item) || '—',
             formatCurrency(item.payment),
             formatCurrency(item.supplierPreviousBalance),
             formatCurrency(item.supplierNewBalance)
@@ -1151,10 +1190,10 @@ function exportToPdf() {
             },
             columnStyles: {
                 0: { cellWidth: 70 },
-                1: { cellWidth: 110 },
-                2: { cellWidth: 120 },
-                3: { cellWidth: 110 },
-                4: { cellWidth: 90 },
+                1: { cellWidth: 105 },
+                2: { cellWidth: 110 },
+                3: { cellWidth: 100 },
+                4: { cellWidth: 95 },
                 5: { halign: 'right', cellWidth: 80 },
                 6: { halign: 'right', cellWidth: 80 },
                 7: { halign: 'right', cellWidth: 80 }
@@ -1177,4 +1216,3 @@ function exportToPdf() {
         showToast('Failed to export to PDF.', 'danger');
     }
 }
-
