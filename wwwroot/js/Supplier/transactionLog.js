@@ -456,7 +456,7 @@ async function loadTransactionHistories() {
     // Loading skeleton
     tableBody.innerHTML = `
         <tr id="transactions-loading-row">
-            <td colspan="8" class="text-center py-5">
+            <td colspan="7" class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Loading...</span>
                 </div>
@@ -727,37 +727,18 @@ function renderTransactionsTable(items) {
                 </td>
 
                 <!-- Running Balance Flow -->
-                <td class="text-center">
+                <td class="pe-4 text-center">
                     <div class="balance-flow-box justify-content-center">
                         <span class="text-muted font-monospace small" title="Previous Balance">৳ ${formatCurrency(prevBal)}</span>
                         <i class="bi bi-arrow-right text-secondary small"></i>
                         <span class="fw-bold font-monospace ${balColorClass}" title="New Balance">৳ ${formatCurrency(newBal)}</span>
                     </div>
                 </td>
-
-                <!-- Actions -->
-                <td class="pe-4 text-end">
-                    <button type="button" class="btn btn-outline-primary btn-sm rounded-2 btn-view-transaction" data-id="${id}" title="View Transaction Voucher">
-                        <i class="bi bi-eye-fill"></i>
-                    </button>
-                </td>
             </tr>
         `;
     });
 
     tableBody.innerHTML = html;
-
-    // Attach click listeners to view buttons
-    tableBody.querySelectorAll('.btn-view-transaction').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const btnEl = e.currentTarget;
-            const targetId = btnEl.getAttribute('data-id');
-            const foundItem = transactionsList.find(t => String(t.id) === String(targetId));
-            if (foundItem) {
-                openTransactionDetailsModal(foundItem);
-            }
-        });
-    });
 }
 
 /**
