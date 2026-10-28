@@ -711,27 +711,27 @@ function renderTransactionsTable(items) {
                 <!-- Bill Amount (Debit) -->
                 <td class="text-end">
                     ${amount > 0 ? `
-                        <span class="fw-bold text-dark font-monospace">৳ ${formatCurrency(amount)}</span>
+                        <span class="fw-bold text-dark font-monospace">${formatCurrency(amount)}</span>
                     ` : `
-                        <span class="text-muted font-monospace small">৳ 0.00</span>
+                        <span class="text-muted font-monospace small">0.00</span>
                     `}
                 </td>
 
                 <!-- Payment (Credit) -->
                 <td class="text-end">
                     ${payment > 0 ? `
-                        <span class="fw-bold text-success font-monospace">৳ ${formatCurrency(payment)}</span>
+                        <span class="fw-bold text-success font-monospace">${formatCurrency(payment)}</span>
                     ` : `
-                        <span class="text-muted font-monospace small">৳ 0.00</span>
+                        <span class="text-muted font-monospace small">0.00</span>
                     `}
                 </td>
 
                 <!-- Running Balance Flow -->
                 <td class="pe-4 text-center">
                     <div class="balance-flow-box justify-content-center">
-                        <span class="text-muted font-monospace small" title="Previous Balance">৳ ${formatCurrency(prevBal)}</span>
+                        <span class="text-muted font-monospace small" title="Previous Balance">${formatCurrency(prevBal)}</span>
                         <i class="bi bi-arrow-right text-secondary small"></i>
-                        <span class="fw-bold font-monospace ${balColorClass}" title="New Balance">৳ ${formatCurrency(newBal)}</span>
+                        <span class="fw-bold font-monospace ${balColorClass}" title="New Balance">${formatCurrency(newBal)}</span>
                     </div>
                 </td>
             </tr>
