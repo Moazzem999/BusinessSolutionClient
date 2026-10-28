@@ -658,10 +658,7 @@ function renderTransactionsTable(items) {
             <tr class="transaction-row" data-id="${id}">
                 <!-- Date -->
                 <td class="ps-4">
-                    <div class="fw-semibold text-dark">${dateFormatted}</div>
-                    <div class="text-muted small" style="font-size: 0.75rem;">
-                        ${item.createdOn ? formatDateTime(item.createdOn).split(',')[1] || '' : ''}
-                    </div>
+                    <span class="fw-semibold text-dark">${dateFormatted}</span>
                 </td>
 
                 <!-- Transaction Ref -->
