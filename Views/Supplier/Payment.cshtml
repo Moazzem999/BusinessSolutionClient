@@ -99,17 +99,18 @@
             <thead class="bg-light">
                 <tr>
                     <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Date</th>
-                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 180px;">Transaction Ref</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 180px;">Transaction No</th>
                     <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 230px;">Supplier</th>
                     <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 180px;">Remarks</th>
                     <th class="text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Payment</th>
-                    <th class="pe-4 text-center text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 220px;">Balance Flow</th>
+                    <th class="text-center text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 200px;">Balance Flow</th>
+                    <th class="pe-4 text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Action</th>
                 </tr>
             </thead>
             <tbody id="payments-table-body">
                 <!-- Loading Skeleton -->
                 <tr id="payments-loading-row">
-                    <td colspan="6" class="text-center py-5">
+                    <td colspan="7" class="text-center py-5">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
@@ -165,7 +166,37 @@
     </div>
 </div>
 
-<!-- Toast Notification Container -->
+<!-- Payment Modals -->
+<!-- Delete Payment Confirmation Modal -->
+<div class="modal fade" id="deletePaymentModal" tabindex="-1" aria-labelledby="deletePaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-danger d-flex align-items-center gap-2" id="deletePaymentModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Confirm Deletion
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="mb-2 text-dark">Are you sure you want to delete supplier payment <strong id="delete-payment-ref" class="text-danger font-monospace"></strong> (ID: #<span id="delete-payment-id"></span>)?</p>
+                <p class="text-muted small mb-0">This action cannot be undone and will permanently remove this payment record from the system.</p>
+                <div id="delete-payment-error" class="alert alert-danger d-none mt-3 mb-0 rounded-3 py-2 px-3 small align-items-center gap-2" role="alert">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span id="delete-payment-error-text">Failed to delete payment.</span>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light border rounded-3 px-3" data-bs-dismiss="modal" id="btn-cancel-delete-payment">Cancel</button>
+                <button type="button" class="btn btn-danger rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" id="btn-confirm-delete-payment">
+                    <i class="bi bi-trash-fill"></i>
+                    <span id="btn-confirm-delete-payment-text">Delete</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modals -->
 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
     <div id="app-toast" class="toast align-items-center text-white border-0 rounded-3 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">

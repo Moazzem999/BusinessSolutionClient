@@ -36,7 +36,7 @@ const SAMPLE_PAYMENTS_DATA = [
         supplierPreviousBalance: -13000,
         supplierNewBalance: -18000,
         id: 7,
-        createdOn: "2026-10-28T22:48:03.3190934",
+        createdOn: "2026-10-28T22:48:03.3190934", // Within 2 days -> Delete button visible
         updatedOn: "2026-10-28T22:48:03.3190961",
         createdBy: 1,
         updatedBy: 1,
@@ -53,7 +53,7 @@ const SAMPLE_PAYMENTS_DATA = [
         supplierPreviousBalance: -8000,
         supplierNewBalance: -13000,
         id: 6,
-        createdOn: "2026-10-28T22:47:22.3908373",
+        createdOn: "2026-10-28T22:47:22.3908373", // Within 2 days -> Delete button visible
         updatedOn: "2026-10-28T22:47:22.3912689",
         createdBy: 1,
         updatedBy: 1,
@@ -70,8 +70,8 @@ const SAMPLE_PAYMENTS_DATA = [
         supplierPreviousBalance: 54000,
         supplierNewBalance: 44000,
         id: 5,
-        createdOn: "2026-10-26T14:15:22.1245678",
-        updatedOn: "2026-10-26T14:15:22.1245678",
+        createdOn: "2026-10-25T14:15:22.1245678", // 4 days ago -> Delete button HIDDEN
+        updatedOn: "2026-10-25T14:15:22.1245678",
         createdBy: 1,
         updatedBy: 1,
         status: 1
@@ -87,8 +87,8 @@ const SAMPLE_PAYMENTS_DATA = [
         supplierPreviousBalance: 54000,
         supplierNewBalance: 50000,
         id: 4,
-        createdOn: "2026-10-25T11:30:00.0000000",
-        updatedOn: "2026-10-25T11:30:00.0000000",
+        createdOn: "2026-10-20T11:30:00.0000000", // 9 days ago -> Delete button HIDDEN
+        updatedOn: "2026-10-20T11:30:00.0000000",
         createdBy: 1,
         updatedBy: 1,
         status: 1
@@ -107,6 +107,7 @@ if (document.readyState === 'loading') {
  */
 function initSupplierPaymentsPage() {
     parseUrlParameters();
+    ensureDeleteModal();
     initPaymentEvents();
     loadSupplierPayments();
 }
@@ -185,30 +186,42 @@ function getAuthToken() {
 }
 
 /**
- * Checks if a given date string is within 2 days of current time
- * Rule: Delete button is visible only when createdOn is within 2 days.
+ * Checks if a given date string is strictly within 2 days of current time.
+ * Rule: Delete button is visible ONLY if createdOn is within 2 days (<= 48 hours and calendar day diff <= 2).
  */
-function isWithinTwoDays(dateStr) {
-    if (!dateStr) return false;
+function isWithinTwoDays(createdOnStr) {
+    if (!createdOnStr) return false;
     try {
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return false;
+        // Strip out excessive microsecond digits if present for reliable parsing
+        const cleaned = String(createdOnStr).trim().replace(/(\.\d{3})\d+/, '$1');
+        const createdDate = new Date(cleaned);
+        if (isNaN(createdDate.getTime())) return false;
 
         const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
+        const diffMs = now.getTime() - createdDate.getTime();
 
-        // If created in future due to slight client/server timezone offset, treat as recent
-        if (diffMs < 0) return true;
+        // 48 hours in milliseconds = 2 days
+        const twoDaysMs = 48 * 60 * 60 * 1000;
 
-        // 2 days in milliseconds: 2 * 24 * 60 * 60 * 1000 = 172,800,000 ms (48 hours)
-        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-        if (diffMs <= twoDaysMs) return true;
+        // If older than 48 hours, it has exceeded 2 days -> FALSE
+        if (diffMs > twoDaysMs) {
+            return false;
+        }
 
-        // Also check if calendar days difference is <= 2
-        const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const dayDiff = Math.round((nowStart - dateStart) / (1000 * 60 * 60 * 24));
-        return dayDiff <= 2;
+        // Allow at most 10 minutes future clock drift
+        if (diffMs < -600000) {
+            return false;
+        }
+
+        // Calendar day difference: If created 3 or more calendar days ago -> FALSE
+        const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const createdDateOnly = new Date(createdDate.getFullYear(), createdDate.getMonth(), createdDate.getDate());
+        const calendarDaysDiff = Math.floor((nowDateOnly.getTime() - createdDateOnly.getTime()) / (1000 * 60 * 60 * 24));
+        if (calendarDaysDiff > 2) {
+            return false;
+        }
+
+        return true;
     } catch (_) {
         return false;
     }
@@ -347,6 +360,60 @@ function copyToClipboard(text, label = 'Transaction reference') {
 }
 
 /**
+ * Ensures the Delete Payment Confirmation modal exists in DOM and is properly bound
+ */
+function ensureDeleteModal() {
+    let modalEl = document.getElementById('deletePaymentModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.className = 'modal fade';
+        modalEl.id = 'deletePaymentModal';
+        modalEl.tabIndex = -1;
+        modalEl.setAttribute('aria-labelledby', 'deletePaymentModalLabel');
+        modalEl.setAttribute('aria-hidden', 'true');
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                    <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                        <h5 class="modal-title fw-bold text-danger d-flex align-items-center gap-2" id="deletePaymentModalLabel">
+                            <i class="bi bi-exclamation-triangle-fill"></i> Confirm Deletion
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="mb-2 text-dark">Are you sure you want to delete supplier payment <strong id="delete-payment-ref" class="text-danger font-monospace"></strong> (ID: #<span id="delete-payment-id"></span>)?</p>
+                        <p class="text-muted small mb-0">This action cannot be undone and will permanently remove this payment record from the system.</p>
+                        <div id="delete-payment-error" class="alert alert-danger d-none mt-3 mb-0 rounded-3 py-2 px-3 small align-items-center gap-2" role="alert">
+                            <i class="bi bi-exclamation-circle-fill"></i>
+                            <span id="delete-payment-error-text">Failed to delete payment.</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                        <button type="button" class="btn btn-light border rounded-3 px-3" data-bs-dismiss="modal" id="btn-cancel-delete-payment">Cancel</button>
+                        <button type="button" class="btn btn-danger rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" id="btn-confirm-delete-payment">
+                            <i class="bi bi-trash-fill"></i>
+                            <span id="btn-confirm-delete-payment-text">Delete</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    }
+
+    const confirmBtn = document.getElementById('btn-confirm-delete-payment');
+    if (confirmBtn && !confirmBtn.dataset.bound) {
+        confirmBtn.dataset.bound = 'true';
+        confirmBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            executeDeletePayment();
+        });
+    }
+
+    return modalEl;
+}
+
+/**
  * Initializes event listeners for form controls, exports, and modals
  */
 function initPaymentEvents() {
@@ -360,7 +427,6 @@ function initPaymentEvents() {
     const refreshBtn = document.getElementById('btn-refresh-payments');
     const pdfBtn = document.getElementById('btn-export-pdf');
     const excelBtn = document.getElementById('btn-export-excel');
-    const confirmDeleteBtn = document.getElementById('btn-confirm-delete-payment');
 
     // Bootstrap Modal Instances
     const modalEl = document.getElementById('paymentDetailsModal');
@@ -372,14 +438,7 @@ function initPaymentEvents() {
         }
     }
 
-    const deleteModalEl = document.getElementById('deletePaymentModal');
-    if (deleteModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-        try {
-            deletePaymentModalInstance = new bootstrap.Modal(deleteModalEl);
-        } catch (e) {
-            console.warn('Could not initialize deletePaymentModal bootstrap instance:', e);
-        }
-    }
+    ensureDeleteModal();
 
     // Filter Form Submit
     if (filterForm) {
@@ -455,13 +514,6 @@ function initPaymentEvents() {
         });
     }
 
-    // Delete Payment Confirm Button
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener('click', () => {
-            executeDeletePayment();
-        });
-    }
-
     // Export Buttons
     if (pdfBtn) {
         pdfBtn.addEventListener('click', exportToPdf);
@@ -507,7 +559,7 @@ async function loadSupplierPayments() {
     }
     if (emptyState) emptyState.classList.add('d-none');
 
-    // Show loading skeleton (7 columns including Action)
+    // Show loading skeleton (7 columns matching the 7 table headers)
     tableBody.innerHTML = `
         <tr id="payments-loading-row">
             <td colspan="7" class="text-center py-5">
@@ -718,8 +770,8 @@ function renderPaymentsTable(items) {
         const prevBal = Number(item.supplierPreviousBalance || 0);
         const newBal = Number(item.supplierNewBalance || 0);
 
-        // Check if createdOn is within 2 days for conditional Delete button visibility
-        const createdOnRaw = item.createdOn || item.CreatedOn || item.transactionDate || item.TransactionDate;
+        // Check strictly whether createdOn is within 2 days for conditional Delete button visibility
+        const createdOnRaw = item.createdOn || item.CreatedOn || item.createdDate || item.CreatedDate || item.createdAt || item.CreatedAt;
         const canDelete = isWithinTwoDays(createdOnRaw);
 
         // Initials for avatar matching TransactionLog
@@ -800,11 +852,11 @@ function renderPaymentsTable(items) {
                 <!-- Action (Preview + Delete icon only within 2 days) -->
                 <td class="pe-4 text-end">
                     <div class="d-inline-flex align-items-center justify-content-end gap-1">
-                        <button type="button" class="btn btn-outline-primary btn-sm rounded-2 d-inline-flex align-items-center gap-1 px-2 py-1" onclick="viewPaymentDetails(${id})" title="Preview Payment Voucher">
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-2 d-inline-flex align-items-center gap-1 px-2 py-1 btn-preview-payment" onclick="viewPaymentDetails(${id})" title="Preview Payment Voucher">
                             <i class="bi bi-eye-fill"></i>
                         </button>
                         ${canDelete ? `
-                            <button type="button" class="btn btn-outline-danger btn-sm rounded-2 px-2 py-1 d-inline-flex align-items-center justify-content-center" onclick="confirmDeletePayment(${id}, '${escapeHtml(transNo)}')" title="Delete Payment">
+                            <button type="button" class="btn btn-outline-danger btn-sm rounded-2 px-2 py-1 d-inline-flex align-items-center justify-content-center btn-delete-payment" onclick="confirmDeletePayment(${id}, '${escapeHtml(transNo)}')" title="Delete Payment">
                                 <i class="bi bi-trash-fill"></i>
                             </button>
                         ` : ''}
@@ -1006,12 +1058,12 @@ window.navigateToPage = function(targetPage) {
 
 /**
  * Opens delete confirmation modal for the selected supplier payment
- * Verifies that the payment is within 2 days before allowing deletion.
+ * Verifies that the payment is strictly within 2 days before allowing deletion.
  */
 window.confirmDeletePayment = function(id, transNo) {
     const targetPayment = paymentsList.find(p => String(p.id || p.Id) === String(id));
     if (targetPayment) {
-        const createdOnRaw = targetPayment.createdOn || targetPayment.CreatedOn || targetPayment.transactionDate || targetPayment.TransactionDate;
+        const createdOnRaw = targetPayment.createdOn || targetPayment.CreatedOn || targetPayment.createdDate || targetPayment.CreatedDate || targetPayment.createdAt || targetPayment.CreatedAt;
         if (!isWithinTwoDays(createdOnRaw)) {
             showToast('Payments older than 2 days cannot be deleted.', 'warning');
             return;
@@ -1019,6 +1071,9 @@ window.confirmDeletePayment = function(id, transNo) {
     }
 
     deletePaymentId = id;
+
+    // Ensure modal DOM elements exist
+    ensureDeleteModal();
 
     const refEl = document.getElementById('delete-payment-ref');
     const idEl = document.getElementById('delete-payment-id');
@@ -1037,6 +1092,11 @@ window.confirmDeletePayment = function(id, transNo) {
             ? bootstrap.Modal.getOrCreateInstance(modalEl)
             : (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl));
         deletePaymentModalInstance.show();
+    } else {
+        // Fallback confirmation prompt if Bootstrap Modal is unavailable
+        if (window.confirm(`Are you sure you want to delete supplier payment ${transNo || '#' + id}? This action cannot be undone.`)) {
+            executeDeletePayment();
+        }
     }
 };
 
@@ -1065,7 +1125,7 @@ async function executeDeletePayment() {
     const endpoint = `${baseUrl}/SupplierPayments/${targetId}`;
 
     try {
-        console.log('Deleting Supplier Payment at:', endpoint);
+        console.log('Sending DELETE request to:', endpoint);
         const headers = { 'accept': '*/*' };
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
@@ -1109,8 +1169,14 @@ async function executeDeletePayment() {
             ? (resData.message || resData.Message)
             : (isDeleted ? 'Supplier payment deleted successfully.' : `Failed to delete supplier payment (Status ${response.status}).`);
 
+        // Close modal
         if (deletePaymentModalInstance) {
             deletePaymentModalInstance.hide();
+        }
+        const modalEl = document.getElementById('deletePaymentModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const inst = bootstrap.Modal.getInstance(modalEl);
+            if (inst) inst.hide();
         }
 
         if (isDeleted) {
@@ -1129,16 +1195,22 @@ async function executeDeletePayment() {
     } catch (err) {
         console.warn('API delete supplier payment error, checking sample fallback:', err);
 
-        // If in sample fallback mode (offline or 401), allow demo delete
+        // Close modal
+        if (deletePaymentModalInstance) {
+            deletePaymentModalInstance.hide();
+        }
+        const modalEl = document.getElementById('deletePaymentModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const inst = bootstrap.Modal.getInstance(modalEl);
+            if (inst) inst.hide();
+        }
+
+        // If in sample fallback mode (offline or 401), allow preview delete
         const sampleIdx = SAMPLE_PAYMENTS_DATA.findIndex(p => String(p.id) === String(targetId));
         const isNetworkOrAuth = err.message.includes('401') ||
                                 err.message.includes('Failed to fetch') ||
                                 err.message.includes('NetworkError') ||
                                 err.message.includes('Network connection');
-
-        if (deletePaymentModalInstance) {
-            deletePaymentModalInstance.hide();
-        }
 
         if (sampleIdx !== -1 && isNetworkOrAuth) {
             SAMPLE_PAYMENTS_DATA.splice(sampleIdx, 1);
