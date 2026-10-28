@@ -1,0 +1,1180 @@
+/* ==========================================================================
+   Business Solution Client - Supplier Payments JavaScript
+   Handles listing, filtering, pagination, KPI stats, payment voucher modal,
+   and exports (PDF / Excel) for Supplier Payments.
+   API: GET /api/SupplierPayments/GetAll?SearchTerm=...&SupplierId=...&FromDate=...&ToDate=...&PageNumber=...&PageSize=...
+   Note: All query parameters are optional.
+   ========================================================================== */
+
+let currentPage = 1;
+let pageSize = 10;
+let searchTerm = '';
+let supplierId = '';
+let fromDate = '';
+let toDate = '';
+let totalCount = 0;
+let totalPages = 1;
+let paymentsList = [];
+let currentSelectedPayment = null;
+let paymentDetailsModalInstance = null;
+let searchDebounceTimer = null;
+
+// Sample fallback supplier payments matching GET /api/SupplierPayments/GetAll response
+const SAMPLE_PAYMENTS_DATA = [
+    {
+        supplierId: 6,
+        supplierName: "Monir Hossain",
+        supplierShopName: "Modina Clothing",
+        payment: 5000,
+        remarks: "Advance Settlement",
+        transactionNo: "20261028-c848c74913",
+        transactionDate: "2026-10-28T15:16:21.174",
+        supplierPreviousBalance: -13000,
+        supplierNewBalance: -18000,
+        id: 7,
+        createdOn: "2026-10-28T22:48:03.3190934",
+        updatedOn: "2026-10-28T22:48:03.3190961",
+        createdBy: 1,
+        updatedBy: 1,
+        status: 1
+    },
+    {
+        supplierId: 6,
+        supplierName: "Monir Hossain",
+        supplierShopName: "Modina Clothing",
+        payment: 5000,
+        remarks: "Invoice Payment",
+        transactionNo: "20261028-e2b7f28b92",
+        transactionDate: "2026-10-28T15:16:21.174",
+        supplierPreviousBalance: -8000,
+        supplierNewBalance: -13000,
+        id: 6,
+        createdOn: "2026-10-28T22:47:22.3908373",
+        updatedOn: "2026-10-28T22:47:22.3912689",
+        createdBy: 1,
+        updatedBy: 1,
+        status: 1
+    },
+    {
+        supplierId: 5,
+        supplierName: "Md Rejaul Karim",
+        supplierShopName: "Lulu Fashion",
+        payment: 10000,
+        remarks: "Fabric Payment Settlement",
+        transactionNo: "20261026-a48e71b29c",
+        transactionDate: "2026-10-26T14:15:22.000",
+        supplierPreviousBalance: 54000,
+        supplierNewBalance: 44000,
+        id: 5,
+        createdOn: "2026-10-26T14:15:22.1245678",
+        updatedOn: "2026-10-26T14:15:22.1245678",
+        createdBy: 1,
+        updatedBy: 1,
+        status: 1
+    },
+    {
+        supplierId: 1,
+        supplierName: "Md Abdul Wadud",
+        supplierShopName: "Makka Cap House-2",
+        payment: 4000,
+        remarks: "Order Partial Payment",
+        transactionNo: "20261025-b87f21a41e",
+        transactionDate: "2026-10-25T11:30:00.000",
+        supplierPreviousBalance: 54000,
+        supplierNewBalance: 50000,
+        id: 4,
+        createdOn: "2026-10-25T11:30:00.0000000",
+        updatedOn: "2026-10-25T11:30:00.0000000",
+        createdBy: 1,
+        updatedBy: 1,
+        status: 1
+    }
+];
+
+// Document Ready Initialization
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSupplierPaymentsPage);
+} else {
+    initSupplierPaymentsPage();
+}
+
+/**
+ * Initializes page components, URL query params, and fetches records
+ */
+function initSupplierPaymentsPage() {
+    parseUrlParameters();
+    initPaymentEvents();
+    loadSupplierPayments();
+}
+
+/**
+ * Reads any query parameters passed via URL (e.g. ?SearchTerm=...&SupplierId=...&FromDate=...)
+ */
+function parseUrlParameters() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (urlParams.has('SearchTerm')) searchTerm = urlParams.get('SearchTerm') || '';
+        else if (urlParams.has('searchTerm')) searchTerm = urlParams.get('searchTerm') || '';
+
+        if (urlParams.has('SupplierId')) supplierId = urlParams.get('SupplierId') || '';
+        else if (urlParams.has('supplierId')) supplierId = urlParams.get('supplierId') || '';
+
+        if (urlParams.has('FromDate')) fromDate = urlParams.get('FromDate') || '';
+        else if (urlParams.has('fromDate')) fromDate = urlParams.get('fromDate') || '';
+
+        if (urlParams.has('ToDate')) toDate = urlParams.get('ToDate') || '';
+        else if (urlParams.has('toDate')) toDate = urlParams.get('toDate') || '';
+
+        if (urlParams.has('PageNumber')) currentPage = parseInt(urlParams.get('PageNumber'), 10) || 1;
+        if (urlParams.has('PageSize')) pageSize = parseInt(urlParams.get('PageSize'), 10) || 10;
+
+        // Sync inputs with parsed params
+        const searchInput = document.getElementById('search-input');
+        if (searchInput && searchTerm) searchInput.value = searchTerm;
+
+        const fromDateInput = document.getElementById('from-date-input');
+        if (fromDateInput && fromDate) fromDateInput.value = fromDate;
+
+        const toDateInput = document.getElementById('to-date-input');
+        if (toDateInput && toDate) toDateInput.value = toDate;
+
+        const pageSizeSelect = document.getElementById('page-size-select');
+        if (pageSizeSelect && pageSize) pageSizeSelect.value = pageSize.toString();
+
+    } catch (e) {
+        console.warn('Error parsing URL query parameters:', e);
+    }
+}
+
+/**
+ * Returns API base URL from BSApp, window variable, or fallback
+ */
+function getApiBaseUrl() {
+    if (typeof BSApp !== 'undefined' && typeof BSApp.getApiBaseUrl === 'function') {
+        return BSApp.getApiBaseUrl();
+    }
+    if (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) {
+        return API_BASE_URL.replace(/\/+$/, '');
+    }
+    return 'https://localhost:7148/api';
+}
+
+/**
+ * Returns stored auth token from BSApp, localStorage, or cookies
+ */
+function getAuthToken() {
+    let token = '';
+    if (typeof BSApp !== 'undefined' && typeof BSApp.getStoredToken === 'function') {
+        token = BSApp.getStoredToken();
+    }
+    if (!token) {
+        token = localStorage.getItem('bs_token') || '';
+    }
+    if (!token) {
+        const match = document.cookie.match(/(?:^|;\s*)bs_auth_token=([^;]*)/);
+        if (match) {
+            token = decodeURIComponent(match[1]);
+        }
+    }
+    return token;
+}
+
+/**
+ * Format date string into user-friendly localized format (e.g. 28 Oct 2026)
+ * Note: Time portion is explicitly omitted per user requirements.
+ */
+function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        return date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+    } catch (_) {
+        return dateStr;
+    }
+}
+
+/**
+ * Format date string with time (e.g. 28 Oct 2026, 03:16 PM) for modal/voucher view
+ */
+function formatDateTime(dateStr) {
+    if (!dateStr) return '—';
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        return date.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    } catch (_) {
+        return dateStr;
+    }
+}
+
+/**
+ * Format number into currency format without currency symbol (e.g. 5,000.00)
+ */
+function formatCurrency(amount) {
+    if (amount === null || amount === undefined || isNaN(amount)) return '0.00';
+    return Number(amount).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+/**
+ * Safely escape string for HTML rendering
+ */
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/**
+ * Displays toast notification
+ */
+function showToast(message, type = 'info') {
+    const toastEl = document.getElementById('app-toast');
+    const toastMsg = document.getElementById('toast-message');
+    const toastIcon = document.getElementById('toast-icon');
+
+    if (!toastEl || !toastMsg) return;
+
+    toastEl.className = 'toast align-items-center text-white border-0 rounded-3 shadow-lg';
+    let iconClass = 'bi-info-circle-fill';
+
+    if (type === 'success') {
+        toastEl.classList.add('bg-success');
+        iconClass = 'bi-check-circle-fill';
+    } else if (type === 'danger' || type === 'error') {
+        toastEl.classList.add('bg-danger');
+        iconClass = 'bi-exclamation-triangle-fill';
+    } else if (type === 'warning') {
+        toastEl.classList.add('bg-warning', 'text-dark');
+        iconClass = 'bi-exclamation-circle-fill';
+    } else {
+        toastEl.classList.add('bg-primary');
+        iconClass = 'bi-info-circle-fill';
+    }
+
+    if (toastIcon) toastIcon.className = `bi ${iconClass} fs-5`;
+    toastMsg.innerText = message;
+
+    if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+        const toast = bootstrap.Toast.getOrCreateInstance
+            ? bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 })
+            : (bootstrap.Toast.getInstance(toastEl) || new bootstrap.Toast(toastEl, { delay: 4000 }));
+        toast.show();
+    }
+}
+
+/**
+ * Helper to copy string to clipboard
+ */
+function copyToClipboard(text, label = 'Transaction reference') {
+    if (!navigator.clipboard) {
+        showToast(`Copied ${label}: ${text}`, 'success');
+        return;
+    }
+    navigator.clipboard.writeText(text).then(() => {
+        showToast(`Copied ${label} to clipboard!`, 'success');
+    }).catch(() => {
+        showToast(`Could not copy: ${text}`, 'warning');
+    });
+}
+
+/**
+ * Initializes event listeners for form controls, exports, and modal
+ */
+function initPaymentEvents() {
+    const filterForm = document.getElementById('payment-filter-form');
+    const searchInput = document.getElementById('search-input');
+    const fromDateInput = document.getElementById('from-date-input');
+    const toDateInput = document.getElementById('to-date-input');
+    const resetBtn = document.getElementById('btn-reset');
+    const pageSizeSelect = document.getElementById('page-size-select');
+    const retryBtn = document.getElementById('btn-retry-api');
+    const refreshBtn = document.getElementById('btn-refresh-payments');
+    const pdfBtn = document.getElementById('btn-export-pdf');
+    const excelBtn = document.getElementById('btn-export-excel');
+
+    // Bootstrap Modal Instance for Payment Voucher Details
+    const modalEl = document.getElementById('paymentDetailsModal');
+    if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        try {
+            paymentDetailsModalInstance = new bootstrap.Modal(modalEl);
+        } catch (e) {
+            console.warn('Could not initialize paymentDetailsModal bootstrap instance:', e);
+        }
+    }
+
+    // Filter Form Submit
+    if (filterForm) {
+        filterForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            applyFilters();
+        });
+    }
+
+    // Search Input Debouncing
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                applyFilters();
+            }, 400);
+        });
+    }
+
+    // Date Filters Change
+    if (fromDateInput) {
+        fromDateInput.addEventListener('change', () => {
+            applyFilters();
+        });
+    }
+    if (toDateInput) {
+        toDateInput.addEventListener('change', () => {
+            applyFilters();
+        });
+    }
+
+    // Reset Filters
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            if (searchInput) searchInput.value = '';
+            if (fromDateInput) fromDateInput.value = '';
+            if (toDateInput) toDateInput.value = '';
+
+            searchTerm = '';
+            supplierId = '';
+            fromDate = '';
+            toDate = '';
+            currentPage = 1;
+
+            // Clear URL search params without page reload
+            if (window.history && window.history.replaceState) {
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+
+            loadSupplierPayments();
+        });
+    }
+
+    // Page Size Selector
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', (e) => {
+            pageSize = parseInt(e.target.value, 10) || 10;
+            currentPage = 1;
+            loadSupplierPayments();
+        });
+    }
+
+    // Retry & Refresh Buttons
+    if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+            loadSupplierPayments();
+        });
+    }
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            loadSupplierPayments();
+            showToast('Refreshed supplier payments.', 'info');
+        });
+    }
+
+    // Export Buttons
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', exportToPdf);
+    }
+    if (excelBtn) {
+        excelBtn.addEventListener('click', exportToExcel);
+    }
+}
+
+/**
+ * Collects current filter inputs and triggers reload
+ */
+function applyFilters() {
+    const searchInput = document.getElementById('search-input');
+    const fromDateInput = document.getElementById('from-date-input');
+    const toDateInput = document.getElementById('to-date-input');
+
+    searchTerm = searchInput ? searchInput.value.trim() : '';
+    fromDate = fromDateInput ? fromDateInput.value.trim() : '';
+    toDate = toDateInput ? toDateInput.value.trim() : '';
+
+    currentPage = 1;
+    loadSupplierPayments();
+}
+
+/**
+ * Fetches supplier payments from API:
+ * GET /api/SupplierPayments/GetAll?SearchTerm=...&SupplierId=...&FromDate=...&ToDate=...&PageNumber=...&PageSize=...
+ * Note: All parameters are optional.
+ */
+async function loadSupplierPayments() {
+    const tableBody = document.getElementById('payments-table-body');
+    const emptyState = document.getElementById('payments-empty-state');
+    const apiErrorAlert = document.getElementById('api-error-alert');
+    const apiErrorMsg = document.getElementById('api-error-message');
+
+    if (!tableBody) return;
+
+    // Reset alert & empty state
+    if (apiErrorAlert) {
+        apiErrorAlert.classList.add('d-none');
+        apiErrorAlert.classList.remove('d-flex');
+    }
+    if (emptyState) emptyState.classList.add('d-none');
+
+    // Show loading skeleton
+    tableBody.innerHTML = `
+        <tr id="payments-loading-row">
+            <td colspan="6" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="text-muted small mt-2">Fetching supplier payments...</div>
+            </td>
+        </tr>
+    `;
+
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const token = getAuthToken();
+
+    // Build URLSearchParams - only append parameters that have values
+    const queryParams = new URLSearchParams();
+
+    if (searchTerm && searchTerm.trim() !== '') {
+        queryParams.append('SearchTerm', searchTerm.trim());
+    }
+    if (supplierId && supplierId.toString().trim() !== '') {
+        queryParams.append('SupplierId', supplierId.toString().trim());
+    }
+    if (fromDate && fromDate.trim() !== '') {
+        queryParams.append('FromDate', fromDate.trim());
+    }
+    if (toDate && toDate.trim() !== '') {
+        queryParams.append('ToDate', toDate.trim());
+    }
+    if (currentPage) {
+        queryParams.append('PageNumber', currentPage.toString());
+    }
+    if (pageSize) {
+        queryParams.append('PageSize', pageSize.toString());
+    }
+
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `${baseUrl}/SupplierPayments/GetAll?${queryString}` : `${baseUrl}/SupplierPayments/GetAll`;
+
+    try {
+        console.log('Fetching Supplier Payments from:', endpoint);
+        const headers = { 'accept': '*/*' };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'GET',
+            headers: headers
+        });
+
+        if (response.status === 401) {
+            throw new Error('Unauthorized (401). Please sign in to fetch live database records.');
+        }
+
+        if (!response.ok) {
+            throw new Error(`Server returned HTTP ${response.status} (${response.statusText || 'Error'})`);
+        }
+
+        const result = await response.json();
+        console.log('Supplier Payments API Response:', result);
+
+        let items = [];
+        totalCount = 0;
+        totalPages = 1;
+
+        if (result) {
+            if (result.data) {
+                if (Array.isArray(result.data.items || result.data.Items)) {
+                    items = result.data.items || result.data.Items;
+                    totalCount = result.data.totalCount !== undefined ? result.data.totalCount : (result.data.TotalCount !== undefined ? result.data.TotalCount : items.length);
+                    totalPages = result.data.totalPages || result.data.TotalPages || Math.ceil(totalCount / pageSize) || 1;
+                    currentPage = result.data.pageNumber || result.data.PageNumber || currentPage;
+                } else if (Array.isArray(result.data)) {
+                    items = result.data;
+                    totalCount = items.length;
+                    totalPages = Math.ceil(totalCount / pageSize) || 1;
+                }
+            } else if (Array.isArray(result.items)) {
+                items = result.items;
+                totalCount = result.totalCount || items.length;
+                totalPages = result.totalPages || Math.ceil(totalCount / pageSize) || 1;
+            } else if (Array.isArray(result)) {
+                items = result;
+                totalCount = items.length;
+                totalPages = Math.ceil(totalCount / pageSize) || 1;
+            }
+        }
+
+        paymentsList = items;
+        renderPaymentsTable(paymentsList);
+        updateKpiCards(paymentsList, totalCount);
+        renderPaginationInfo(paymentsList.length, totalCount, currentPage);
+        renderPaginationControls(currentPage, totalPages);
+        updateActiveFilterBadges();
+
+    } catch (err) {
+        console.warn('API error while fetching supplier payments:', err.message);
+
+        // Display notice and provide fallback sample payments for preview
+        if (apiErrorAlert && apiErrorMsg) {
+            apiErrorMsg.innerText = `Backend Notice: ${err.message}. Showing sample supplier payments below for preview.`;
+            apiErrorAlert.classList.remove('d-none');
+            apiErrorAlert.classList.add('d-flex');
+        }
+
+        // Filter sample data based on current inputs
+        let filteredSample = SAMPLE_PAYMENTS_DATA.filter(item => {
+            let match = true;
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                const sName = (item.supplierName || '').toLowerCase();
+                const shop = (item.supplierShopName || '').toLowerCase();
+                const tx = (item.transactionNo || '').toLowerCase();
+                const rem = (item.remarks || '').toLowerCase();
+                if (!sName.includes(term) && !shop.includes(term) && !tx.includes(term) && !rem.includes(term)) {
+                    match = false;
+                }
+            }
+            if (supplierId && item.supplierId != supplierId) {
+                match = false;
+            }
+            if (fromDate) {
+                const itemDate = (item.transactionDate || item.createdOn || '').substring(0, 10);
+                if (itemDate && itemDate < fromDate) match = false;
+            }
+            if (toDate) {
+                const itemDate = (item.transactionDate || item.createdOn || '').substring(0, 10);
+                if (itemDate && itemDate > toDate) match = false;
+            }
+            return match;
+        });
+
+        paymentsList = filteredSample;
+        totalCount = filteredSample.length;
+        totalPages = Math.ceil(totalCount / pageSize) || 1;
+
+        renderPaymentsTable(paymentsList);
+        updateKpiCards(paymentsList, totalCount);
+        renderPaginationInfo(paymentsList.length, totalCount, currentPage);
+        renderPaginationControls(currentPage, totalPages);
+        updateActiveFilterBadges();
+    }
+}
+
+/**
+ * Updates KPI Summary Stat Cards at the top of the page
+ */
+function updateKpiCards(items, totalRecordsCount) {
+    const totalRecordsEl = document.getElementById('stat-total-records');
+    const totalPaymentEl = document.getElementById('stat-total-payment');
+    const avgPaymentEl = document.getElementById('stat-avg-payment');
+    const maxPaymentEl = document.getElementById('stat-max-payment');
+
+    if (totalRecordsEl) {
+        totalRecordsEl.innerText = Number(totalRecordsCount).toLocaleString('en-US');
+    }
+
+    let sumPayment = 0;
+    let maxPayment = 0;
+
+    items.forEach(item => {
+        const p = Number(item.payment || 0);
+        sumPayment += p;
+        if (p > maxPayment) maxPayment = p;
+    });
+
+    const avgPayment = items.length > 0 ? (sumPayment / items.length) : 0;
+
+    if (totalPaymentEl) totalPaymentEl.innerText = `৳ ${formatCurrency(sumPayment)}`;
+    if (avgPaymentEl) avgPaymentEl.innerText = `৳ ${formatCurrency(avgPayment)}`;
+    if (maxPaymentEl) maxPaymentEl.innerText = `৳ ${formatCurrency(maxPayment)}`;
+}
+
+/**
+ * Renders payment rows into table body
+ * Requirements:
+ * 1. No action column
+ * 2. No (৳) icon in table rows
+ * 3. Date column is date-only (no time portion)
+ */
+function renderPaymentsTable(items) {
+    const tableBody = document.getElementById('payments-table-body');
+    const emptyState = document.getElementById('payments-empty-state');
+    if (!tableBody) return;
+
+    if (!items || items.length === 0) {
+        tableBody.innerHTML = '';
+        if (emptyState) emptyState.classList.remove('d-none');
+        return;
+    }
+
+    if (emptyState) emptyState.classList.add('d-none');
+
+    let html = '';
+    items.forEach(item => {
+        const id = item.id || 0;
+        const transNo = item.transactionNo || '—';
+        const dateFormatted = formatDate(item.transactionDate || item.createdOn);
+        const supplierName = item.supplierName || 'N/A';
+        const shopName = item.supplierShopName || '';
+        const remarks = (item.remarks && item.remarks !== 'string') ? item.remarks : '—';
+        const payment = Number(item.payment || 0);
+        const prevBal = Number(item.supplierPreviousBalance || 0);
+        const newBal = Number(item.supplierNewBalance || 0);
+
+        // Initials for avatar
+        const initials = supplierName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SP';
+
+        html += `
+            <tr class="payment-row" data-id="${id}">
+                <!-- Date (Date only, no time portion) -->
+                <td class="ps-4">
+                    <span class="fw-semibold text-dark">${dateFormatted}</span>
+                </td>
+
+                <!-- Transaction Ref -->
+                <td>
+                    <div class="d-inline-flex align-items-center gap-1">
+                        <span class="badge bg-light text-primary border font-monospace px-2 py-1 transaction-ref-badge" role="button" onclick="viewPaymentDetails(${id})" title="Click to view payment voucher">
+                            ${escapeHtml(transNo)}
+                        </span>
+                        <button type="button" class="btn btn-link btn-sm p-0 text-muted" onclick="copyToClipboard('${escapeHtml(transNo)}', 'Transaction Ref')" title="Copy Reference">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </td>
+
+                <!-- Supplier -->
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary-subtle text-primary fw-bold flex-shrink-0" style="width: 34px; height: 34px; font-size: 0.8rem;">
+                            ${escapeHtml(initials)}
+                        </div>
+                        <div class="overflow-hidden">
+                            <div class="fw-semibold text-dark text-truncate" style="max-width: 175px;" title="${escapeHtml(supplierName)}">
+                                ${escapeHtml(supplierName)}
+                            </div>
+                            ${shopName ? `<span class="badge bg-secondary-subtle text-secondary small py-0 px-2 fw-normal">${escapeHtml(shopName)}</span>` : ''}
+                        </div>
+                    </div>
+                </td>
+
+                <!-- Remarks -->
+                <td>
+                    <span class="text-muted small text-truncate d-inline-block" style="max-width: 170px;" title="${escapeHtml(remarks)}">
+                        ${escapeHtml(remarks)}
+                    </span>
+                </td>
+
+                <!-- Payment (Right aligned, NO currency icon in table row) -->
+                <td class="text-end">
+                    <span class="fw-bold text-success">${formatCurrency(payment)}</span>
+                </td>
+
+                <!-- Balance Flow (Centered, NO currency icon in table row) -->
+                <td class="pe-4 text-center">
+                    <div class="balance-flow-box justify-content-center">
+                        <span class="badge bg-light text-secondary border px-2 py-1 font-monospace" title="Previous Balance">
+                            ${formatCurrency(prevBal)}
+                        </span>
+                        <i class="bi bi-arrow-right text-muted mx-1"></i>
+                        <span class="badge bg-light text-dark border px-2 py-1 font-monospace fw-semibold" title="New Balance">
+                            ${formatCurrency(newBal)}
+                        </span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    tableBody.innerHTML = html;
+}
+
+/**
+ * Updates active filter badge pills under the filter bar
+ */
+function updateActiveFilterBadges() {
+    const container = document.getElementById('active-filter-badges');
+    if (!container) return;
+
+    let badges = [];
+
+    if (searchTerm) {
+        badges.push(`
+            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-2 py-1">
+                <span>Keyword: <strong>${escapeHtml(searchTerm)}</strong></span>
+                <i class="bi bi-x ms-1" role="button" onclick="clearSpecificFilter('search')"></i>
+            </span>
+        `);
+    }
+
+    if (supplierId) {
+        badges.push(`
+            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-2 py-1">
+                <span>Supplier ID: <strong>#${escapeHtml(supplierId)}</strong></span>
+                <i class="bi bi-x ms-1" role="button" onclick="clearSpecificFilter('supplier')"></i>
+            </span>
+        `);
+    }
+
+    if (fromDate) {
+        badges.push(`
+            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-2 py-1">
+                <span>From: <strong>${formatDate(fromDate)}</strong></span>
+                <i class="bi bi-x ms-1" role="button" onclick="clearSpecificFilter('fromDate')"></i>
+            </span>
+        `);
+    }
+
+    if (toDate) {
+        badges.push(`
+            <span class="badge bg-light text-dark border d-inline-flex align-items-center gap-1 px-2 py-1">
+                <span>To: <strong>${formatDate(toDate)}</strong></span>
+                <i class="bi bi-x ms-1" role="button" onclick="clearSpecificFilter('toDate')"></i>
+            </span>
+        `);
+    }
+
+    if (badges.length > 0) {
+        container.innerHTML = `
+            <span class="text-muted small me-1">Active Filters:</span>
+            ${badges.join('')}
+            <button type="button" class="btn btn-link btn-sm text-danger p-0 ms-1 text-decoration-none small" onclick="document.getElementById('btn-reset').click()">Clear All</button>
+        `;
+        container.classList.remove('d-none');
+    } else {
+        container.innerHTML = '';
+        container.classList.add('d-none');
+    }
+}
+
+/**
+ * Clears an individual active filter
+ */
+window.clearSpecificFilter = function(filterType) {
+    if (filterType === 'search') {
+        const el = document.getElementById('search-input');
+        if (el) el.value = '';
+        searchTerm = '';
+    } else if (filterType === 'supplier') {
+        supplierId = '';
+    } else if (filterType === 'fromDate') {
+        const el = document.getElementById('from-date-input');
+        if (el) el.value = '';
+        fromDate = '';
+    } else if (filterType === 'toDate') {
+        const el = document.getElementById('to-date-input');
+        if (el) el.value = '';
+        toDate = '';
+    }
+    currentPage = 1;
+    loadSupplierPayments();
+};
+
+/**
+ * Renders pagination info: "Showing X to Y of Z entries"
+ */
+function renderPaginationInfo(renderedCount, totalItems, currentPg) {
+    const infoEl = document.getElementById('pagination-info');
+    if (!infoEl) return;
+
+    if (totalItems === 0) {
+        infoEl.innerText = 'Showing 0 to 0 of 0 entries';
+        return;
+    }
+
+    const start = (currentPg - 1) * pageSize + 1;
+    const end = Math.min(start + renderedCount - 1, totalItems);
+
+    infoEl.innerText = `Showing ${start} to ${end} of ${totalItems} entries`;
+}
+
+/**
+ * Renders dynamic pagination navigation buttons
+ */
+function renderPaginationControls(currentPg, totalPgs) {
+    const listEl = document.getElementById('pagination-list');
+    if (!listEl) return;
+
+    if (totalPgs <= 1) {
+        listEl.innerHTML = '';
+        return;
+    }
+
+    let html = '';
+
+    // Previous Button
+    const prevDisabled = currentPg <= 1 ? 'disabled' : '';
+    html += `
+        <li class="page-item ${prevDisabled}">
+            <button class="page-link rounded-2" onclick="navigateToPage(${currentPg - 1})" aria-label="Previous">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+        </li>
+    `;
+
+    // Dynamic Page Number Window
+    const maxButtons = 5;
+    let startPage = Math.max(1, currentPg - Math.floor(maxButtons / 2));
+    let endPage = Math.min(totalPgs, startPage + maxButtons - 1);
+
+    if (endPage - startPage + 1 < maxButtons) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+
+    if (startPage > 1) {
+        html += `
+            <li class="page-item">
+                <button class="page-link rounded-2" onclick="navigateToPage(1)">1</button>
+            </li>
+        `;
+        if (startPage > 2) {
+            html += `<li class="page-item disabled"><span class="page-link border-0">…</span></li>`;
+        }
+    }
+
+    for (let p = startPage; p <= endPage; p++) {
+        const activeClass = p === currentPg ? 'active' : '';
+        html += `
+            <li class="page-item ${activeClass}">
+                <button class="page-link rounded-2" onclick="navigateToPage(${p})">${p}</button>
+            </li>
+        `;
+    }
+
+    if (endPage < totalPgs) {
+        if (endPage < totalPgs - 1) {
+            html += `<li class="page-item disabled"><span class="page-link border-0">…</span></li>`;
+        }
+        html += `
+            <li class="page-item">
+                <button class="page-link rounded-2" onclick="navigateToPage(${totalPgs})">${totalPgs}</button>
+            </li>
+        `;
+    }
+
+    // Next Button
+    const nextDisabled = currentPg >= totalPgs ? 'disabled' : '';
+    html += `
+        <li class="page-item ${nextDisabled}">
+            <button class="page-link rounded-2" onclick="navigateToPage(${currentPg + 1})" aria-label="Next">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </li>
+    `;
+
+    listEl.innerHTML = html;
+}
+
+/**
+ * Navigate to a specific page
+ */
+window.navigateToPage = function(targetPage) {
+    if (targetPage < 1 || (totalPages && targetPage > totalPages) || targetPage === currentPage) {
+        return;
+    }
+    currentPage = targetPage;
+    loadSupplierPayments();
+};
+
+/**
+ * Open Payment Details Voucher Modal
+ */
+window.viewPaymentDetails = function(paymentId) {
+    const item = paymentsList.find(p => p.id === paymentId) || SAMPLE_PAYMENTS_DATA.find(p => p.id === paymentId);
+    if (!item) {
+        showToast('Payment record details not found.', 'warning');
+        return;
+    }
+
+    currentSelectedPayment = item;
+
+    const modalTransNoEl = document.getElementById('modal-payment-trans-no');
+    const modalContentEl = document.getElementById('modal-payment-details-content');
+
+    if (modalTransNoEl) {
+        modalTransNoEl.innerText = item.transactionNo || `PAY-#${item.id}`;
+    }
+
+    if (modalContentEl) {
+        const supplierName = item.supplierName || 'N/A';
+        const shopName = item.supplierShopName || 'N/A';
+        const prevBal = Number(item.supplierPreviousBalance || 0);
+        const newBal = Number(item.supplierNewBalance || 0);
+        const payment = Number(item.payment || 0);
+        const remarks = (item.remarks && item.remarks !== 'string') ? item.remarks : 'None';
+        const dateFormatted = formatDateTime(item.transactionDate || item.createdOn);
+
+        modalContentEl.innerHTML = `
+            <div class="row g-3 mb-4">
+                <!-- Supplier Info Card -->
+                <div class="col-12 col-md-4">
+                    <div class="p-3 bg-light rounded-4 h-100 border">
+                        <div class="d-flex align-items-center gap-2 mb-2 text-primary">
+                            <i class="bi bi-truck fs-5"></i>
+                            <span class="fw-semibold">Supplier</span>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1">${escapeHtml(supplierName)}</h6>
+                        <div class="text-muted small mb-1">
+                            <i class="bi bi-shop me-1"></i> ${escapeHtml(shopName)}
+                        </div>
+                        <div class="text-muted small">
+                            Supplier ID: <span class="fw-semibold text-dark">#${item.supplierId || '—'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Settlement Card -->
+                <div class="col-12 col-md-4">
+                    <div class="p-3 bg-light rounded-4 h-100 border">
+                        <div class="d-flex align-items-center gap-2 mb-2 text-success">
+                            <i class="bi bi-cash-stack fs-5"></i>
+                            <span class="fw-semibold">Settlement Summary</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small mb-1">
+                            <span>Old Balance:</span>
+                            <span class="font-monospace text-dark">৳ ${formatCurrency(prevBal)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between fw-bold fs-6 mb-1 text-success">
+                            <span>Paid Amount:</span>
+                            <span class="font-monospace">৳ ${formatCurrency(payment)}</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted small border-top pt-1">
+                            <span>New Balance:</span>
+                            <span class="font-monospace fw-semibold text-dark">৳ ${formatCurrency(newBal)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction Info Card -->
+                <div class="col-12 col-md-4">
+                    <div class="p-3 bg-light rounded-4 h-100 border">
+                        <div class="d-flex align-items-center gap-2 mb-2 text-info">
+                            <i class="bi bi-info-circle fs-5"></i>
+                            <span class="fw-semibold">Information</span>
+                        </div>
+                        <div class="text-muted small mb-1">
+                            Date: <span class="fw-medium text-dark">${dateFormatted}</span>
+                        </div>
+                        <div class="text-muted small mb-1">
+                            Payment ID: <span class="fw-medium text-dark">#${item.id}</span>
+                        </div>
+                        <div class="text-muted small">
+                            Notes: <span class="badge bg-white text-dark border fw-normal">${escapeHtml(remarks)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction Detail Overview -->
+            <div class="card border rounded-3 overflow-hidden">
+                <div class="card-header bg-white py-2 px-3 fw-semibold small text-uppercase text-secondary">
+                    <i class="bi bi-receipt me-1"></i> Voucher Specifications
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered mb-0 small">
+                        <tbody>
+                            <tr>
+                                <th class="bg-light text-secondary" style="width: 25%;">Transaction Reference</th>
+                                <td class="font-monospace">${escapeHtml(item.transactionNo || '—')}</td>
+                                <th class="bg-light text-secondary" style="width: 25%;">Status</th>
+                                <td><span class="badge bg-success-subtle text-success">Completed</span></td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light text-secondary">Supplier Name</th>
+                                <td>${escapeHtml(supplierName)}</td>
+                                <th class="bg-light text-secondary">Shop / Outlet</th>
+                                <td>${escapeHtml(shopName)}</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light text-secondary">Disbursed Amount</th>
+                                <td class="fw-bold text-success font-monospace">৳ ${formatCurrency(payment)}</td>
+                                <th class="bg-light text-secondary">Updated Balance</th>
+                                <td class="font-monospace fw-semibold">${formatCurrency(newBal)}</td>
+                            </tr>
+                            <tr>
+                                <th class="bg-light text-secondary">Remarks</th>
+                                <td colspan="3">${escapeHtml(remarks)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    if (paymentDetailsModalInstance) {
+        paymentDetailsModalInstance.show();
+    } else {
+        const modalEl = document.getElementById('paymentDetailsModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            paymentDetailsModalInstance = new bootstrap.Modal(modalEl);
+            paymentDetailsModalInstance.show();
+        }
+    }
+};
+
+/**
+ * Export current payments list to Excel using SheetJS
+ */
+function exportToExcel() {
+    if (!paymentsList || paymentsList.length === 0) {
+        showToast('No payment data to export.', 'warning');
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        showToast('Excel export library not loaded. Please try again.', 'danger');
+        return;
+    }
+
+    try {
+        const exportData = paymentsList.map(item => ({
+            "Transaction Ref": item.transactionNo || '',
+            "Date": formatDate(item.transactionDate || item.createdOn),
+            "Supplier Name": item.supplierName || '',
+            "Supplier Shop": item.supplierShopName || '',
+            "Remarks": (item.remarks && item.remarks !== 'string') ? item.remarks : '',
+            "Payment (BDT)": Number(item.payment || 0),
+            "Previous Balance (BDT)": Number(item.supplierPreviousBalance || 0),
+            "New Balance (BDT)": Number(item.supplierNewBalance || 0),
+            "Created Date": item.createdOn ? formatDateTime(item.createdOn) : ''
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Supplier Payments");
+
+        const dateStr = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `Supplier_Payments_${dateStr}.xlsx`);
+        showToast('Excel report generated successfully.', 'success');
+
+    } catch (e) {
+        console.error('Failed to export to Excel:', e);
+        showToast('Failed to export to Excel.', 'danger');
+    }
+}
+
+/**
+ * Export current payments list to PDF using jsPDF + autoTable
+ * Note: Table headers and columns are properly aligned (numeric columns right-aligned).
+ */
+function exportToPdf() {
+    if (!paymentsList || paymentsList.length === 0) {
+        showToast('No payment data to export.', 'warning');
+        return;
+    }
+
+    const { jsPDF } = window.jspdf || {};
+    if (!jsPDF) {
+        showToast('PDF export library not loaded. Please try again.', 'danger');
+        return;
+    }
+
+    try {
+        const doc = new jsPDF('landscape', 'pt', 'a4');
+
+        // Document Title & Metadata
+        doc.setFontSize(16);
+        doc.setTextColor(37, 99, 235);
+        doc.text("Supplier Payments Report", 40, 45);
+
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        const nowStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        doc.text(`Generated on: ${nowStr} | Total Records: ${paymentsList.length}`, 40, 62);
+
+        // Build Table Rows with right-aligned numeric headers
+        const head = [[
+            "Date",
+            "Transaction Ref",
+            "Supplier",
+            "Shop",
+            "Remarks",
+            { content: "Payment", styles: { halign: 'right' } },
+            { content: "Prev Bal", styles: { halign: 'right' } },
+            { content: "New Bal", styles: { halign: 'right' } }
+        ]];
+
+        const body = paymentsList.map(item => [
+            formatDate(item.transactionDate || item.createdOn),
+            item.transactionNo || '—',
+            item.supplierName || '—',
+            item.supplierShopName || '—',
+            (item.remarks && item.remarks !== 'string') ? item.remarks : '—',
+            formatCurrency(item.payment),
+            formatCurrency(item.supplierPreviousBalance),
+            formatCurrency(item.supplierNewBalance)
+        ]);
+
+        doc.autoTable({
+            head: head,
+            body: body,
+            startY: 75,
+            theme: 'striped',
+            headStyles: {
+                fillColor: [37, 99, 235],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                fontSize: 9
+            },
+            bodyStyles: {
+                fontSize: 8.5,
+                cellPadding: 5
+            },
+            columnStyles: {
+                0: { cellWidth: 70 },
+                1: { cellWidth: 110 },
+                2: { cellWidth: 120 },
+                3: { cellWidth: 110 },
+                4: { cellWidth: 90 },
+                5: { halign: 'right', cellWidth: 80 },
+                6: { halign: 'right', cellWidth: 80 },
+                7: { halign: 'right', cellWidth: 80 }
+            },
+            didParseCell: function(data) {
+                // Ensure header cells for numeric columns are strictly right-aligned
+                if (data.section === 'head' && [5, 6, 7].includes(data.column.index)) {
+                    data.cell.styles.halign = 'right';
+                }
+            },
+            margin: { left: 40, right: 40 }
+        });
+
+        const dateStr = new Date().toISOString().split('T')[0];
+        doc.save(`Supplier_Payments_${dateStr}.pdf`);
+        showToast('PDF report downloaded successfully.', 'success');
+
+    } catch (e) {
+        console.error('Failed to export to PDF:', e);
+        showToast('Failed to export to PDF.', 'danger');
+    }
+}
+
