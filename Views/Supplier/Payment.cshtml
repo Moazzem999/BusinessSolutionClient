@@ -1,0 +1,42 @@
+@{
+    ViewData["Title"] = "Supplier Payment";
+    var apiBaseUrl = ViewBag.ApiBaseUrl ?? "https://localhost:7148/api";
+}
+
+<!-- Page Header Row -->
+<div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+    <div>
+        <h1 class="page-title d-flex align-items-center gap-2">
+            <i class="bi bi-cash-stack text-primary"></i> Supplier Payment
+        </h1>
+        <p class="page-subtitle mb-0">Record and manage supplier payments.</p>
+    </div>
+</div>
+
+<!-- Empty Page Content Card -->
+<div class="card border-0 shadow-sm rounded-4" style="background: #ffffff;">
+    <div class="card-body p-5 text-center">
+        <div class="my-5">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary mb-3" style="width: 80px; height: 80px;">
+                <i class="bi bi-cash-stack fs-1"></i>
+            </div>
+            <h4 class="fw-bold text-dark mb-2">Supplier Payment</h4>
+            <p class="text-muted mx-auto" style="max-width: 480px;">
+                This page is prepared for supplier payments, payment voucher creation, and balance settlements.
+            </p>
+            <div class="d-inline-flex gap-2 mt-2">
+                <a asp-controller="Supplier" asp-action="List" class="btn btn-primary rounded-3 px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+                    <i class="bi bi-truck"></i>
+                    <span>Manage Suppliers</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_BASE_URL = "@apiBaseUrl";
+    </script>
+}
+
