@@ -1,8 +1,10 @@
 /* ==========================================================================
    Business Solution Client - Supplier Payments JavaScript
    Handles listing, filtering, pagination, KPI stats, payment voucher modal,
-   and exports (PDF / Excel) for Supplier Payments.
-   API: GET /api/SupplierPayments/GetAll?SearchTerm=...&SupplierId=...&FromDate=...&ToDate=...&PageNumber=...&PageSize=...
+   delete payment, and exports (PDF / Excel) for Supplier Payments.
+   API: 
+     - GET /api/SupplierPayments/GetAll?SearchTerm=...&SupplierId=...&FromDate=...&ToDate=...&PageNumber=...&PageSize=...
+     - DELETE /api/SupplierPayments/{id}
    Note: All query parameters are optional.
    ========================================================================== */
 
@@ -17,6 +19,8 @@ let totalPages = 1;
 let paymentsList = [];
 let currentSelectedPayment = null;
 let paymentDetailsModalInstance = null;
+let deletePaymentModalInstance = null;
+let deletePaymentId = null;
 let searchDebounceTimer = null;
 
 // Sample fallback supplier payments matching GET /api/SupplierPayments/GetAll response
@@ -181,6 +185,36 @@ function getAuthToken() {
 }
 
 /**
+ * Checks if a given date string is within 2 days of current time
+ * Rule: Delete button is visible only when createdOn is within 2 days.
+ */
+function isWithinTwoDays(dateStr) {
+    if (!dateStr) return false;
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return false;
+
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+
+        // If created in future due to slight client/server timezone offset, treat as recent
+        if (diffMs < 0) return true;
+
+        // 2 days in milliseconds: 2 * 24 * 60 * 60 * 1000 = 172,800,000 ms (48 hours)
+        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+        if (diffMs <= twoDaysMs) return true;
+
+        // Also check if calendar days difference is <= 2
+        const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const dayDiff = Math.round((nowStart - dateStart) / (1000 * 60 * 60 * 24));
+        return dayDiff <= 2;
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
  * Format date string into user-friendly localized format (e.g. 28 Oct 2026)
  * Note: Time portion is omitted to keep the table clean.
  */
@@ -313,7 +347,7 @@ function copyToClipboard(text, label = 'Transaction reference') {
 }
 
 /**
- * Initializes event listeners for form controls, exports, and modal
+ * Initializes event listeners for form controls, exports, and modals
  */
 function initPaymentEvents() {
     const filterForm = document.getElementById('payment-filter-form');
@@ -326,14 +360,24 @@ function initPaymentEvents() {
     const refreshBtn = document.getElementById('btn-refresh-payments');
     const pdfBtn = document.getElementById('btn-export-pdf');
     const excelBtn = document.getElementById('btn-export-excel');
+    const confirmDeleteBtn = document.getElementById('btn-confirm-delete-payment');
 
-    // Bootstrap Modal Instance for Payment Voucher Details
+    // Bootstrap Modal Instances
     const modalEl = document.getElementById('paymentDetailsModal');
     if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
         try {
             paymentDetailsModalInstance = new bootstrap.Modal(modalEl);
         } catch (e) {
             console.warn('Could not initialize paymentDetailsModal bootstrap instance:', e);
+        }
+    }
+
+    const deleteModalEl = document.getElementById('deletePaymentModal');
+    if (deleteModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        try {
+            deletePaymentModalInstance = new bootstrap.Modal(deleteModalEl);
+        } catch (e) {
+            console.warn('Could not initialize deletePaymentModal bootstrap instance:', e);
         }
     }
 
@@ -380,7 +424,6 @@ function initPaymentEvents() {
             toDate = '';
             currentPage = 1;
 
-            // Clear URL search params without page reload
             if (window.history && window.history.replaceState) {
                 const cleanUrl = window.location.pathname;
                 window.history.replaceState({}, document.title, cleanUrl);
@@ -409,6 +452,13 @@ function initPaymentEvents() {
         refreshBtn.addEventListener('click', () => {
             loadSupplierPayments();
             showToast('Refreshed supplier payments.', 'info');
+        });
+    }
+
+    // Delete Payment Confirm Button
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', () => {
+            executeDeletePayment();
         });
     }
 
@@ -641,7 +691,7 @@ function updateKpiCards(items, totalRecordsCount) {
  * - Remarks: clearly visible text-secondary small fw-medium
  * - Payment: fw-bold text-success font-monospace
  * - Balance Flow: text-muted font-monospace small -> fw-bold font-monospace ${balColorClass}
- * - Action Column: Preview button linking to voucher modal
+ * - Action Column: Preview button + Delete button (icon-only, visible ONLY if createdOn is within 2 days)
  */
 function renderPaymentsTable(items) {
     const tableBody = document.getElementById('payments-table-body');
@@ -667,6 +717,10 @@ function renderPaymentsTable(items) {
         const payment = Number(item.payment || 0);
         const prevBal = Number(item.supplierPreviousBalance || 0);
         const newBal = Number(item.supplierNewBalance || 0);
+
+        // Check if createdOn is within 2 days for conditional Delete button visibility
+        const createdOnRaw = item.createdOn || item.CreatedOn || item.transactionDate || item.TransactionDate;
+        const canDelete = isWithinTwoDays(createdOnRaw);
 
         // Initials for avatar matching TransactionLog
         const initials = supplierName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SP';
@@ -743,11 +797,18 @@ function renderPaymentsTable(items) {
                     </div>
                 </td>
 
-                <!-- Action (Preview) -->
+                <!-- Action (Preview + Delete icon only within 2 days) -->
                 <td class="pe-4 text-end">
-                    <button type="button" class="btn btn-outline-primary btn-sm rounded-2 d-inline-flex align-items-center gap-1 px-2 py-1" onclick="viewPaymentDetails(${id})" title="Preview Payment Voucher">
-                        <i class="bi bi-eye-fill"></i>
-                    </button>
+                    <div class="d-inline-flex align-items-center justify-content-end gap-1">
+                        <button type="button" class="btn btn-outline-primary btn-sm rounded-2 d-inline-flex align-items-center gap-1 px-2 py-1" onclick="viewPaymentDetails(${id})" title="Preview Payment Voucher">
+                            <i class="bi bi-eye-fill"></i>
+                        </button>
+                        ${canDelete ? `
+                            <button type="button" class="btn btn-outline-danger btn-sm rounded-2 px-2 py-1 d-inline-flex align-items-center justify-content-center" onclick="confirmDeletePayment(${id}, '${escapeHtml(transNo)}')" title="Delete Payment">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        ` : ''}
+                    </div>
                 </td>
             </tr>
         `;
@@ -942,6 +1003,156 @@ window.navigateToPage = function(targetPage) {
     currentPage = targetPage;
     loadSupplierPayments();
 };
+
+/**
+ * Opens delete confirmation modal for the selected supplier payment
+ * Verifies that the payment is within 2 days before allowing deletion.
+ */
+window.confirmDeletePayment = function(id, transNo) {
+    const targetPayment = paymentsList.find(p => String(p.id || p.Id) === String(id));
+    if (targetPayment) {
+        const createdOnRaw = targetPayment.createdOn || targetPayment.CreatedOn || targetPayment.transactionDate || targetPayment.TransactionDate;
+        if (!isWithinTwoDays(createdOnRaw)) {
+            showToast('Payments older than 2 days cannot be deleted.', 'warning');
+            return;
+        }
+    }
+
+    deletePaymentId = id;
+
+    const refEl = document.getElementById('delete-payment-ref');
+    const idEl = document.getElementById('delete-payment-id');
+    const errEl = document.getElementById('delete-payment-error');
+
+    if (refEl) refEl.innerText = transNo || `PAY-#${id}`;
+    if (idEl) idEl.innerText = id;
+    if (errEl) {
+        errEl.classList.add('d-none');
+        errEl.classList.remove('d-flex');
+    }
+
+    const modalEl = document.getElementById('deletePaymentModal');
+    if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        deletePaymentModalInstance = bootstrap.Modal.getOrCreateInstance
+            ? bootstrap.Modal.getOrCreateInstance(modalEl)
+            : (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl));
+        deletePaymentModalInstance.show();
+    }
+};
+
+/**
+ * Executes delete request to backend API: DELETE /api/SupplierPayments/{id}
+ * Expected Response: { message: "...", succeeded: true, statusCode: 200, data: true }
+ */
+async function executeDeletePayment() {
+    if (!deletePaymentId) return;
+
+    const targetId = deletePaymentId;
+    const btnConfirm = document.getElementById('btn-confirm-delete-payment');
+    const btnText = document.getElementById('btn-confirm-delete-payment-text');
+    const errEl = document.getElementById('delete-payment-error');
+
+    if (errEl) {
+        errEl.classList.add('d-none');
+        errEl.classList.remove('d-flex');
+    }
+
+    if (btnConfirm) btnConfirm.disabled = true;
+    if (btnText) btnText.innerText = 'Deleting...';
+
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const token = getAuthToken();
+    const endpoint = `${baseUrl}/SupplierPayments/${targetId}`;
+
+    try {
+        console.log('Deleting Supplier Payment at:', endpoint);
+        const headers = { 'accept': '*/*' };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: headers
+        });
+
+        let resData = null;
+        try {
+            resData = await response.json();
+            console.log('Delete Supplier Payment API Response:', resData);
+        } catch (_) { }
+
+        if (response.status === 401) {
+            throw new Error('Unauthorized (401). Please sign in with an authorized account.');
+        }
+
+        let isDeleted = false;
+        if (response.ok) {
+            if (!resData) {
+                isDeleted = true;
+            } else if (typeof resData.succeeded === 'boolean') {
+                isDeleted = resData.succeeded;
+            } else if (typeof resData.Succeeded === 'boolean') {
+                isDeleted = resData.Succeeded;
+            } else if (resData.data === true || resData.Data === true) {
+                isDeleted = true;
+            } else if (resData.statusCode && (resData.statusCode < 200 || resData.statusCode >= 300)) {
+                isDeleted = false;
+            } else {
+                isDeleted = true;
+            }
+        } else {
+            isDeleted = false;
+        }
+
+        const serverMessage = (resData && (resData.message || resData.Message))
+            ? (resData.message || resData.Message)
+            : (isDeleted ? 'Supplier payment deleted successfully.' : `Failed to delete supplier payment (Status ${response.status}).`);
+
+        if (deletePaymentModalInstance) {
+            deletePaymentModalInstance.hide();
+        }
+
+        if (isDeleted) {
+            // Remove from local sample fallback data if present
+            const sampleIdx = SAMPLE_PAYMENTS_DATA.findIndex(p => String(p.id) === String(targetId));
+            if (sampleIdx !== -1) {
+                SAMPLE_PAYMENTS_DATA.splice(sampleIdx, 1);
+            }
+
+            showToast(serverMessage, 'success');
+            loadSupplierPayments();
+        } else {
+            showToast(serverMessage, 'danger');
+        }
+
+    } catch (err) {
+        console.warn('API delete supplier payment error, checking sample fallback:', err);
+
+        // If in sample fallback mode (offline or 401), allow demo delete
+        const sampleIdx = SAMPLE_PAYMENTS_DATA.findIndex(p => String(p.id) === String(targetId));
+        const isNetworkOrAuth = err.message.includes('401') ||
+                                err.message.includes('Failed to fetch') ||
+                                err.message.includes('NetworkError') ||
+                                err.message.includes('Network connection');
+
+        if (deletePaymentModalInstance) {
+            deletePaymentModalInstance.hide();
+        }
+
+        if (sampleIdx !== -1 && isNetworkOrAuth) {
+            SAMPLE_PAYMENTS_DATA.splice(sampleIdx, 1);
+            showToast('Supplier payment deleted successfully.', 'success');
+            loadSupplierPayments();
+        } else {
+            showToast(err.message || 'Failed to delete supplier payment.', 'danger');
+        }
+    } finally {
+        if (btnConfirm) btnConfirm.disabled = false;
+        if (btnText) btnText.innerText = 'Delete';
+        deletePaymentId = null;
+    }
+}
 
 /**
  * Open Payment Details Voucher Modal
