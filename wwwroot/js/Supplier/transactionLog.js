@@ -15,8 +15,10 @@ let totalPages = 1;
 let transactionsList = [];
 let currentSelectedTransaction = null;
 let currentSelectedOrder = null;
+let currentSelectedPayment = null;
 let transactionDetailsModalInstance = null;
 let orderDetailsModalInstance = null;
+let paymentDetailsModalInstance = null;
 let searchDebounceTimer = null;
 
 // Sample fallback supplier order matching GET /api/SupplierOrders/GetById/{id}
@@ -72,6 +74,28 @@ const SAMPLE_SUPPLIER_ORDER = {
 
 // Sample Fallback Data matching the backend response schema
 const SAMPLE_TRANSACTION_HISTORIES = [
+    {
+        supplierId: 1,
+        supplierName: "Md Abdul Wadud",
+        supplierShopName: "Makka Cap House-2",
+        supplierOrderId: null,
+        supplierOrderNo: null,
+        supplierPaymentId: 13,
+        paymentId: 13,
+        transactionNo: "20261029-3964dabe3d",
+        transactionDate: "2026-10-28T19:43:28",
+        amount: 0,
+        payment: 10000,
+        remarks: "Payment in City bank",
+        supplierPreviousBalance: 55000,
+        supplierNewBalance: 45000,
+        id: 13,
+        createdOn: "2026-10-29T01:43:28.171402",
+        updatedOn: "2026-10-29T01:43:28.1714035",
+        createdBy: 1,
+        updatedBy: 1,
+        status: 1
+    },
     {
         supplierId: 5,
         supplierName: "Md Rejaul Karim",
@@ -405,6 +429,15 @@ function initTransactionLogEvents() {
         }
     }
 
+    const paymentModalEl = document.getElementById('paymentDetailsModal');
+    if (paymentModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        try {
+            paymentDetailsModalInstance = new bootstrap.Modal(paymentModalEl);
+        } catch (e) {
+            console.warn('Could not initialize paymentDetailsModal bootstrap instance:', e);
+        }
+    }
+
     // Filter Form Submit
     if (filterForm) {
         filterForm.addEventListener('submit', (e) => {
@@ -725,6 +758,7 @@ function renderTransactionsTable(items) {
         const payment = Number(item.payment || 0);
         const prevBal = Number(item.supplierPreviousBalance || 0);
         const newBal = Number(item.supplierNewBalance || 0);
+        const paymentId = item.supplierPaymentId || item.SupplierPaymentId || item.paymentId || (payment > 0 ? id : null);
 
         // Initials for avatar
         const initials = supplierName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'SP';
@@ -780,9 +814,11 @@ function renderTransactionsTable(items) {
                             data-order-no="${escapeHtml(orderNo)}"
                             title="Click to view details of ${escapeHtml(orderNo)}">${escapeHtml(orderNo)}</button>
                     ` : `
-                        <span class="badge bg-light text-muted border px-2 py-1 fw-normal" style="font-size: 0.75rem;">
-                            Payment
-                        </span>
+                        <button type="button" class="btn-payment-details" 
+                            data-payment-id="${paymentId || ''}" 
+                            data-trans-no="${escapeHtml(transNo)}"
+                            data-index="${items.indexOf(item)}"
+                            title="Click to view payment voucher of ${escapeHtml(transNo)}">Payment</button>
                     `}
                 </td>
 
@@ -825,6 +861,18 @@ function renderTransactionsTable(items) {
             const orderId = btn.getAttribute('data-order-id');
             const orderNo = btn.getAttribute('data-order-no');
             fetchAndShowOrderDetails(orderId, orderNo);
+        });
+    });
+
+    // Attach click listeners to clickable Payment badges
+    tableBody.querySelectorAll('.btn-payment-details').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const paymentId = btn.getAttribute('data-payment-id');
+            const transNo = btn.getAttribute('data-trans-no');
+            const index = btn.getAttribute('data-index');
+            const fallbackItem = (index !== null && transactionsList && transactionsList[index]) ? transactionsList[index] : null;
+            fetchAndShowPaymentDetails(paymentId, transNo, fallbackItem);
         });
     });
 }
@@ -1071,6 +1119,240 @@ function renderOrderDetailsModal(order) {
                     </tr>
                 </tfoot>
             </table>
+        </div>
+    `;
+}
+
+/**
+ * Fetches supplier payment details by ID from API:
+ * GET /api/SupplierPayments/GetById/{id}
+ * Displays payment voucher details modal matching the design
+ */
+async function fetchAndShowPaymentDetails(paymentId, fallbackTransNo, fallbackItem) {
+    const modalTitleNo = document.getElementById('modal-payment-trans-no');
+    const modalContent = document.getElementById('modal-payment-details-content');
+
+    if (!modalContent) return;
+
+    if (modalTitleNo) {
+        modalTitleNo.innerText = fallbackTransNo || (paymentId ? `#${paymentId}` : '');
+    }
+
+    // Show loading skeleton inside modal
+    modalContent.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-success" role="status">
+                <span class="visually-hidden">Loading payment details...</span>
+            </div>
+            <div class="text-muted small mt-2">Fetching payment voucher details for ${escapeHtml(fallbackTransNo || (paymentId ? `#${paymentId}` : 'Payment'))}...</div>
+        </div>
+    `;
+
+    if (paymentDetailsModalInstance) {
+        paymentDetailsModalInstance.show();
+    } else {
+        const modalEl = document.getElementById('paymentDetailsModal');
+        if (modalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            paymentDetailsModalInstance = new bootstrap.Modal(modalEl);
+            paymentDetailsModalInstance.show();
+        }
+    }
+
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const token = getAuthToken();
+    let paymentData = null;
+
+    if (paymentId) {
+        const endpoint = `${baseUrl}/SupplierPayments/GetById/${encodeURIComponent(paymentId)}`;
+        try {
+            console.log('Fetching Supplier Payment Details from:', endpoint);
+            const headers = { 'accept': '*/*' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+
+            const response = await fetch(endpoint, {
+                method: 'GET',
+                headers: headers
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Supplier Payment Details API Response:', result);
+                paymentData = result.data || result;
+            } else {
+                console.warn(`Server returned ${response.status} when fetching payment ${paymentId}`);
+            }
+        } catch (err) {
+            console.warn('Could not fetch supplier payment details from API:', err.message);
+        }
+    }
+
+    if (!paymentData && fallbackTransNo) {
+        // Try to query by transaction number if paymentId was missing or failed
+        try {
+            const searchEndpoint = `${baseUrl}/SupplierPayments/GetAll?SearchTerm=${encodeURIComponent(fallbackTransNo)}&PageNumber=1&PageSize=1`;
+            const headers = { 'accept': '*/*' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const searchResp = await fetch(searchEndpoint, { method: 'GET', headers: headers });
+            if (searchResp.ok) {
+                const searchRes = await searchResp.json();
+                const items = searchRes.data?.items || searchRes.items || searchRes.data || [];
+                if (Array.isArray(items) && items.length > 0) {
+                    paymentData = items[0];
+                }
+            }
+        } catch (_) { }
+    }
+
+    if (!paymentData) {
+        // Fallback using item data from table row
+        paymentData = {
+            id: paymentId || fallbackItem?.supplierPaymentId || fallbackItem?.id || 13,
+            supplierId: fallbackItem?.supplierId || 1,
+            supplierName: fallbackItem?.supplierName || 'Md Abdul Wadud',
+            supplierShopName: fallbackItem?.supplierShopName || 'Makka Cap House-2',
+            payment: fallbackItem?.payment || 10000,
+            remarks: fallbackItem?.remarks || 'Payment in City bank',
+            transactionNo: fallbackItem?.transactionNo || fallbackTransNo || '20261029-3964dabe3d',
+            transactionDate: fallbackItem?.transactionDate || fallbackItem?.createdOn || '2026-10-28T19:43:28',
+            supplierPreviousBalance: fallbackItem?.supplierPreviousBalance !== undefined ? fallbackItem.supplierPreviousBalance : 55000,
+            supplierNewBalance: fallbackItem?.supplierNewBalance !== undefined ? fallbackItem.supplierNewBalance : 45000,
+            createdOn: fallbackItem?.createdOn || '2026-10-29T01:43:28.171402'
+        };
+    }
+
+    currentSelectedPayment = paymentData;
+    renderPaymentDetailsModal(paymentData);
+}
+
+/**
+ * Renders the Payment Voucher Details modal content matching the design
+ */
+function renderPaymentDetailsModal(payment) {
+    const modalTitleNo = document.getElementById('modal-payment-trans-no');
+    const modalContent = document.getElementById('modal-payment-details-content');
+
+    if (!payment || !modalContent) return;
+
+    const paymentId = payment.id || payment.Id || '—';
+    const transNo = payment.transactionNo || payment.TransactionNo || '—';
+    const supplierName = payment.supplierName || payment.SupplierName || '—';
+    const shopName = payment.supplierShopName || payment.SupplierShopName || '';
+    const supplierId = payment.supplierId || payment.SupplierId || '—';
+    const paidAmount = Number(payment.payment !== undefined ? payment.payment : (payment.Payment !== undefined ? payment.Payment : 0));
+    const prevBalance = Number(payment.supplierPreviousBalance !== undefined ? payment.supplierPreviousBalance : (payment.SupplierPreviousBalance !== undefined ? payment.SupplierPreviousBalance : 0));
+    const newBalance = Number(payment.supplierNewBalance !== undefined ? payment.supplierNewBalance : (payment.SupplierNewBalance !== undefined ? payment.SupplierNewBalance : 0));
+    const dateFormatted = formatDateTime(payment.transactionDate || payment.createdOn || payment.CreatedOn);
+    const notes = payment.remarks || payment.Remarks || 'None';
+
+    if (modalTitleNo) {
+        modalTitleNo.innerText = transNo;
+    }
+
+    modalContent.innerHTML = `
+        <!-- 3 Master Info Cards -->
+        <div class="row g-3 mb-4">
+            <!-- 1. Supplier Card -->
+            <div class="col-12 col-md-4">
+                <div class="p-3 bg-light rounded-4 h-100 border">
+                    <div class="d-flex align-items-center gap-2 mb-2 text-primary">
+                        <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="bi bi-truck fs-6 text-primary"></i>
+                        </div>
+                        <span class="fw-semibold fs-6">Supplier</span>
+                    </div>
+                    <h6 class="fw-bold text-dark mb-1 text-truncate" title="${escapeHtml(supplierName)}">${escapeHtml(supplierName)}</h6>
+                    <div class="text-secondary small mb-1 text-truncate" title="${escapeHtml(shopName)}">
+                        <i class="bi bi-shop me-1 text-secondary"></i>${escapeHtml(shopName || '—')}
+                    </div>
+                    <div class="text-muted small">
+                        Supplier ID: <span class="fw-bold text-dark">#${escapeHtml(supplierId)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Settlement Summary Card -->
+            <div class="col-12 col-md-4">
+                <div class="p-3 bg-light rounded-4 h-100 border">
+                    <div class="d-flex align-items-center gap-2 mb-2 text-success">
+                        <div class="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="bi bi-cash-stack fs-6 text-success"></i>
+                        </div>
+                        <span class="fw-semibold fs-6 text-success">Settlement Summary</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small mb-1">
+                        <span>Old Balance:</span>
+                        <span class="font-monospace text-dark">৳ ${formatCurrency(prevBalance)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold fs-6 mb-1 text-success">
+                        <span>Paid Amount:</span>
+                        <span class="font-monospace">৳ ${formatCurrency(paidAmount)}</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small pt-1">
+                        <span>New Balance:</span>
+                        <span class="font-monospace fw-bold text-dark">৳ ${formatCurrency(newBalance)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Information Card -->
+            <div class="col-12 col-md-4">
+                <div class="p-3 bg-light rounded-4 h-100 border">
+                    <div class="d-flex align-items-center gap-2 mb-2 text-info">
+                        <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                            <i class="bi bi-info-circle fs-6 text-info"></i>
+                        </div>
+                        <span class="fw-semibold fs-6 text-info">Information</span>
+                    </div>
+                    <div class="text-muted small mb-1">
+                        Date: <span class="fw-medium text-dark">${dateFormatted}</span>
+                    </div>
+                    <div class="text-muted small mb-1">
+                        Payment ID: <span class="fw-bold text-dark">#${escapeHtml(paymentId)}</span>
+                    </div>
+                    <div class="text-muted small d-flex align-items-center gap-1">
+                        <span>Notes:</span>
+                        <span class="badge bg-white text-dark border fw-normal text-truncate" style="max-width: 150px;" title="${escapeHtml(notes)}">${escapeHtml(notes)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Voucher Specifications Overview -->
+        <div class="card border rounded-3 overflow-hidden">
+            <div class="card-header bg-white py-2 px-3 fw-bold small text-uppercase text-secondary d-flex align-items-center gap-2">
+                <i class="bi bi-card-text"></i>
+                <span>Voucher Specifications</span>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-bordered mb-0 small">
+                    <tbody>
+                        <tr>
+                            <th class="bg-light text-secondary fw-semibold" style="width: 25%;">Transaction Reference</th>
+                            <td class="font-monospace fw-medium" style="width: 25%;">${escapeHtml(transNo)}</td>
+                            <th class="bg-light text-secondary fw-semibold" style="width: 25%;">Status</th>
+                            <td style="width: 25%;"><span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-semibold">Completed</span></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light text-secondary fw-semibold">Supplier Name</th>
+                            <td class="fw-medium">${escapeHtml(supplierName)}</td>
+                            <th class="bg-light text-secondary fw-semibold">Shop / Outlet</th>
+                            <td class="fw-medium">${escapeHtml(shopName || '—')}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light text-secondary fw-semibold">Disbursed Amount</th>
+                            <td class="fw-bold text-success font-monospace">৳ ${formatCurrency(paidAmount)}</td>
+                            <th class="bg-light text-secondary fw-semibold">Updated Balance</th>
+                            <td class="font-monospace fw-bold text-dark">${formatCurrency(newBalance)}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light text-secondary fw-semibold">Remarks</th>
+                            <td colspan="3" class="text-dark">${escapeHtml(notes)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     `;
 }

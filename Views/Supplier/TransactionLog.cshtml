@@ -166,6 +166,26 @@
     </div>
 </div>
 
+<!-- Supplier Payment Details Voucher Modal -->
+<div class="modal fade" id="paymentDetailsModal" tabindex="-1" aria-labelledby="paymentDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="paymentDetailsModalLabel">
+                    <i class="bi bi-cash-stack text-success"></i> Payment Voucher: <span id="modal-payment-trans-no" class="text-primary font-monospace"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="modal-payment-details-content">
+                <!-- Dynamically rendered payment voucher details -->
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-secondary rounded-3 px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast Notification Container -->
 <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
     <div id="app-toast" class="toast align-items-center text-white border-0 rounded-3 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
@@ -206,6 +226,26 @@
     .btn-order-details:hover {
         background-color: #bfdbfe !important;
         color: #1d4ed8 !important;
+    }
+    .btn-payment-details {
+        cursor: pointer;
+        display: inline-block;
+        background-color: #f8fafc !important;
+        color: #475569 !important;
+        font-family: inherit;
+        font-weight: 500 !important;
+        font-size: 0.75rem;
+        padding: 0.22rem 0.65rem;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0 !important;
+        text-decoration: none !important;
+        line-height: 1.25;
+        transition: all 0.15s ease-in-out;
+    }
+    .btn-payment-details:hover {
+        background-color: #e2e8f0 !important;
+        color: #0f172a !important;
+        border-color: #cbd5e1 !important;
     }
     .balance-flow-box {
         display: inline-flex;
