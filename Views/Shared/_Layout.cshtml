@@ -46,6 +46,7 @@
     var isDashboardActive = currentController == "Dashboard";
     var isEmployeeActive = currentController == "Employee";
     var isSupplierActive = currentController == "Supplier" || currentController == "Suppliers";
+    var isCustomersActive = currentController == "Customer" || currentController == "Customers";
     var isProductsActive = currentController == "Product" || currentController == "Products";
     var isOrdersActive = currentController == "Order" || currentController == "Orders";
     var isAccountsActive = currentController == "Account" || currentController == "Accounts" || currentController == "Payroll";
@@ -110,6 +111,25 @@
                             <a asp-controller="Supplier" asp-action="TransactionLog" class="sidebar-sublink @(isSupplierActive && currentAction == "TransactionLog" ? "active" : "")">
                                 <i class="bi bi-clock-history"></i>
                                 <span>Transaction Log</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customers Group with Submenu -->
+                <div class="sidebar-group">
+                    <a href="#customersSubmenu" class="sidebar-link d-flex align-items-center justify-content-between @(isCustomersActive ? "active" : "")" data-bs-toggle="collapse" aria-expanded="@(isCustomersActive ? "true" : "false")" role="button">
+                        <div class="d-flex align-items-center gap-3">
+                            <i class="bi bi-person-lines-fill"></i>
+                            <span>Customers</span>
+                        </div>
+                        <i class="bi bi-chevron-down sidebar-chevron"></i>
+                    </a>
+                    <div class="collapse @(isCustomersActive ? "show" : "")" id="customersSubmenu">
+                        <div class="sidebar-submenu">
+                            <a asp-controller="Customer" asp-action="List" class="sidebar-sublink @(isCustomersActive && currentAction == "List" ? "active" : "")">
+                                <i class="bi bi-list-ul"></i>
+                                <span>List</span>
                             </a>
                         </div>
                     </div>

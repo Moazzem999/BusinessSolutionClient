@@ -1,0 +1,26 @@
+@{
+    ViewData["Title"] = "Customer List";
+    var apiBaseUrl = ViewBag.ApiBaseUrl ?? "https://localhost:7148/api";
+}
+
+<!-- Page Header Row -->
+<div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+    <div>
+        <h1 class="page-title d-flex align-items-center gap-2">
+            <i class="bi bi-people-fill text-primary"></i> Customers
+        </h1>
+        <p class="page-subtitle mb-0">Manage and view customer records, accounts, and transactions.</p>
+    </div>
+</div>
+
+<!-- Empty Page Placeholder Container -->
+<div class="card border-0 shadow-sm rounded-4 bg-white p-5 text-center">
+    <div class="py-5">
+        <div class="mb-3 text-secondary opacity-50" style="font-size: 3.5rem;">
+            <i class="bi bi-people"></i>
+        </div>
+        <h4 class="fw-bold text-dark mb-2">Customer List</h4>
+        <p class="text-muted small mb-0">This module is ready for customer table and records integration.</p>
+    </div>
+</div>
+
