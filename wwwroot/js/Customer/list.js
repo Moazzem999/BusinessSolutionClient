@@ -10,6 +10,7 @@ let totalCount = 0;
 let totalPages = 1;
 let customersList = [];
 let customerDetailsModalInstance = null;
+let deleteCustomerId = null;
 
 // Sample fallback customers matching API schema
 const SAMPLE_CUSTOMERS = [
@@ -335,9 +336,14 @@ function renderCustomerTable(data) {
                     </span>
                 </td>
                 <td class="pe-4 text-end">
-                    <button type="button" class="btn btn-outline-info rounded-2 btn-view-customer px-2 py-1" data-id="${id}" title="View Details">
-                        <i class="bi bi-eye-fill"></i>
-                    </button>
+                    <div class="d-inline-flex align-items-center gap-1">
+                        <button type="button" class="btn btn-outline-info rounded-2 btn-view-customer px-2 py-1" data-id="${id}" title="View Details">
+                            <i class="bi bi-eye-fill"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger rounded-2 btn-delete-customer px-2 py-1" data-id="${id}" data-name="${escapeHtml(name)}" title="Delete Customer">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `;
@@ -480,8 +486,23 @@ function initCustomerListEvents() {
             if (viewBtn) {
                 const id = viewBtn.getAttribute('data-id');
                 openCustomerViewModal(id);
+                return;
+            }
+
+            const deleteBtn = e.target.closest('.btn-delete-customer');
+            if (deleteBtn) {
+                const id = deleteBtn.getAttribute('data-id');
+                const name = deleteBtn.getAttribute('data-name');
+                openDeleteCustomerModal(id, name);
+                return;
             }
         });
+    }
+
+    // Confirm Delete Customer Button
+    const btnConfirmDelete = document.getElementById('btn-confirm-delete');
+    if (btnConfirmDelete) {
+        btnConfirmDelete.addEventListener('click', handleConfirmDelete);
     }
 
     // Export PDF & Excel
@@ -882,4 +903,93 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+/**
+ * Open Delete Customer Confirmation Modal
+ */
+function openDeleteCustomerModal(id, name) {
+    deleteCustomerId = id;
+    const modalEl = document.getElementById('deleteConfirmationModal');
+    const deleteNameEl = document.getElementById('delete-customer-name');
+    const deleteErrorEl = document.getElementById('delete-modal-error');
+
+    if (!modalEl) return;
+
+    if (deleteNameEl) deleteNameEl.innerText = name || 'this customer';
+    if (deleteErrorEl) deleteErrorEl.classList.add('d-none');
+
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
+}
+
+/**
+ * Handle confirm delete customer action
+ */
+async function handleConfirmDelete() {
+    if (!deleteCustomerId) return;
+
+    const btnConfirm = document.getElementById('btn-confirm-delete');
+    const btnConfirmText = document.getElementById('btn-confirm-delete-text');
+    const deleteErrorEl = document.getElementById('delete-modal-error');
+    const deleteErrorText = document.getElementById('delete-modal-error-text');
+
+    if (btnConfirm) btnConfirm.disabled = true;
+    if (btnConfirmText) btnConfirmText.innerText = 'Deleting...';
+    if (deleteErrorEl) deleteErrorEl.classList.add('d-none');
+
+    const token = getAuthToken();
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const endpoint = `${baseUrl}/Customers/${deleteCustomerId}`;
+
+    try {
+        console.log('Deleting Customer:', endpoint);
+        const headers = { 'accept': '*/*' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(endpoint, {
+            method: 'DELETE',
+            headers: headers
+        });
+
+        let resData = null;
+        try {
+            resData = await response.json();
+        } catch (e) { }
+
+        if (response.ok && (!resData || resData.succeeded === true || resData.statusCode === 200 || resData.status === 200)) {
+            const modalEl = document.getElementById('deleteConfirmationModal');
+            const bsModal = bootstrap.Modal.getInstance(modalEl);
+            if (bsModal) bsModal.hide();
+
+            showToast('Customer deleted successfully!', 'success');
+
+            // Also remove from local sample list if active
+            const sampleIndex = SAMPLE_CUSTOMERS.findIndex(c => String(c.id) === String(deleteCustomerId));
+            if (sampleIndex > -1) {
+                SAMPLE_CUSTOMERS.splice(sampleIndex, 1);
+            }
+
+            loadCustomers();
+        } else {
+            let errorMsg = `Failed to delete customer (Status ${response.status})`;
+            if (resData) {
+                if (resData.message) errorMsg = resData.message;
+                else if (resData.title) errorMsg = resData.title;
+                else if (resData.errors && typeof resData.errors === 'object') {
+                    errorMsg = Object.values(resData.errors).flat().join(', ');
+                }
+            }
+            if (deleteErrorText) deleteErrorText.innerText = errorMsg;
+            if (deleteErrorEl) deleteErrorEl.classList.remove('d-none');
+        }
+    } catch (err) {
+        console.error('Delete customer error:', err);
+        if (deleteErrorText) deleteErrorText.innerText = 'Network error: Unable to contact server.';
+        if (deleteErrorEl) deleteErrorEl.classList.remove('d-none');
+    } finally {
+        if (btnConfirm) btnConfirm.disabled = false;
+        if (btnConfirmText) btnConfirmText.innerText = 'Delete';
+    }
+}
+
 
