@@ -14,6 +14,7 @@ function initCreateCustomerPage() {
     const isSpecialCheckbox = document.getElementById('IsSpecial');
     const currentBalanceInput = document.getElementById('CurrentBalance');
     const balanceBadge = document.getElementById('balance-badge');
+    const specialBadge = document.getElementById('special-badge');
     const specialStatusText = document.getElementById('special-status-text');
     const balanceHelpText = document.getElementById('balance-help-text');
 
@@ -46,6 +47,10 @@ function initCreateCustomerPage() {
 
         if (isSpecial) {
             currentBalanceInput.classList.remove('bg-light');
+            if (specialBadge) {
+                specialBadge.className = 'badge bg-warning-subtle text-warning-emphasis small fw-medium';
+                specialBadge.innerHTML = '<i class="bi bi-star-fill me-1"></i>Special';
+            }
             if (balanceBadge) {
                 balanceBadge.className = 'badge bg-warning-subtle text-warning-emphasis small fw-medium';
                 balanceBadge.innerHTML = '<i class="bi bi-star-fill me-1"></i>Special (Editable)';
@@ -60,6 +65,10 @@ function initCreateCustomerPage() {
         } else {
             currentBalanceInput.classList.add('bg-light');
             currentBalanceInput.value = '0';
+            if (specialBadge) {
+                specialBadge.className = 'badge bg-secondary-subtle text-secondary small fw-normal';
+                specialBadge.textContent = 'Regular';
+            }
             if (balanceBadge) {
                 balanceBadge.className = 'badge bg-secondary-subtle text-secondary small fw-normal';
                 balanceBadge.textContent = 'Locked (0.00)';

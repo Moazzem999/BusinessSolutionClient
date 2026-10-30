@@ -66,20 +66,20 @@
                 <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
                     <i class="bi bi-wallet2 text-primary"></i> Account Type & Balance
                 </h5>
-                <div class="row g-3 align-items-center">
+                <div class="row g-3">
                     <!-- IsSpecial Switch -->
                     <div class="col-md-6 col-lg-4">
-                        <div class="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-center">
-                            <div class="form-check form-switch d-flex align-items-center justify-content-between p-0 m-0">
-                                <div>
-                                    <label class="form-check-label fw-bold text-dark mb-0 d-block cursor-pointer" for="IsSpecial" style="cursor: pointer;">
-                                        Special Customer
-                                    </label>
-                                    <small class="text-muted d-block" id="special-status-text">Regular customer (initial balance locked)</small>
-                                </div>
-                                <input class="form-check-input ms-3 fs-4" type="checkbox" role="switch" id="IsSpecial" name="IsSpecial" style="cursor: pointer;">
+                        <label class="form-label text-dark small fw-semibold d-flex align-items-center justify-content-between">
+                            <span>Customer Type</span>
+                            <span id="special-badge" class="badge bg-secondary-subtle text-secondary small fw-normal">Regular</span>
+                        </label>
+                        <label class="form-control rounded-3 bg-light d-flex align-items-center justify-content-between px-3 m-0" for="IsSpecial" style="cursor: pointer; height: 38px;">
+                            <span class="fw-semibold text-dark small">Special Customer</span>
+                            <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                <input class="form-check-input m-0" type="checkbox" role="switch" id="IsSpecial" name="IsSpecial" style="cursor: pointer; width: 2.2rem; height: 1.2rem;">
                             </div>
-                        </div>
+                        </label>
+                        <div class="form-text small text-muted" id="special-status-text">Regular customer (initial balance locked)</div>
                     </div>
 
                     <!-- Current Balance (Disabled by default unless IsSpecial is true) -->
@@ -97,8 +97,12 @@
 
                     <!-- NID Number -->
                     <div class="col-md-6 col-lg-4">
-                        <label for="NidNo" class="form-label text-dark small fw-semibold">NID Number</label>
+                        <label for="NidNo" class="form-label text-dark small fw-semibold d-flex align-items-center justify-content-between">
+                            <span>NID Number</span>
+                            <span class="text-muted small fw-normal">Optional</span>
+                        </label>
                         <input type="text" class="form-control rounded-3" id="NidNo" name="NidNo" placeholder="e.g. 1987541298456">
+                        <div class="form-text small text-muted">Customer national identification number.</div>
                     </div>
                 </div>
             </div>
