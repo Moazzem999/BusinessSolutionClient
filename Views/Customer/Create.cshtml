@@ -1,0 +1,187 @@
+@{
+    ViewData["Title"] = "Create Customer";
+    var apiBaseUrl = ViewBag.ApiBaseUrl ?? "https://localhost:7148/api";
+}
+
+<!-- Page Header Row -->
+<div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+    <div>
+        <h1 class="page-title d-flex align-items-center gap-2">
+            <i class="bi bi-person-plus-fill text-primary"></i> Create New Customer
+        </h1>
+        <p class="page-subtitle mb-0">Fill in the customer information below to register a new customer.</p>
+    </div>
+    <div>
+        <a asp-controller="Customer" asp-action="List" class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-medium d-inline-flex align-items-center gap-2">
+            <i class="bi bi-arrow-left"></i> Back to Customer List
+        </a>
+    </div>
+</div>
+
+<!-- Alert Boxes -->
+<div id="create-error-alert" class="alert alert-danger d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <span id="create-error-message">Error saving customer data.</span>
+</div>
+
+<div id="create-success-alert" class="alert alert-success d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+    <i class="bi bi-check-circle-fill fs-5"></i>
+    <span id="create-success-message">Customer created successfully! Redirecting...</span>
+</div>
+
+<!-- Main Create Form Card -->
+<div class="card border-0 shadow-sm rounded-4 mb-5" style="background: #ffffff;">
+    <div class="card-body p-4 p-md-5">
+        <form id="create-customer-form" enctype="multipart/form-data" novalidate>
+
+            <!-- Section 1: Customer & Shop Basic Information -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-person-vcard text-primary"></i> Basic Information
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6 col-lg-3">
+                        <label for="Name" class="form-label text-dark small fw-semibold">Customer Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control rounded-3" id="Name" name="Name" placeholder="e.g. Md Faruk Ahmed" required>
+                        <div class="invalid-feedback small">Customer name is required.</div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="Mobile" class="form-label text-dark small fw-semibold">Mobile Number <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control rounded-3" id="Mobile" name="Mobile" placeholder="e.g. 01711223344" required>
+                        <div class="invalid-feedback small">Mobile number is required.</div>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="ShopName" class="form-label text-dark small fw-semibold">Shop Name</label>
+                        <input type="text" class="form-control rounded-3" id="ShopName" name="ShopName" placeholder="e.g. Ahmed Fabrics & Traders">
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="Email" class="form-label text-dark small fw-semibold">Email Address</label>
+                        <input type="email" class="form-control rounded-3" id="Email" name="Email" placeholder="e.g. faruk@example.com">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Account Type, Balance & Identification -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-wallet2 text-primary"></i> Account Type & Balance
+                </h5>
+                <div class="row g-3 align-items-center">
+                    <!-- IsSpecial Switch -->
+                    <div class="col-md-6 col-lg-4">
+                        <div class="p-3 rounded-3 border bg-light h-100 d-flex flex-column justify-content-center">
+                            <div class="form-check form-switch d-flex align-items-center justify-content-between p-0 m-0">
+                                <div>
+                                    <label class="form-check-label fw-bold text-dark mb-0 d-block cursor-pointer" for="IsSpecial" style="cursor: pointer;">
+                                        Special Customer
+                                    </label>
+                                    <small class="text-muted d-block" id="special-status-text">Regular customer (initial balance locked)</small>
+                                </div>
+                                <input class="form-check-input ms-3 fs-4" type="checkbox" role="switch" id="IsSpecial" name="IsSpecial" style="cursor: pointer;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Current Balance (Disabled by default unless IsSpecial is true) -->
+                    <div class="col-md-6 col-lg-4">
+                        <label for="CurrentBalance" class="form-label text-dark small fw-semibold d-flex align-items-center justify-content-between">
+                            <span>Initial Current Balance (BDT)</span>
+                            <span id="balance-badge" class="badge bg-secondary-subtle text-secondary small fw-normal">Locked (0.00)</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted border-end-0">৳</span>
+                            <input type="number" step="0.01" class="form-control rounded-end-3 bg-light" id="CurrentBalance" name="CurrentBalance" placeholder="0.00" value="0" disabled>
+                        </div>
+                        <div class="form-text small text-muted" id="balance-help-text">Enable "Special Customer" to set initial balance.</div>
+                    </div>
+
+                    <!-- NID Number -->
+                    <div class="col-md-6 col-lg-4">
+                        <label for="NidNo" class="form-label text-dark small fw-semibold">NID Number</label>
+                        <input type="text" class="form-control rounded-3" id="NidNo" name="NidNo" placeholder="e.g. 1987541298456">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Address & Additional Details -->
+            <div class="mb-4 pb-3 border-bottom">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-geo-alt-fill text-primary"></i> Address & Remarks
+                </h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="PresentAddress" class="form-label text-dark small fw-semibold">Present Address</label>
+                        <textarea class="form-control rounded-3" id="PresentAddress" name="PresentAddress" rows="3" placeholder="Enter present shop or delivery address..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="PermanentAddress" class="form-label text-dark small fw-semibold">Permanent Address</label>
+                        <textarea class="form-control rounded-3" id="PermanentAddress" name="PermanentAddress" rows="3" placeholder="Enter permanent home address..."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <label for="AdditionalDetails" class="form-label text-dark small fw-semibold">Additional Details / Notes</label>
+                        <textarea class="form-control rounded-3" id="AdditionalDetails" name="AdditionalDetails" rows="2" placeholder="Enter additional customer notes, terms, credit limit or references..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Document Uploads -->
+            <div class="mb-4">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-arrow-up-fill text-primary"></i> Document Uploads
+                </h5>
+                <div class="row g-3">
+                    <!-- Customer Photo -->
+                    <div class="col-md-4">
+                        <label for="Image" class="form-label text-dark small fw-semibold">Customer Photo / Logo</label>
+                        <input type="file" class="form-control rounded-3" id="Image" name="Image" accept="image/*">
+                        <div class="form-text small text-muted">Upload profile photo or shop logo (.png, .jpg, .jpeg)</div>
+                        <div id="image-preview-container" class="mt-2 d-none">
+                            <img id="image-preview" src="#" alt="Customer Photo Preview" class="img-thumbnail rounded-3" style="max-height: 120px; object-fit: cover;">
+                        </div>
+                    </div>
+
+                    <!-- NID Document Photo -->
+                    <div class="col-md-4">
+                        <label for="NidImage" class="form-label text-dark small fw-semibold">NID Document Photo</label>
+                        <input type="file" class="form-control rounded-3" id="NidImage" name="NidImage" accept="image/*">
+                        <div class="form-text small text-muted">Upload NID card scan image (.png, .jpg, .jpeg)</div>
+                        <div id="nid-preview-container" class="mt-2 d-none">
+                            <img id="nid-preview" src="#" alt="NID Preview" class="img-thumbnail rounded-3" style="max-height: 120px; object-fit: cover;">
+                        </div>
+                    </div>
+
+                    <!-- Bank Cheque Image -->
+                    <div class="col-md-4">
+                        <label for="ChequeImage" class="form-label text-dark small fw-semibold">Bank Cheque Image</label>
+                        <input type="file" class="form-control rounded-3" id="ChequeImage" name="ChequeImage" accept="image/*">
+                        <div class="form-text small text-muted">Upload bank security cheque photo (.png, .jpg, .jpeg)</div>
+                        <div id="cheque-preview-container" class="mt-2 d-none">
+                            <img id="cheque-preview" src="#" alt="Cheque Preview" class="img-thumbnail rounded-3" style="max-height: 120px; object-fit: cover;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Submit Controls -->
+            <div class="d-flex align-items-center justify-content-end gap-3 pt-3 border-top">
+                <a asp-controller="Customer" asp-action="List" class="btn btn-outline-secondary rounded-3 px-4 py-2">
+                    Cancel
+                </a>
+                <button type="submit" id="btn-save-customer" class="btn btn-primary rounded-3 px-5 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+                    <span id="btn-save-text">Save</span>
+                    <div id="save-spinner" class="spinner-border spinner-border-sm d-none" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const API_BASE_URL = "@apiBaseUrl";
+    </script>
+    <script src="~/js/Customer/create.js" asp-append-version="true"></script>
+}
+
