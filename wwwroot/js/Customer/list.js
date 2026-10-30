@@ -340,6 +340,9 @@ function renderCustomerTable(data) {
                         <button type="button" class="btn btn-outline-info rounded-2 btn-view-customer px-2 py-1" data-id="${id}" title="View Details">
                             <i class="bi bi-eye-fill"></i>
                         </button>
+                        <button type="button" class="btn btn-outline-primary rounded-2 btn-edit-customer px-2 py-1" data-id="${id}" title="Edit Customer">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
                         <button type="button" class="btn btn-outline-danger rounded-2 btn-delete-customer px-2 py-1" data-id="${id}" data-name="${escapeHtml(name)}" title="Delete Customer">
                             <i class="bi bi-trash-fill"></i>
                         </button>
@@ -489,6 +492,13 @@ function initCustomerListEvents() {
                 return;
             }
 
+            const editBtn = e.target.closest('.btn-edit-customer');
+            if (editBtn) {
+                const id = editBtn.getAttribute('data-id');
+                openEditCustomerModal(id);
+                return;
+            }
+
             const deleteBtn = e.target.closest('.btn-delete-customer');
             if (deleteBtn) {
                 const id = deleteBtn.getAttribute('data-id');
@@ -498,6 +508,23 @@ function initCustomerListEvents() {
             }
         });
     }
+
+    // Submit Edit Customer Form
+    const updateForm = document.getElementById('update-customer-form');
+    if (updateForm) {
+        updateForm.addEventListener('submit', handleUpdateCustomer);
+    }
+
+    // IsSpecial toggle in Edit Modal
+    const updateIsSpecial = document.getElementById('update-IsSpecial');
+    if (updateIsSpecial) {
+        updateIsSpecial.addEventListener('change', updateIsSpecialEditState);
+    }
+
+    // Live previews for file inputs in Edit Modal
+    setupEditImagePreview('update-Image', 'update-image-preview', 'Photo');
+    setupEditImagePreview('update-NidImage', 'update-nid-preview', 'NID Document');
+    setupEditImagePreview('update-ChequeImage', 'update-cheque-preview', 'Cheque Image');
 
     // Confirm Delete Customer Button
     const btnConfirmDelete = document.getElementById('btn-confirm-delete');
@@ -991,5 +1018,350 @@ async function handleConfirmDelete() {
         if (btnConfirmText) btnConfirmText.innerText = 'Delete';
     }
 }
+
+/**
+ * Setup live preview helper for file inputs in Edit Modal
+ */
+function setupEditImagePreview(inputId, previewContainerId, label) {
+    const input = document.getElementById(inputId);
+    const container = document.getElementById(previewContainerId);
+    if (!input || !container) return;
+
+    input.addEventListener('change', () => {
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            if (file.type && !file.type.startsWith('image/')) {
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                container.innerHTML = `
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <img src="${e.target.result}" class="rounded border shadow-sm" style="height: 42px; width: 42px; object-fit: cover;">
+                        <span class="badge bg-primary-subtle text-primary small">New ${label} Selected</span>
+                    </div>
+                `;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+}
+
+/**
+ * Handle IsSpecial toggle in Edit Modal
+ */
+function updateIsSpecialEditState() {
+    const isSpecialCheckbox = document.getElementById('update-IsSpecial');
+    const currentBalanceInput = document.getElementById('update-CurrentBalance');
+    const specialBadge = document.getElementById('update-special-badge');
+    const balanceBadge = document.getElementById('update-balance-badge');
+    const specialStatusText = document.getElementById('update-special-status-text');
+    const balanceHelpText = document.getElementById('update-balance-help-text');
+
+    if (!isSpecialCheckbox || !currentBalanceInput) return;
+
+    const isSpecial = isSpecialCheckbox.checked;
+    currentBalanceInput.disabled = !isSpecial;
+
+    if (isSpecial) {
+        currentBalanceInput.classList.remove('bg-light');
+        if (specialBadge) {
+            specialBadge.className = 'badge bg-warning-subtle text-warning-emphasis small fw-medium';
+            specialBadge.innerHTML = '<i class="bi bi-star-fill me-1"></i>Special';
+        }
+        if (balanceBadge) {
+            balanceBadge.className = 'badge bg-warning-subtle text-warning-emphasis small fw-medium';
+            balanceBadge.innerHTML = '<i class="bi bi-star-fill me-1"></i>Special (Editable)';
+        }
+        if (specialStatusText) {
+            specialStatusText.textContent = 'Special customer (initial balance enabled)';
+        }
+        if (balanceHelpText) {
+            balanceHelpText.textContent = 'Enter balance for this special customer.';
+        }
+    } else {
+        currentBalanceInput.classList.add('bg-light');
+        currentBalanceInput.value = '0';
+        if (specialBadge) {
+            specialBadge.className = 'badge bg-secondary-subtle text-secondary small fw-normal';
+            specialBadge.textContent = 'Regular';
+        }
+        if (balanceBadge) {
+            balanceBadge.className = 'badge bg-secondary-subtle text-secondary small fw-normal';
+            balanceBadge.textContent = 'Locked (0.00)';
+        }
+        if (specialStatusText) {
+            specialStatusText.textContent = 'Regular customer (initial balance locked)';
+        }
+        if (balanceHelpText) {
+            balanceHelpText.textContent = 'Enable "Special Customer" to set balance.';
+        }
+    }
+}
+
+/**
+ * Open Customer Edit Modal and pre-populate fields
+ */
+async function openEditCustomerModal(id) {
+    const modalEl = document.getElementById('updateCustomerModal');
+    const errorAlert = document.getElementById('update-error-alert');
+    if (!modalEl) return;
+
+    if (errorAlert) errorAlert.classList.add('d-none');
+
+    // Clear validation marks
+    const formInputs = modalEl.querySelectorAll('.is-invalid');
+    formInputs.forEach(el => el.classList.remove('is-invalid'));
+
+    // Find in current loaded list or fetch from API
+    let customer = customersList.find(c => String(c.id || c.Id) === String(id));
+
+    if (!customer) {
+        try {
+            const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+            const token = getAuthToken();
+            const headers = { 'accept': '*/*' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const response = await fetch(`${baseUrl}/Customers/GetById/${id}`, { headers: headers });
+            if (response.ok) {
+                const res = await response.json();
+                customer = res.data || res;
+            }
+        } catch (e) {
+            console.warn('Could not fetch customer details for edit:', e);
+        }
+    }
+
+    if (!customer) {
+        customer = SAMPLE_CUSTOMERS.find(c => String(c.id) === String(id));
+    }
+
+    if (!customer) {
+        showToast('Customer data not found', 'danger');
+        return;
+    }
+
+    // Populate text inputs
+    document.getElementById('update-Id').value = customer.id || customer.Id || id;
+    document.getElementById('update-Name').value = customer.name || customer.Name || '';
+    document.getElementById('update-Mobile').value = customer.mobile || customer.Mobile || '';
+    document.getElementById('update-ShopName').value = customer.shopName || customer.ShopName || '';
+    document.getElementById('update-Email').value = customer.email || customer.Email || '';
+    document.getElementById('update-NidNo').value = customer.nidNo || customer.NidNo || '';
+    document.getElementById('update-PresentAddress').value = customer.presentAddress || customer.PresentAddress || '';
+    document.getElementById('update-PermanentAddress').value = customer.permanentAddress || customer.PermanentAddress || '';
+    document.getElementById('update-AdditionalDetails').value = customer.additionalDetails || customer.AdditionalDetails || '';
+
+    // Handle IsSpecial and CurrentBalance
+    const isSpecial = customer.isSpecial === true || customer.IsSpecial === true;
+    const isSpecialInput = document.getElementById('update-IsSpecial');
+    if (isSpecialInput) {
+        isSpecialInput.checked = isSpecial;
+    }
+
+    const currentBalanceVal = customer.currentBalance !== undefined && customer.currentBalance !== null ?
+        Number(customer.currentBalance) : (Number(customer.CurrentBalance) || 0);
+    const currentBalanceInput = document.getElementById('update-CurrentBalance');
+    if (currentBalanceInput) {
+        currentBalanceInput.value = currentBalanceVal;
+    }
+
+    // Refresh IsSpecial UI state
+    updateIsSpecialEditState();
+
+    // Render current image thumbnails
+    const currentImg = resolveImageUrl(customer.imagePath || customer.ImagePath || customer.image || customer.Image);
+    const currentNid = resolveImageUrl(customer.nidImagePath || customer.NidImagePath || customer.nidImage || customer.NidImage);
+    const currentCheque = resolveImageUrl(customer.chequeImagePath || customer.ChequeImagePath || customer.chequeImage || customer.ChequeImage);
+
+    const imgPreviewEl = document.getElementById('update-image-preview');
+    if (imgPreviewEl) {
+        imgPreviewEl.innerHTML = currentImg ? `
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <a href="${currentImg}" target="_blank" rel="noopener noreferrer" title="Click to view full photo">
+                    <img src="${currentImg}" class="rounded border shadow-sm" style="height: 42px; width: 42px; object-fit: cover; cursor: pointer;">
+                </a>
+                <span class="text-muted small">Current Photo <i class="bi bi-box-arrow-up-right ms-1"></i></span>
+            </div>` : '';
+    }
+
+    const nidPreviewEl = document.getElementById('update-nid-preview');
+    if (nidPreviewEl) {
+        nidPreviewEl.innerHTML = currentNid ? `
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <a href="${currentNid}" target="_blank" rel="noopener noreferrer" title="Click to view full NID">
+                    <img src="${currentNid}" class="rounded border shadow-sm" style="height: 42px; width: 42px; object-fit: cover; cursor: pointer;">
+                </a>
+                <span class="text-muted small">Current NID <i class="bi bi-box-arrow-up-right ms-1"></i></span>
+            </div>` : '';
+    }
+
+    const chequePreviewEl = document.getElementById('update-cheque-preview');
+    if (chequePreviewEl) {
+        chequePreviewEl.innerHTML = currentCheque ? `
+            <div class="d-flex align-items-center gap-2 mt-1">
+                <a href="${currentCheque}" target="_blank" rel="noopener noreferrer" title="Click to view full Cheque">
+                    <img src="${currentCheque}" class="rounded border shadow-sm" style="height: 42px; width: 42px; object-fit: cover; cursor: pointer;">
+                </a>
+                <span class="text-muted small">Current Cheque <i class="bi bi-box-arrow-up-right ms-1"></i></span>
+            </div>` : '';
+    }
+
+    // Clear file inputs
+    const imageInput = document.getElementById('update-Image');
+    if (imageInput) imageInput.value = '';
+    const nidImageInput = document.getElementById('update-NidImage');
+    if (nidImageInput) nidImageInput.value = '';
+    const chequeImageInput = document.getElementById('update-ChequeImage');
+    if (chequeImageInput) chequeImageInput.value = '';
+
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
+}
+
+/**
+ * Handle Edit Customer form submit (PUT)
+ */
+async function handleUpdateCustomer(e) {
+    e.preventDefault();
+
+    const btnUpdate = document.getElementById('btn-update-customer');
+    const btnText = document.getElementById('btn-update-text');
+    const btnSpinner = document.getElementById('update-spinner');
+    const errorAlert = document.getElementById('update-error-alert');
+    const errorMsg = document.getElementById('update-error-message');
+
+    if (errorAlert) errorAlert.classList.add('d-none');
+
+    const nameInput = document.getElementById('update-Name');
+    const mobileInput = document.getElementById('update-Mobile');
+    const name = nameInput ? nameInput.value.trim() : '';
+    const mobile = mobileInput ? mobileInput.value.trim() : '';
+
+    let hasError = false;
+    if (!name) {
+        if (nameInput) nameInput.classList.add('is-invalid');
+        hasError = true;
+    }
+    if (!mobile) {
+        if (mobileInput) mobileInput.classList.add('is-invalid');
+        hasError = true;
+    }
+
+    if (hasError) {
+        if (errorMsg) errorMsg.innerText = 'Customer Name and Mobile Number are required.';
+        if (errorAlert) errorAlert.classList.remove('d-none');
+        return;
+    }
+
+    if (btnUpdate) btnUpdate.disabled = true;
+    if (btnText) btnText.innerText = 'Updating...';
+    if (btnSpinner) btnSpinner.classList.remove('d-none');
+
+    const id = document.getElementById('update-Id').value;
+    const token = getAuthToken();
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '');
+    const endpoint = `${baseUrl}/Customers`;
+
+    const isSpecial = document.getElementById('update-IsSpecial') ? document.getElementById('update-IsSpecial').checked : false;
+    const currentBalance = isSpecial ? (parseFloat(document.getElementById('update-CurrentBalance').value) || 0) : 0;
+
+    const formData = new FormData();
+    formData.append('Id', id);
+    formData.append('Name', name);
+    formData.append('Mobile', mobile);
+    formData.append('ShopName', document.getElementById('update-ShopName').value.trim());
+    formData.append('Email', document.getElementById('update-Email').value.trim());
+    formData.append('IsSpecial', isSpecial ? 'true' : 'false');
+    formData.append('CurrentBalance', currentBalance);
+    formData.append('NidNo', document.getElementById('update-NidNo').value.trim());
+    formData.append('PresentAddress', document.getElementById('update-PresentAddress').value.trim());
+    formData.append('PermanentAddress', document.getElementById('update-PermanentAddress').value.trim());
+    formData.append('AdditionalDetails', document.getElementById('update-AdditionalDetails').value.trim());
+
+    const imageInput = document.getElementById('update-Image');
+    if (imageInput && imageInput.files.length > 0) {
+        formData.append('Image', imageInput.files[0]);
+    }
+
+    const nidImageInput = document.getElementById('update-NidImage');
+    if (nidImageInput && nidImageInput.files.length > 0) {
+        formData.append('NidImage', nidImageInput.files[0]);
+    }
+
+    const chequeImageInput = document.getElementById('update-ChequeImage');
+    if (chequeImageInput && chequeImageInput.files.length > 0) {
+        formData.append('ChequeImage', chequeImageInput.files[0]);
+    }
+
+    try {
+        console.log('Sending PUT Customer Update to:', endpoint);
+
+        const headers = { 'accept': '*/*' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: headers,
+            body: formData
+        });
+
+        let resData = null;
+        try {
+            resData = await response.json();
+        } catch (_) { }
+
+        console.log('Update Customer API Response:', resData);
+
+        if (response.ok && (!resData || resData.succeeded === true || resData.statusCode === 200 || resData.id || resData.data)) {
+            const modalEl = document.getElementById('updateCustomerModal');
+            const bsModal = bootstrap.Modal.getInstance(modalEl);
+            if (bsModal) bsModal.hide();
+
+            showToast('Customer updated successfully!', 'success');
+
+            // Update sample customers if offline
+            const sampleItem = SAMPLE_CUSTOMERS.find(c => String(c.id) === String(id));
+            if (sampleItem) {
+                sampleItem.name = name;
+                sampleItem.mobile = mobile;
+                sampleItem.shopName = document.getElementById('update-ShopName').value.trim();
+                sampleItem.email = document.getElementById('update-Email').value.trim();
+                sampleItem.isSpecial = isSpecial;
+                sampleItem.currentBalance = currentBalance;
+                sampleItem.nidNo = document.getElementById('update-NidNo').value.trim();
+                sampleItem.presentAddress = document.getElementById('update-PresentAddress').value.trim();
+                sampleItem.permanentAddress = document.getElementById('update-PermanentAddress').value.trim();
+                sampleItem.additionalDetails = document.getElementById('update-AdditionalDetails').value.trim();
+            }
+
+            loadCustomers();
+        } else {
+            let message = `Failed to update customer (Status ${response.status})`;
+            if (resData) {
+                if (resData.message) {
+                    message = resData.message;
+                } else if (resData.errors && typeof resData.errors === 'object') {
+                    const errorList = Object.values(resData.errors).flat().join(', ');
+                    if (errorList) message = errorList;
+                } else if (resData.title) {
+                    message = resData.title;
+                }
+            }
+            if (errorMsg) errorMsg.innerText = message;
+            if (errorAlert) errorAlert.classList.remove('d-none');
+        }
+    } catch (err) {
+        console.error('Error updating customer:', err);
+        if (errorMsg) errorMsg.innerText = 'Could not connect to API at ' + endpoint + '. Ensure backend server is active.';
+        if (errorAlert) errorAlert.classList.remove('d-none');
+    } finally {
+        if (btnUpdate) btnUpdate.disabled = false;
+        if (btnText) btnText.innerText = 'Update';
+        if (btnSpinner) btnSpinner.classList.add('d-none');
+    }
+}
+
 
 

@@ -154,6 +154,161 @@
     </div>
 </div>
 
+<!-- Update Customer Modal -->
+<div class="modal fade" id="updateCustomerModal" tabindex="-1" aria-labelledby="updateCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2" id="updateCustomerModalLabel">
+                    <i class="bi bi-pencil-square text-primary"></i> Edit Customer Information
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Alert Box inside modal for API errors -->
+                <div id="update-error-alert" class="alert alert-danger d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                    <span id="update-error-message">Error updating customer data.</span>
+                </div>
+
+                <!-- Update Form matching Supplier Edit Modal structure -->
+                <form id="update-customer-form" enctype="multipart/form-data" novalidate>
+                    <input type="hidden" id="update-Id" name="Id" />
+
+                    <!-- Section 1: Basic Information -->
+                    <div class="mb-4 pb-3 border-bottom">
+                        <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-person-vcard"></i> Basic Information
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6 col-lg-3">
+                                <label for="update-Name" class="form-label text-dark small fw-semibold">Customer Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control rounded-3" id="update-Name" name="Name" placeholder="e.g. Md Faruk Ahmed" required>
+                                <div class="invalid-feedback small">Customer name is required.</div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <label for="update-Mobile" class="form-label text-dark small fw-semibold">Mobile Number <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control rounded-3" id="update-Mobile" name="Mobile" placeholder="e.g. 01711223344" required>
+                                <div class="invalid-feedback small">Mobile number is required.</div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <label for="update-ShopName" class="form-label text-dark small fw-semibold">Shop Name</label>
+                                <input type="text" class="form-control rounded-3" id="update-ShopName" name="ShopName" placeholder="e.g. Ahmed Fabrics & Traders">
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <label for="update-Email" class="form-label text-dark small fw-semibold">Email Address</label>
+                                <input type="email" class="form-control rounded-3" id="update-Email" name="Email" placeholder="e.g. faruk@example.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 2: Account Type, Balance & Identification -->
+                    <div class="mb-4 pb-3 border-bottom">
+                        <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-wallet2"></i> Account Type & Balance
+                        </h6>
+                        <div class="row g-3">
+                            <!-- IsSpecial Switch -->
+                            <div class="col-md-6 col-lg-4">
+                                <label class="form-label text-dark small fw-semibold d-flex align-items-center justify-content-between">
+                                    <span>Customer Type</span>
+                                    <span id="update-special-badge" class="badge bg-secondary-subtle text-secondary small fw-normal">Regular</span>
+                                </label>
+                                <label class="form-control rounded-3 bg-light d-flex align-items-center justify-content-between px-3 m-0" for="update-IsSpecial" style="cursor: pointer; height: 38px;">
+                                    <span class="fw-semibold text-dark small">Special Customer</span>
+                                    <div class="form-check form-switch m-0 p-0 d-flex align-items-center">
+                                        <input class="form-check-input m-0" type="checkbox" role="switch" id="update-IsSpecial" name="IsSpecial" style="cursor: pointer; width: 2.2rem; height: 1.2rem;">
+                                    </div>
+                                </label>
+                                <div class="form-text small text-muted" id="update-special-status-text">Regular customer (initial balance locked)</div>
+                            </div>
+
+                            <!-- Current Balance (Disabled by default unless IsSpecial is true) -->
+                            <div class="col-md-6 col-lg-4">
+                                <label for="update-CurrentBalance" class="form-label text-dark small fw-semibold d-flex align-items-center justify-content-between">
+                                    <span>Current Balance (BDT)</span>
+                                    <span id="update-balance-badge" class="badge bg-secondary-subtle text-secondary small fw-normal">Locked (0.00)</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted border-end-0">৳</span>
+                                    <input type="number" step="0.01" class="form-control rounded-end-3 bg-light" id="update-CurrentBalance" name="CurrentBalance" placeholder="0.00" value="0" disabled>
+                                </div>
+                                <div class="form-text small text-muted" id="update-balance-help-text">Enable "Special Customer" to set balance.</div>
+                            </div>
+
+                            <!-- NID Number -->
+                            <div class="col-md-6 col-lg-4">
+                                <label for="update-NidNo" class="form-label text-dark small fw-semibold d-flex align-items-center justify-content-between">
+                                    <span>NID Number</span>
+                                    <span class="text-muted small fw-normal">Optional</span>
+                                </label>
+                                <input type="text" class="form-control rounded-3" id="update-NidNo" name="NidNo" placeholder="e.g. 1987541298456">
+                                <div class="form-text small text-muted">Customer national identification number.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Address & Remarks -->
+                    <div class="mb-4 pb-3 border-bottom">
+                        <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-geo-alt-fill"></i> Address & Remarks
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="update-PresentAddress" class="form-label text-dark small fw-semibold">Present Address</label>
+                                <textarea class="form-control rounded-3" id="update-PresentAddress" name="PresentAddress" rows="2" placeholder="Enter present shop or delivery address..."></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="update-PermanentAddress" class="form-label text-dark small fw-semibold">Permanent Address</label>
+                                <textarea class="form-control rounded-3" id="update-PermanentAddress" name="PermanentAddress" rows="2" placeholder="Enter permanent home address..."></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label for="update-AdditionalDetails" class="form-label text-dark small fw-semibold">Additional Details / Notes</label>
+                                <textarea class="form-control rounded-3" id="update-AdditionalDetails" name="AdditionalDetails" rows="2" placeholder="Enter additional customer notes or terms..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: Document & Image Uploads -->
+                    <div class="mb-3">
+                        <h6 class="fw-bold text-primary mb-3 d-flex align-items-center gap-2">
+                            <i class="bi bi-file-earmark-arrow-up-fill"></i> Document Uploads
+                        </h6>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="update-Image" class="form-label text-dark small fw-semibold">Customer Photo / Logo</label>
+                                <input type="file" class="form-control rounded-3" id="update-Image" name="Image" accept="image/*">
+                                <div id="update-image-preview" class="mt-2 text-muted small"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="update-NidImage" class="form-label text-dark small fw-semibold">NID Document</label>
+                                <input type="file" class="form-control rounded-3" id="update-NidImage" name="NidImage" accept="image/*">
+                                <div id="update-nid-preview" class="mt-2 text-muted small"></div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="update-ChequeImage" class="form-label text-dark small fw-semibold">Bank Cheque Image</label>
+                                <input type="file" class="form-control rounded-3" id="update-ChequeImage" name="ChequeImage" accept="image/*">
+                                <div id="update-cheque-preview" class="mt-2 text-muted small"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer Action Buttons -->
+                    <div class="d-flex align-items-center justify-content-end gap-2 pt-3 border-top">
+                        <button type="button" class="btn btn-light border rounded-3 px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" id="btn-update-customer" class="btn btn-primary rounded-3 px-4 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+                            <span id="btn-update-text">Update</span>
+                            <div id="update-spinner" class="spinner-border spinner-border-sm d-none" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-labelledby="deleteConfirmationModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
