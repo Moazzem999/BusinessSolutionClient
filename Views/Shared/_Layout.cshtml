@@ -169,6 +169,14 @@
                     </a>
                     <div class="collapse @(isOrdersActive ? "show" : "")" id="ordersSubmenu">
                         <div class="sidebar-submenu">
+                            <a asp-controller="Order" asp-action="CustomerOrders" class="sidebar-sublink @(isOrdersActive && currentAction == "CustomerOrders" ? "active" : "")">
+                                <i class="bi bi-receipt-cutoff"></i>
+                                <span>Customer Orders</span>
+                            </a>
+                            <a asp-controller="Order" asp-action="CreateCO" class="sidebar-sublink @(isOrdersActive && currentAction == "CreateCO" ? "active" : "")">
+                                <i class="bi bi-bag-plus"></i>
+                                <span>Create CO</span>
+                            </a>
                             <a asp-controller="Order" asp-action="SupplierOrders" class="sidebar-sublink @(isOrdersActive && currentAction == "SupplierOrders" ? "active" : "")">
                                 <i class="bi bi-receipt"></i>
                                 <span>Supplier Orders</span>

@@ -12,6 +12,20 @@ namespace BusinessSolutionClient.Controllers
         }
 
         [HttpGet]
+        public IActionResult CustomerOrders()
+        {
+            ViewBag.ApiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7148/api";
+            return View();
+        }
+
+        [HttpGet]
+        public IActionResult CreateCO()
+        {
+            ViewBag.ApiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7148/api";
+            return View();
+        }
+
+        [HttpGet]
         public IActionResult SupplierOrders()
         {
             ViewBag.ApiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7148/api";
@@ -28,7 +42,7 @@ namespace BusinessSolutionClient.Controllers
         [HttpGet]
         public IActionResult Index()
         {
-            return RedirectToAction(nameof(SupplierOrders));
+            return RedirectToAction(nameof(CustomerOrders));
         }
     }
 }
