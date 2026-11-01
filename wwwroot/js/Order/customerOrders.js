@@ -79,6 +79,32 @@ const SAMPLE_CUSTOMER_ORDERS = [
                 lineTotal: 2400
             }
         ]
+    },
+    {
+        id: 3,
+        customerId: 5,
+        customerName: "Samsul Haque",
+        customerShopName: "Samsu Fashion",
+        customerMobile: "01977734343",
+        orderNo: "CO-2026-0000000",
+        orderDate: "2026-10-20T09:00:00",
+        totalAmount: 1800,
+        notes: "Delivered previous week",
+        customerPreviousBalance: 65800,
+        customerNewBalance: 67600,
+        createdOn: "2026-10-20T09:00:00",
+        orderDetails: [
+            {
+                id: 4,
+                customerOrderId: 3,
+                productId: 2,
+                productName: "Hudi",
+                remarks: "Cotton hoodie",
+                quantity: 3,
+                unitPrice: 600,
+                lineTotal: 1800
+            }
+        ]
     }
 ];
 
@@ -138,6 +164,35 @@ function formatDate(dateStr) {
         });
     } catch (e) {
         return dateStr;
+    }
+}
+
+/**
+ * Checks if a given date string is within 2 days of current time
+ */
+function isWithinTwoDays(dateStr) {
+    if (!dateStr) return false;
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return false;
+
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+
+        // If created in the future (due to minor clock or timezone offset), treat as valid/recent
+        if (diffMs < 0) return true;
+
+        // 2 days in milliseconds: 2 * 24 * 60 * 60 * 1000 = 172,800,000 ms (48 hours)
+        const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+        if (diffMs <= twoDaysMs) return true;
+
+        // Also check calendar days (e.g. today, yesterday, or 2 days ago)
+        const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const calendarDays = Math.round((nowDate.getTime() - targetDate.getTime()) / (1000 * 60 * 60 * 24));
+        return calendarDays <= 2;
+    } catch (_) {
+        return false;
     }
 }
 
@@ -561,6 +616,10 @@ function renderCustomerOrdersTable(orders) {
         const details = order.orderDetails || order.OrderDetails || [];
         const itemsCount = Array.isArray(details) ? details.length : 0;
 
+        // Conditionally determine if order was created within 2 days
+        const createdOnRaw = order.createdOn || order.CreatedOn || order.orderDate || order.OrderDate;
+        const canDelete = isWithinTwoDays(createdOnRaw);
+
         tr.innerHTML = `
             <td class="ps-4">
                 <span class="badge bg-primary-subtle text-primary fw-bold font-monospace px-2.5 py-1 rounded-2">
@@ -599,12 +658,14 @@ function renderCustomerOrdersTable(orders) {
                     <button type="button" class="btn btn-outline-primary rounded-2 me-1" onclick="printOrderDetails(${index})" title="Print Order">
                         <i class="bi bi-printer-fill"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-info rounded-2 me-1" onclick="viewOrderDetails(${index})" title="View Details">
+                    <button type="button" class="btn btn-outline-info rounded-2 ${canDelete ? 'me-1' : ''}" onclick="viewOrderDetails(${index})" title="View Details">
                         <i class="bi bi-eye-fill"></i>
                     </button>
+                    ${canDelete ? `
                     <button type="button" class="btn btn-outline-danger rounded-2" onclick="confirmDeleteOrder('${escapeHtml(orderId)}', '${escapeHtml(orderNo)}')" title="Delete Order">
                         <i class="bi bi-trash-fill"></i>
                     </button>
+                    ` : ''}
                 </div>
             </td>
         `;
@@ -666,6 +727,17 @@ function extractServerMessage(resData, fallbackMessage = '') {
  */
 window.confirmDeleteOrder = function(id, orderNo) {
     ensureTableStructureAndModal();
+
+    // Verify order is within 2 days before opening confirmation
+    const targetOrder = ordersList.find(o => String(o.id || o.Id) === String(id));
+    if (targetOrder) {
+        const createdOnRaw = targetOrder.createdOn || targetOrder.CreatedOn || targetOrder.orderDate || targetOrder.OrderDate;
+        if (!isWithinTwoDays(createdOnRaw)) {
+            showToast('Orders older than 2 days cannot be deleted.', 'warning');
+            return;
+        }
+    }
+
     deleteOrderId = id;
 
     const noEl = document.getElementById('delete-order-no');
