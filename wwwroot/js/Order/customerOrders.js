@@ -652,7 +652,7 @@ function renderCustomerOrdersTable(orders) {
         const orderDateFormatted = formatDate(order.orderDate || order.OrderDate);
         const customerName = order.customerName || order.CustomerName || order.name || order.Name || 'Unknown Customer';
         const customerShopName = order.customerShopName || order.CustomerShopName || order.shopName || order.ShopName || '';
-        const isSpecial = order.isSpecial === true || order.IsSpecial === true;
+        const isSpecial = order.isSpecial === true || order.IsSpecial === true || order.isSpecial === 'true' || order.IsSpecial === 'true' || order.isSpecial === 1 || order.IsSpecial === 1;
         const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
 
         const details = order.orderDetails || order.OrderDetails || [];
@@ -945,7 +945,7 @@ window.viewOrderDetails = function(orderIndex) {
     const customerName = order.customerName || order.CustomerName || order.name || order.Name || '—';
     const customerShopName = order.customerShopName || order.CustomerShopName || order.shopName || order.ShopName || '—';
     const customerId = order.customerId || order.CustomerId || '—';
-    const isSpecial = order.isSpecial === true || order.IsSpecial === true;
+    const isSpecial = order.isSpecial === true || order.IsSpecial === true || order.isSpecial === 'true' || order.IsSpecial === 'true' || order.isSpecial === 1 || order.IsSpecial === 1;
     const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
     const prevBalance = order.customerPreviousBalance !== undefined ? order.customerPreviousBalance : (order.CustomerPreviousBalance !== undefined ? order.CustomerPreviousBalance : 0);
     const newBalance = order.customerNewBalance !== undefined ? order.customerNewBalance : (order.CustomerNewBalance !== undefined ? order.CustomerNewBalance : (Number(prevBalance) + Number(totalAmount)));
@@ -1003,7 +1003,7 @@ window.viewOrderDetails = function(orderIndex) {
         <!-- Order Meta Info Cards -->
         <div class="row g-3 mb-4">
             <!-- Customer Card -->
-            <div class="col-12 col-md-4">
+            <div class="${isSpecial ? 'col-12 col-md-4' : 'col-12 col-md-6'}">
                 <div class="p-3 rounded-4 border bg-light h-100">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="rounded-circle bg-primary-subtle text-primary p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -1028,8 +1028,9 @@ window.viewOrderDetails = function(orderIndex) {
                 </div>
             </div>
 
-            <!-- Order Financials -->
-            <div class="col-12 col-md-5">
+            <!-- Order Financials (Special Customers Only) -->
+            ${isSpecial ? `
+            <div class="col-12 col-md-4">
                 <div class="p-3 rounded-4 border bg-light h-100">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="rounded-circle bg-success-subtle text-success p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -1051,9 +1052,10 @@ window.viewOrderDetails = function(orderIndex) {
                     </div>
                 </div>
             </div>
+            ` : ''}
 
             <!-- Meta & Notes -->
-            <div class="col-12 col-md-3">
+            <div class="${isSpecial ? 'col-12 col-md-4' : 'col-12 col-md-6'}">
                 <div class="p-3 rounded-4 border bg-light h-100">
                     <div class="d-flex align-items-center gap-2 mb-2">
                         <div class="rounded-circle bg-info-subtle text-info p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -1149,7 +1151,7 @@ window.printOrderDetails = function(orderParam) {
     const customerShopName = order.customerShopName || order.CustomerShopName || order.shopName || order.ShopName || '';
     const customerMobile = order.customerMobile || order.CustomerMobile || order.mobile || order.Mobile || '';
     const customerId = order.customerId || order.CustomerId || '—';
-    const isSpecial = order.isSpecial === true || order.IsSpecial === true;
+    const isSpecial = order.isSpecial === true || order.IsSpecial === true || order.isSpecial === 'true' || order.IsSpecial === 'true' || order.isSpecial === 1 || order.IsSpecial === 1;
     const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
     const prevBalance = order.customerPreviousBalance !== undefined ? order.customerPreviousBalance : (order.CustomerPreviousBalance !== undefined ? order.CustomerPreviousBalance : 0);
     const newBalance = order.customerNewBalance !== undefined ? order.customerNewBalance : (order.CustomerNewBalance !== undefined ? order.CustomerNewBalance : (Number(prevBalance) + Number(totalAmount)));
@@ -1397,10 +1399,10 @@ window.printOrderDetails = function(orderParam) {
                     </div>
                 </div>
 
-                <!-- Master Info 3 Columns -->
+                <!-- Master Info Cards -->
                 <div class="row g-3 mb-4">
                     <!-- Customer Details -->
-                    <div class="col-4">
+                    <div class="${isSpecial ? 'col-4' : 'col-6'}">
                         <div class="meta-card">
                             <div class="meta-card-title text-primary">
                                 <i class="bi bi-person-fill"></i> Customer Details
@@ -1419,7 +1421,8 @@ window.printOrderDetails = function(orderParam) {
                         </div>
                     </div>
 
-                    <!-- Financial Summary -->
+                    <!-- Financial Summary (Special Customers Only) -->
+                    ${isSpecial ? `
                     <div class="col-4">
                         <div class="meta-card">
                             <div class="meta-card-title text-success">
@@ -1439,9 +1442,10 @@ window.printOrderDetails = function(orderParam) {
                             </div>
                         </div>
                     </div>
+                    ` : ''}
 
                     <!-- Order Meta & Notes -->
-                    <div class="col-4">
+                    <div class="${isSpecial ? 'col-4' : 'col-6'}">
                         <div class="meta-card">
                             <div class="meta-card-title text-info-emphasis">
                                 <i class="bi bi-info-circle"></i> Order Information
@@ -1660,7 +1664,7 @@ function exportToPdf() {
 
         const tableHeaders = [['CO Number', 'Customer', 'Shop', 'Order Date', 'Items', 'Total Amount']];
         const tableRows = ordersList.map(o => {
-            const isSpecial = o.isSpecial === true || o.IsSpecial === true;
+            const isSpecial = o.isSpecial === true || o.IsSpecial === true || o.isSpecial === 'true' || o.IsSpecial === 'true' || o.isSpecial === 1 || o.IsSpecial === 1;
             const name = o.customerName || o.CustomerName || o.name || '';
             const custDisplay = isSpecial ? `${name} (Special)` : name;
             return [
@@ -1729,7 +1733,7 @@ function exportToExcel() {
         }, 0);
 
         const rows = ordersList.map(o => {
-            const isSpecial = o.isSpecial === true || o.IsSpecial === true;
+            const isSpecial = o.isSpecial === true || o.IsSpecial === true || o.isSpecial === 'true' || o.IsSpecial === 'true' || o.isSpecial === 1 || o.IsSpecial === 1;
             const name = o.customerName || o.CustomerName || o.name || '';
             return {
                 'CO Number': o.orderNo || o.OrderNo || `CO-${o.id}`,
