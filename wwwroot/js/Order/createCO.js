@@ -486,7 +486,7 @@ function addItemRow(initialData = null) {
         <td style="min-width: 200px; width: 25%;">
             <input type="text" 
                    class="form-control rounded-3 item-remarks" 
-                   placeholder="e.g. Size-L, Color-Blue" 
+                   placeholder="Remarks / Specs" 
                    value="${escapeHtml(defaultRemarks)}"
                    name="orderDetails[${currentId}].remarks">
         </td>
@@ -817,9 +817,7 @@ function initRowProductAutocomplete(tr) {
                                     </div>
                                 </div>
                             </div>
-                            <div class="text-end flex-shrink-0">
-                                ${priceVal ? `<span class="badge bg-light text-primary border item-badge">৳ ${parseFloat(priceVal).toFixed(2)}</span>` : '<span class="badge bg-light text-muted border">Custom</span>'}
-                            </div>
+                            <span class="badge bg-light text-secondary border flex-shrink-0">ID #${prod.id}</span>
                         </button>
                     `;
                 }).join('');
