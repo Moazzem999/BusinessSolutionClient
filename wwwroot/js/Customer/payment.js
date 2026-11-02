@@ -135,7 +135,8 @@ function isWithinTwoDays(dateString) {
         const now = new Date();
         const diffInMs = now.getTime() - itemDate.getTime();
         const diffInHours = diffInMs / (1000 * 60 * 60);
-        return diffInHours >= 0 && diffInHours <= 48;
+        // Up to 48 hours, with slight client-server clock tolerance
+        return diffInHours >= -1 && diffInHours <= 48;
     } catch (_) {
         return false;
     }
@@ -960,11 +961,14 @@ function renderPaymentsTable(items) {
         const prevBal = Number(item.customerPreviousBalance !== undefined ? item.customerPreviousBalance : 0);
         const newBal = Number(item.customerNewBalance !== undefined ? item.customerNewBalance : (prevBal - paymentAmount));
         const remarks = item.remarks || item.notes || '—';
-        const isSpecial = item.isSpecial === true || item.IsSpecial === true || item.isSpecial === 'true';
+        const custFromMap = customerMap[item.customerId];
+        const isSpecial = item.isSpecial === true || item.IsSpecial === true || item.isSpecial === 'true'
+            || (custFromMap && (custFromMap.isSpecial === true || custFromMap.IsSpecial === true || custFromMap.isSpecial === 'true'));
 
-        // Delete allowed only within 2 days of creation
+        // Delete allowed ONLY for Special customers AND within 2 days of creation.
+        // For regular customer payments, the delete button is permanently unavailable.
         const createdOnRaw = item.createdOn || item.CreatedOn || item.transactionDate;
-        const canDelete = isWithinTwoDays(createdOnRaw);
+        const canDelete = isSpecial && isWithinTwoDays(createdOnRaw);
 
         // Balance direction styling
         const balanceDecreased = newBal < prevBal;
@@ -1271,6 +1275,23 @@ window.viewPaymentDetails = function(index) {
    Delete Payment (DELETE /api/CustomerPayments/{id})
    ========================================================================== */
 window.confirmDeletePayment = function(id, transNo) {
+    const payment = paymentsList.find(p => (p.id || p.Id) == id);
+    if (payment) {
+        const custFromMap = customerMap[payment.customerId];
+        const isSpecial = payment.isSpecial === true || payment.IsSpecial === true || payment.isSpecial === 'true'
+            || (custFromMap && (custFromMap.isSpecial === true || custFromMap.IsSpecial === true || custFromMap.isSpecial === 'true'));
+        const createdOnRaw = payment.createdOn || payment.CreatedOn || payment.transactionDate;
+
+        if (!isSpecial) {
+            showToast('Delete is permanently unavailable for regular customer payments.', 'warning');
+            return;
+        }
+        if (!isWithinTwoDays(createdOnRaw)) {
+            showToast('Payments older than 2 days cannot be deleted.', 'warning');
+            return;
+        }
+    }
+
     deletePaymentId = id;
     const refEl = document.getElementById('delete-payment-ref');
     const idEl = document.getElementById('delete-payment-id');
