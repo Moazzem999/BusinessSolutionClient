@@ -664,9 +664,6 @@ function renderCustomerOrdersTable(orders) {
 
         const rawImage = order.customerImagePath || order.CustomerImagePath || order.imagePath || order.ImagePath || '';
         const imageUrl = resolveImageUrl(rawImage);
-        const initials = customerName && customerName !== 'Unknown Customer' && customerName !== '—'
-            ? customerName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'CU'
-            : 'CU';
 
         tr.innerHTML = `
             <td class="ps-4">
@@ -674,29 +671,25 @@ function renderCustomerOrdersTable(orders) {
                     ${escapeHtml(orderNo)}
                 </span>
             </td>
-            <td style="min-width: 200px;">
-                <div class="d-flex align-items-center gap-2.5">
+            <td style="max-width: 220px;">
+                <div class="d-flex align-items-center gap-2">
                     ${imageUrl ? `
-                        <a href="${imageUrl}" target="_blank" rel="noopener noreferrer" title="Click to view full photo">
-                            <img src="${imageUrl}" alt="${escapeHtml(customerName)}" class="rounded-circle border shadow-sm" style="width: 38px; height: 38px; object-fit: cover; cursor: pointer;" onerror="this.onerror=null; this.parentElement.outerHTML='<div class=\\'avatar-circle-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold\\' style=\\'width:38px;height:38px;font-size:13px;\\'>${initials}</div>';">
-                        </a>
+                        <img src="${imageUrl}" alt="${escapeHtml(customerName)}" class="rounded-circle border" style="width: 34px; height: 34px; min-width: 34px; object-fit: cover;" onerror="this.onerror=null; this.outerHTML='<div class=\\'avatar-circle-sm bg-light text-primary border rounded-circle d-flex align-items-center justify-content-center fw-bold\\' style=\\'width: 34px; height: 34px; min-width: 34px; font-size: 0.8rem;\\'><i class=\\'bi bi-person-fill\\'></i></div>';">
                     ` : `
-                        <div class="avatar-circle-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px; min-width: 38px; font-size: 13px;">
-                            ${initials}
+                        <div class="avatar-circle-sm bg-light text-primary border rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 34px; height: 34px; min-width: 34px; font-size: 0.8rem;">
+                            <i class="bi bi-person-fill"></i>
                         </div>
                     `}
-                    <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="fw-bold text-dark">${escapeHtml(customerName)}</span>
+                    <div class="text-truncate">
+                        <div class="d-flex align-items-center gap-1.5 mb-0 text-truncate">
+                            <span class="fw-semibold text-dark text-truncate" title="${escapeHtml(customerName)}">${escapeHtml(customerName)}</span>
                             ${isSpecial ? `
-                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small px-2 py-0" data-bs-toggle="tooltip" data-bs-placement="top" title="Special Customer" style="font-size: 0.72rem; cursor: help;">
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small px-2 py-0 flex-shrink-0" data-bs-toggle="tooltip" data-bs-placement="top" title="Special Customer" style="font-size: 0.72rem; cursor: help;">
                                     <i class="bi bi-star-fill text-warning me-1" style="font-size: 0.65rem;"></i>Special
                                 </span>
                             ` : ''}
                         </div>
-                        <span class="badge bg-light text-secondary border fw-medium rounded-pill px-2 py-0.5 small" style="font-size: 0.75rem;">
-                            <i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName || 'N/A')}
-                        </span>
+                        ${customerShopName ? `<div class="text-muted small d-flex align-items-center gap-1 text-truncate" title="${escapeHtml(customerShopName)}"><i class="bi bi-shop small"></i> ${escapeHtml(customerShopName)}</div>` : ''}
                     </div>
                 </div>
             </td>
@@ -1019,11 +1012,7 @@ window.viewOrderDetails = function(orderIndex) {
                             </span>
                         ` : ''}
                     </div>
-                    <div class="mb-1">
-                        <span class="badge bg-white text-secondary border fw-medium rounded-pill px-2 py-0.5 small" style="font-size: 0.75rem;">
-                            <i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName || 'N/A')}
-                        </span>
-                    </div>
+                    ${customerShopName && customerShopName !== '—' && customerShopName !== 'N/A' ? `<div class="text-muted small mb-1"><i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName)}</div>` : ''}
                     <div class="text-muted small">Customer ID: <span class="fw-medium text-dark">#${escapeHtml(customerId)}</span></div>
                 </div>
             </div>
