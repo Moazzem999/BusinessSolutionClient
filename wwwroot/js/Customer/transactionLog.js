@@ -1139,7 +1139,7 @@ function renderPaymentDetailsModal(payment) {
                         <span class="font-monospace text-dark">৳ ${formatCurrency(prevBalance)}</span>
                     </div>
                     <div class="d-flex justify-content-between fw-bold fs-6 mb-1 text-success">
-                        <span>Received Amount:</span>
+                        <span>Received:</span>
                         <span class="font-monospace">৳ ${formatCurrency(paidAmount)}</span>
                     </div>
                     <div class="d-flex justify-content-between text-muted small pt-1">
