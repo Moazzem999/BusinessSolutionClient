@@ -1059,6 +1059,10 @@ async function openPaymentDetailsModal(paymentId, fallbackTransNo, itemIndex) {
         });
     }
 
+    if (fallbackItem && (paymentData.isSpecial === undefined || paymentData.isSpecial === null)) {
+        paymentData.isSpecial = fallbackItem.isSpecial;
+    }
+
     currentSelectedPayment = paymentData;
     renderPaymentDetailsModal(paymentData);
 }
@@ -1083,17 +1087,17 @@ function renderPaymentDetailsModal(payment) {
     const newBalance = Number(payment.customerNewBalance !== undefined ? payment.customerNewBalance : (prevBalance - paidAmount));
     const notes = payment.notes || payment.remarks || 'None';
     const paymentMethod = payment.paymentMethod || 'Cash / Bank Transfer';
-    const isSpecial = payment.isSpecial === true || payment.IsSpecial === true;
+    const isSpecial = payment.isSpecial === true || payment.IsSpecial === true || payment.isSpecial === 'true' || payment.IsSpecial === 'true' || payment.isSpecial === 1 || payment.IsSpecial === 1;
 
     if (modalTitleNo) {
         modalTitleNo.innerText = transNo;
     }
 
     modalContent.innerHTML = `
-        <!-- 3 Master Info Cards -->
+        <!-- Master Info Cards -->
         <div class="row g-3 mb-4">
             <!-- 1. Customer Card -->
-            <div class="col-12 col-md-4">
+            <div class="${isSpecial ? 'col-12 col-md-4' : 'col-12 col-md-6'}">
                 <div class="p-3 bg-light rounded-4 h-100 border">
                     <div class="d-flex align-items-center gap-2 mb-2 text-primary">
                         <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -1120,7 +1124,8 @@ function renderPaymentDetailsModal(payment) {
                 </div>
             </div>
 
-            <!-- 2. Financial Summary Card -->
+            <!-- 2. Financial Summary Card (Special Customers Only) -->
+            ${isSpecial ? `
             <div class="col-12 col-md-4">
                 <div class="p-3 bg-light rounded-4 h-100 border">
                     <div class="d-flex align-items-center gap-2 mb-2">
@@ -1143,9 +1148,10 @@ function renderPaymentDetailsModal(payment) {
                     </div>
                 </div>
             </div>
+            ` : ''}
 
             <!-- 3. Information Card -->
-            <div class="col-12 col-md-4">
+            <div class="${isSpecial ? 'col-12 col-md-4' : 'col-12 col-md-6'}">
                 <div class="p-3 bg-light rounded-4 h-100 border">
                     <div class="d-flex align-items-center gap-2 mb-2 text-info">
                         <div class="rounded-circle bg-info-subtle text-info d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -1190,9 +1196,11 @@ function renderPaymentDetailsModal(payment) {
                         </tr>
                         <tr>
                             <th class="bg-light text-secondary fw-semibold">Received Amount</th>
-                            <td class="fw-bold text-success font-monospace">৳ ${formatCurrency(paidAmount)}</td>
+                            <td class="fw-bold text-success font-monospace" ${isSpecial ? '' : 'colspan="3"'}>৳ ${formatCurrency(paidAmount)}</td>
+                            ${isSpecial ? `
                             <th class="bg-light text-secondary fw-semibold">Updated Balance</th>
                             <td class="font-monospace fw-bold text-dark">৳ ${formatCurrency(newBalance)}</td>
+                            ` : ''}
                         </tr>
                         <tr>
                             <th class="bg-light text-secondary fw-semibold">Payment Mode</th>
