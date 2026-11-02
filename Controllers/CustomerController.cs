@@ -26,6 +26,13 @@ namespace BusinessSolutionClient.Controllers
         }
 
         [HttpGet]
+        public IActionResult TransactionLog()
+        {
+            ViewBag.ApiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7148/api";
+            return View();
+        }
+
+        [HttpGet]
         public IActionResult Index()
         {
             return RedirectToAction(nameof(List));
