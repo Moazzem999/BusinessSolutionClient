@@ -1373,33 +1373,38 @@ window.printOrderDetails = function(orderParam) {
             </style>
         </head>
         <body>
-            <div class="no-print mb-4 d-flex justify-content-center">
-                <button class="btn btn-primary px-4 py-2 fw-semibold rounded-3 shadow-sm me-2" onclick="window.print()">
-                    <i class="bi bi-printer me-2"></i> Print Customer Order Voucher
+            <div class="no-print text-center mb-4">
+                <button class="btn btn-primary px-4 py-2 fw-semibold rounded-3 shadow-sm me-2" onclick="window.print();">
+                    <i class="bi bi-printer"></i> Print Customer Order
                 </button>
-                <button class="btn btn-outline-secondary px-4 py-2 fw-semibold rounded-3" onclick="window.close()">
-                    Close Window
+                <button class="btn btn-outline-secondary px-4 py-2 fw-semibold rounded-3" onclick="window.close();">
+                    Close
                 </button>
             </div>
 
             <div class="voucher-box">
-                <!-- Header -->
+                <!-- Voucher Header -->
                 <div class="voucher-header d-flex justify-content-between align-items-start">
                     <div>
                         <div class="brand-title">BUSINESS SOLUTION</div>
-                        <div class="brand-subtitle">Smart Enterprise & Sales Management System</div>
+                        <div class="brand-subtitle">Commercial & Supply Chain Management System</div>
+                        <div class="text-muted small mt-1">Customer Sales Order & Invoice Voucher</div>
                     </div>
                     <div class="text-end">
-                        <div class="voucher-badge mb-1">CUSTOMER SALES ORDER</div>
-                        <div class="fw-bold font-monospace fs-5 text-dark">${escapeHtml(orderNo)}</div>
+                        <span class="voucher-badge mb-2">Customer Order</span>
+                        <div class="font-monospace fw-bold text-dark fs-5">${escapeHtml(orderNo)}</div>
+                        <div class="text-muted small">CO ID: #${escapeHtml(orderId)}</div>
                     </div>
                 </div>
 
-                <!-- Metadata Grid -->
+                <!-- Master Info 3 Columns -->
                 <div class="row g-3 mb-4">
+                    <!-- Customer Details -->
                     <div class="col-4">
                         <div class="meta-card">
-                            <div class="meta-card-title"><i class="bi bi-person-fill text-primary"></i> Customer Details</div>
+                            <div class="meta-card-title text-primary">
+                                <i class="bi bi-person-fill"></i> Customer Details
+                            </div>
                             <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2 mb-1">
                                 <span>${escapeHtml(customerName)}</span>
                                 ${isSpecial ? `
@@ -1408,67 +1413,78 @@ window.printOrderDetails = function(orderParam) {
                                     </span>
                                 ` : ''}
                             </div>
-                            <div class="mb-1">
-                                <span class="badge bg-light text-secondary border fw-medium rounded-pill px-2 py-0.5 small" style="font-size: 0.75rem;">
-                                    <i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName || 'N/A')}
-                                </span>
-                            </div>
-                            ${customerMobile ? `<div class="text-muted small"><i class="bi bi-telephone me-1"></i>${escapeHtml(customerMobile)}</div>` : ''}
-                            <div class="text-muted small mt-1">Customer ID: <strong class="text-dark">#${escapeHtml(customerId)}</strong></div>
+                            ${customerShopName ? `<div class="text-secondary small fw-medium mt-0.5"><i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName)}</div>` : ''}
+                            ${customerMobile ? `<div class="text-secondary small mt-0.5"><i class="bi bi-telephone me-1"></i>${escapeHtml(customerMobile)}</div>` : ''}
+                            <div class="text-muted small mt-1">Customer ID: <span class="fw-semibold text-dark">#${escapeHtml(customerId)}</span></div>
                         </div>
                     </div>
 
+                    <!-- Financial Summary -->
                     <div class="col-4">
                         <div class="meta-card">
-                            <div class="meta-card-title"><i class="bi bi-calendar3 text-primary"></i> Order Meta</div>
-                            <div class="small mb-1">Order Date: <strong class="text-dark">${escapeHtml(orderDateFormatted)}</strong></div>
-                            <div class="small mb-1">Printed On: <span class="text-muted">${escapeHtml(printDateTime)}</span></div>
-                            <div class="small">Total Items: <strong class="text-dark">${details.length} Line(s)</strong></div>
-                        </div>
-                    </div>
-
-                    <div class="col-4">
-                        <div class="meta-card">
-                            <div class="meta-card-title"><i class="bi bi-wallet2 text-primary"></i> Financial Balance</div>
-                            <div class="d-flex justify-content-between small mb-1">
-                                <span class="text-muted">Previous Balance:</span>
-                                <strong>৳ ${formatCurrency(prevBalance)}</strong>
+                            <div class="meta-card-title text-success">
+                                <i class="bi bi-cash-stack"></i> Financial Summary
                             </div>
-                            <div class="d-flex justify-content-between small mb-1">
-                                <span class="text-muted">Order Total:</span>
-                                <strong class="text-primary">৳ ${formatCurrency(finalTotal)}</strong>
+                            <div class="d-flex justify-content-between small py-0.5">
+                                <span class="text-muted">Old Balance:</span>
+                                <span class="fw-medium text-dark">৳ ${formatCurrency(prevBalance)}</span>
                             </div>
-                            <div class="d-flex justify-content-between small border-top pt-1 mt-1">
+                            <div class="d-flex justify-content-between small py-0.5 border-top border-bottom my-1">
+                                <span class="fw-bold text-dark">Order Total:</span>
+                                <span class="fw-bold text-primary">৳ ${formatCurrency(finalTotal)}</span>
+                            </div>
+                            <div class="d-flex justify-content-between small py-0.5">
                                 <span class="text-muted">New Balance:</span>
-                                <strong class="text-success">৳ ${formatCurrency(newBalance)}</strong>
+                                <span class="fw-bold text-success">৳ ${formatCurrency(newBalance)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Meta & Notes -->
+                    <div class="col-4">
+                        <div class="meta-card">
+                            <div class="meta-card-title text-info-emphasis">
+                                <i class="bi bi-info-circle"></i> Order Information
+                            </div>
+                            <div class="small mb-1">
+                                <span class="text-muted">Order Date:</span>
+                                <span class="fw-semibold text-dark ms-1">${escapeHtml(orderDateFormatted)}</span>
+                            </div>
+                            <div class="small mb-1">
+                                <span class="text-muted">Printed On:</span>
+                                <span class="text-secondary ms-1">${printDateTime}</span>
+                            </div>
+                            <div class="small">
+                                <span class="text-muted">Notes:</span>
+                                <span class="text-dark fw-medium ms-1">${escapeHtml(notes || 'None')}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Notes if available -->
-                ${notes ? `
-                    <div class="p-3 mb-3 rounded-3 bg-light border small">
-                        <strong>Order Notes:</strong> ${escapeHtml(notes)}
-                    </div>
-                ` : ''}
+                <!-- Order Details (Items Table) -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-box-seam-fill text-primary"></i> Ordered Items Specification
+                    </h6>
+                    <span class="text-muted small">Total items: ${details.length}</span>
+                </div>
 
-                <!-- Itemized Lines Table -->
-                <table class="items-table">
+                <table class="items-table mb-4">
                     <thead>
                         <tr>
                             <th class="text-center" style="width: 45px;">#</th>
-                            <th>Product Description</th>
-                            <th style="width: 25%;">Remarks</th>
-                            <th class="text-center" style="width: 80px;">Qty</th>
-                            <th class="text-end" style="width: 120px;">Unit Price</th>
-                            <th class="text-end" style="width: 130px;">Line Total</th>
+                            <th>Product</th>
+                            <th style="width: 160px;">Remarks</th>
+                            <th class="text-center" style="width: 90px;">Quantity</th>
+                            <th class="text-end" style="width: 130px;">Unit Price</th>
+                            <th class="text-end" style="width: 140px;">Line Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${itemsRowsHtml}
                         <tr class="total-row">
-                            <td colspan="3" class="text-end fw-bold text-dark">Grand Total:</td>
+                            <td colspan="3" class="text-end fw-bold text-dark">Total:</td>
                             <td class="text-center fw-bold text-dark">${totalQty}</td>
                             <td></td>
                             <td class="text-end fw-bold text-primary fs-6">৳ ${formatCurrency(finalTotal)}</td>
@@ -1478,13 +1494,19 @@ window.printOrderDetails = function(orderParam) {
 
                 <!-- Signatures -->
                 <div class="signature-section">
-                    <div class="signature-line">Customer Signature</div>
-                    <div class="signature-line">Authorized By</div>
+                    <div class="signature-line">
+                        Prepared / Received By
+                    </div>
+                    <div class="signature-line">
+                        Customer Signature & Seal
+                    </div>
+                    <div class="signature-line">
+                        Authorized Signatory
+                    </div>
                 </div>
 
-                <!-- Footer notice -->
                 <div class="footer-notice">
-                    This is an electronically generated sales order voucher from Business Solution. System Record ID: #${escapeHtml(orderId)}
+                    This is an electronically generated Customer Order voucher issued by BUSINESS SOLUTION. Goods received are subject to verification.
                 </div>
             </div>
 
