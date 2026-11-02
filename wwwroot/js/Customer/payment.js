@@ -228,6 +228,78 @@ window.copyToClipboard = function(text, label = 'Text') {
     });
 };
 
+/**
+ * Reads any query parameters passed via URL (e.g. ?SearchTerm=...&CustomerId=...&FromDate=...&ToDate=...)
+ */
+function parseUrlParameters() {
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (urlParams.has('CustomerId')) customerId = urlParams.get('CustomerId') || '';
+        else if (urlParams.has('customerId')) customerId = urlParams.get('customerId') || '';
+
+        if (urlParams.has('SearchTerm')) searchTerm = urlParams.get('SearchTerm') || '';
+        else if (urlParams.has('searchTerm')) searchTerm = urlParams.get('searchTerm') || '';
+
+        if (urlParams.has('FromDate')) fromDate = urlParams.get('FromDate') || '';
+        else if (urlParams.has('fromDate')) fromDate = urlParams.get('fromDate') || '';
+
+        if (urlParams.has('ToDate')) toDate = urlParams.get('ToDate') || '';
+        else if (urlParams.has('toDate')) toDate = urlParams.get('toDate') || '';
+
+        if (urlParams.has('PageNumber')) currentPage = parseInt(urlParams.get('PageNumber'), 10) || 1;
+        if (urlParams.has('PageSize')) pageSize = parseInt(urlParams.get('PageSize'), 10) || 10;
+
+        // Sync inputs with parsed params
+        const searchInput = document.getElementById('search-input');
+        if (searchInput && searchTerm) searchInput.value = searchTerm;
+
+        const fromDateInput = document.getElementById('from-date-input');
+        if (fromDateInput && fromDate) fromDateInput.value = fromDate;
+
+        const toDateInput = document.getElementById('to-date-input');
+        if (toDateInput && toDate) toDateInput.value = toDate;
+
+        const pageSizeSelect = document.getElementById('page-size-select');
+        if (pageSizeSelect && pageSize) pageSizeSelect.value = pageSize.toString();
+
+    } catch (e) {
+        console.warn('Could not parse URL query parameters:', e);
+    }
+}
+
+/**
+ * Collects current filter inputs and triggers reload without needing to click Apply Filter button
+ */
+function applyFilters() {
+    const searchInput = document.getElementById('search-input');
+    const fromDateInput = document.getElementById('from-date-input');
+    const toDateInput = document.getElementById('to-date-input');
+
+    searchTerm = searchInput ? searchInput.value.trim() : '';
+    fromDate = fromDateInput ? fromDateInput.value.trim() : '';
+    toDate = toDateInput ? toDateInput.value.trim() : '';
+
+    currentPage = 1;
+
+    // Keep URL in sync without reload
+    if (window.history && window.history.replaceState) {
+        const url = new URL(window.location);
+        if (searchTerm) url.searchParams.set('SearchTerm', searchTerm);
+        else url.searchParams.delete('SearchTerm');
+
+        if (fromDate) url.searchParams.set('FromDate', fromDate);
+        else url.searchParams.delete('FromDate');
+
+        if (toDate) url.searchParams.set('ToDate', toDate);
+        else url.searchParams.delete('ToDate');
+
+        window.history.replaceState({}, document.title, url.pathname + url.search);
+    }
+
+    loadCustomerPayments();
+}
+
 /* ==========================================================================
    Page Initialization
    ========================================================================== */
@@ -246,14 +318,15 @@ function initCustomerPaymentsPage() {
     const createPaymentForm = document.getElementById('create-payment-form');
     const paymentAmountInput = document.getElementById('payment-amount-input');
 
-    // Debounced search typing in filter bar
+    // Parse URL parameters on load
+    parseUrlParameters();
+
+    // Debounced search typing in filter bar (auto-filters as user types)
     if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
+        searchInput.addEventListener('input', () => {
             clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(() => {
-                searchTerm = e.target.value.trim();
-                currentPage = 1;
-                loadCustomerPayments();
+                applyFilters();
             }, 400);
         });
     }
@@ -262,11 +335,25 @@ function initCustomerPaymentsPage() {
     if (filterForm) {
         filterForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            searchTerm = searchInput ? searchInput.value.trim() : '';
-            fromDate = fromDateInput ? fromDateInput.value : '';
-            toDate = toDateInput ? toDateInput.value : '';
-            currentPage = 1;
-            loadCustomerPayments();
+            applyFilters();
+        });
+    }
+
+    // Auto-apply filters when date changes (no need to click Apply Filter)
+    if (fromDateInput) {
+        fromDateInput.addEventListener('change', () => {
+            applyFilters();
+        });
+        fromDateInput.addEventListener('input', () => {
+            applyFilters();
+        });
+    }
+    if (toDateInput) {
+        toDateInput.addEventListener('change', () => {
+            applyFilters();
+        });
+        toDateInput.addEventListener('input', () => {
+            applyFilters();
         });
     }
 
@@ -281,6 +368,12 @@ function initCustomerPaymentsPage() {
             fromDate = '';
             toDate = '';
             currentPage = 1;
+
+            if (window.history && window.history.replaceState) {
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, cleanUrl);
+            }
+
             loadCustomerPayments();
         });
     }
@@ -1100,18 +1193,14 @@ window.clearSpecificFilter = function(filterType) {
     if (filterType === 'search') {
         const searchInput = document.getElementById('search-input');
         if (searchInput) searchInput.value = '';
-        searchTerm = '';
     } else if (filterType === 'from') {
         const fromDateInput = document.getElementById('from-date-input');
         if (fromDateInput) fromDateInput.value = '';
-        fromDate = '';
     } else if (filterType === 'to') {
         const toDateInput = document.getElementById('to-date-input');
         if (toDateInput) toDateInput.value = '';
-        toDate = '';
     }
-    currentPage = 1;
-    loadCustomerPayments();
+    applyFilters();
 };
 
 /* ==========================================================================
