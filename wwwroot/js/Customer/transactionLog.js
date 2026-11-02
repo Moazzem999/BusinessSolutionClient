@@ -1651,7 +1651,17 @@ function exportToPdf() {
         const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
         doc.text(`Generated on: ${dateStr} | Total Records: ${transactionsList.length}`, 40, 65);
 
-        const tableHeaders = [['Date', 'Transaction Ref', 'Customer', 'Shop', 'Order No', 'Bill (BDT)', 'Payment (BDT)', 'Prev Balance', 'New Balance']];
+        const tableHeaders = [[
+            'Date',
+            'Transaction Ref',
+            'Customer',
+            'Shop',
+            'Order No',
+            { content: 'Bill (BDT)', styles: { halign: 'right' } },
+            { content: 'Payment (BDT)', styles: { halign: 'right' } },
+            { content: 'Prev Balance', styles: { halign: 'right' } },
+            { content: 'New Balance', styles: { halign: 'right' } }
+        ]];
         const tableRows = transactionsList.map(item => [
             formatDate(item.transactionDate || item.createdOn),
             item.transactionNo || '—',
@@ -1691,6 +1701,11 @@ function exportToPdf() {
                 6: { halign: 'right', cellWidth: 75 },
                 7: { halign: 'right', cellWidth: 80 },
                 8: { halign: 'right', cellWidth: 80 }
+            },
+            didParseCell: function(data) {
+                if (data.section === 'head' && [5, 6, 7, 8].includes(data.column.index)) {
+                    data.cell.styles.halign = 'right';
+                }
             }
         });
 
