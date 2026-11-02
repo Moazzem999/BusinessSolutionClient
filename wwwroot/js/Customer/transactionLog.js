@@ -611,7 +611,7 @@ function renderTransactionsTable(items) {
                 <!-- Bill Amount (Debit) -->
                 <td class="text-end">
                     ${amount > 0 ? `
-                        <span class="fw-bold text-dark font-monospace">৳ ${formatCurrency(amount)}</span>
+                        <span class="fw-bold text-dark font-monospace">${formatCurrency(amount)}</span>
                     ` : `
                         <span class="text-muted font-monospace small">0.00</span>
                     `}
@@ -620,7 +620,7 @@ function renderTransactionsTable(items) {
                 <!-- Payment (Credit) -->
                 <td class="text-end">
                     ${payment > 0 ? `
-                        <span class="fw-bold text-success font-monospace">৳ ${formatCurrency(payment)}</span>
+                        <span class="fw-bold text-success font-monospace">${formatCurrency(payment)}</span>
                     ` : `
                         <span class="text-muted font-monospace small">0.00</span>
                     `}
@@ -1120,14 +1120,14 @@ function renderPaymentDetailsModal(payment) {
                 </div>
             </div>
 
-            <!-- 2. Settlement Summary Card -->
+            <!-- 2. Financial Summary Card -->
             <div class="col-12 col-md-4">
                 <div class="p-3 bg-light rounded-4 h-100 border">
-                    <div class="d-flex align-items-center gap-2 mb-2 text-success">
-                        <div class="rounded-circle bg-success-subtle text-success d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-circle bg-success-subtle text-success p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
                             <i class="bi bi-cash-stack fs-6 text-success"></i>
                         </div>
-                        <span class="fw-semibold fs-6 text-success">Settlement Summary</span>
+                        <h6 class="mb-0 fw-bold text-dark">Financial Summary</h6>
                     </div>
                     <div class="d-flex justify-content-between text-muted small mb-1">
                         <span>Old Balance:</span>
