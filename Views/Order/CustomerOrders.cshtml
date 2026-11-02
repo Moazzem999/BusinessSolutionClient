@@ -14,7 +14,7 @@
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <a asp-controller="Order" asp-action="CreateCO" class="btn btn-primary rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
             <i class="bi bi-plus-circle-fill fs-6"></i>
-            <span>Create CO</span>
+            <span>Create</span>
         </a>
         <button type="button" id="btn-export-pdf" class="btn btn-outline-danger rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" title="Export current list to PDF">
             <i class="bi bi-file-earmark-pdf-fill fs-6 text-danger"></i>
@@ -97,7 +97,7 @@
             <thead class="bg-light">
                 <tr>
                     <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 150px;">Order No</th>
-                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 220px;">Customer</th>
+                    <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; min-width: 220px; width: 250px;">Customer</th>
                     <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Date</th>
                     <th class="text-center text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 110px;">Items</th>
                     <th class="text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Total Amount</th>

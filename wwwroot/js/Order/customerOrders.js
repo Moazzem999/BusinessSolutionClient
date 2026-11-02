@@ -20,16 +20,17 @@ let searchDebounceTimer = null;
 const SAMPLE_CUSTOMER_ORDERS = [
     {
         id: 1,
-        customerId: 5,
-        customerName: "Samsul Haque",
-        customerShopName: "Samsu Fashion",
-        customerMobile: "01977734343",
+        customerId: 4,
+        customerName: "Liton Mia",
+        customerShopName: "Liton Garments",
+        customerMobile: "01712345678",
+        isSpecial: true,
         orderNo: "CO-2026-0000001",
         orderDate: "2026-11-01T14:45:23.317Z",
-        totalAmount: 1500,
-        notes: "Deliver to Jatrabari shop",
-        customerPreviousBalance: 70000,
-        customerNewBalance: 71500,
+        totalAmount: 3200,
+        notes: "Deliver to shop",
+        customerPreviousBalance: 25000,
+        customerNewBalance: 28200,
         createdOn: new Date().toISOString(),
         orderDetails: [
             {
@@ -38,19 +39,9 @@ const SAMPLE_CUSTOMER_ORDERS = [
                 productId: 1,
                 productName: "Jacket",
                 remarks: "Black winter edition",
-                quantity: 1,
-                unitPrice: 1000,
-                lineTotal: 1000
-            },
-            {
-                id: 2,
-                customerOrderId: 1,
-                productId: 2,
-                productName: "Hudi",
-                remarks: "Cotton hoodie",
-                quantity: 1,
-                unitPrice: 500,
-                lineTotal: 500
+                quantity: 2,
+                unitPrice: 1600,
+                lineTotal: 3200
             }
         ]
     },
@@ -60,6 +51,7 @@ const SAMPLE_CUSTOMER_ORDERS = [
         customerName: "Samsul Haque",
         customerShopName: "Samsu Fashion",
         customerMobile: "01977734343",
+        isSpecial: true,
         orderNo: "CO-2026-0000002",
         orderDate: "2026-10-31T10:30:00",
         totalAmount: 2400,
@@ -69,7 +61,7 @@ const SAMPLE_CUSTOMER_ORDERS = [
         createdOn: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
         orderDetails: [
             {
-                id: 3,
+                id: 2,
                 customerOrderId: 2,
                 productId: 3,
                 productName: "Trouser",
@@ -82,21 +74,49 @@ const SAMPLE_CUSTOMER_ORDERS = [
     },
     {
         id: 3,
-        customerId: 5,
-        customerName: "Samsul Haque",
-        customerShopName: "Samsu Fashion",
-        customerMobile: "01977734343",
-        orderNo: "CO-2026-0000000",
+        customerId: 1,
+        customerName: "Jashim Ahmed",
+        customerShopName: "test",
+        customerMobile: "01855667788",
+        isSpecial: false,
+        orderNo: "CO-2026-0000003",
+        orderDate: "2026-10-25T11:15:00",
+        totalAmount: 1500,
+        notes: "Cash on delivery",
+        customerPreviousBalance: 0,
+        customerNewBalance: 0,
+        createdOn: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(),
+        orderDetails: [
+            {
+                id: 3,
+                customerOrderId: 3,
+                productId: 2,
+                productName: "Hudi",
+                remarks: "Cotton hoodie",
+                quantity: 3,
+                unitPrice: 500,
+                lineTotal: 1500
+            }
+        ]
+    },
+    {
+        id: 4,
+        customerId: 6,
+        customerName: "Jamil Khan",
+        customerShopName: "",
+        customerMobile: "01799887766",
+        isSpecial: false,
+        orderNo: "CO-2026-0000004",
         orderDate: "2026-10-20T09:00:00",
         totalAmount: 1800,
-        notes: "Delivered previous week",
-        customerPreviousBalance: 65800,
-        customerNewBalance: 67600,
+        notes: "Regular retail customer",
+        customerPreviousBalance: 0,
+        customerNewBalance: 0,
         createdOn: "2026-10-20T09:00:00",
         orderDetails: [
             {
                 id: 4,
-                customerOrderId: 3,
+                customerOrderId: 4,
                 productId: 2,
                 productName: "Hudi",
                 remarks: "Cotton hoodie",
@@ -147,6 +167,27 @@ function getAuthToken() {
 
     const localToken = localStorage.getItem('bs_token') || sessionStorage.getItem('bs_token') || '';
     return localToken.trim();
+}
+
+/**
+ * Converts image paths to full accessible URLs
+ */
+function resolveImageUrl(path) {
+    if (!path || typeof path !== 'string' || path.trim() === '') return '';
+    path = path.trim();
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
+        return path;
+    }
+    const baseUrl = getApiBaseUrl();
+    let host = '';
+    try {
+        const urlObj = new URL(baseUrl);
+        host = urlObj.origin;
+    } catch (e) {
+        host = baseUrl.replace(/\/api\/?$/i, '');
+    }
+    const cleanPath = path.startsWith('/') ? path : '/' + path;
+    return `${host}${cleanPath}`;
 }
 
 /**
@@ -270,7 +311,7 @@ function ensureTableStructureAndModal() {
     if (tableThead) {
         tableThead.innerHTML = `
             <th class="ps-4 text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 150px;">Order No</th>
-            <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 220px;">Customer</th>
+            <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; min-width: 220px; width: 250px;">Customer</th>
             <th class="text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Date</th>
             <th class="text-center text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 110px;">Items</th>
             <th class="text-end text-secondary small fw-semibold text-uppercase" style="letter-spacing: 0.5px; width: 140px;">Total Amount</th>
@@ -611,6 +652,7 @@ function renderCustomerOrdersTable(orders) {
         const orderDateFormatted = formatDate(order.orderDate || order.OrderDate);
         const customerName = order.customerName || order.CustomerName || order.name || order.Name || 'Unknown Customer';
         const customerShopName = order.customerShopName || order.CustomerShopName || order.shopName || order.ShopName || '';
+        const isSpecial = order.isSpecial === true || order.IsSpecial === true;
         const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
 
         const details = order.orderDetails || order.OrderDetails || [];
@@ -620,20 +662,41 @@ function renderCustomerOrdersTable(orders) {
         const createdOnRaw = order.createdOn || order.CreatedOn || order.orderDate || order.OrderDate;
         const canDelete = isWithinTwoDays(createdOnRaw);
 
+        const rawImage = order.customerImagePath || order.CustomerImagePath || order.imagePath || order.ImagePath || '';
+        const imageUrl = resolveImageUrl(rawImage);
+        const initials = customerName && customerName !== 'Unknown Customer' && customerName !== '—'
+            ? customerName.split(' ').filter(Boolean).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'CU'
+            : 'CU';
+
         tr.innerHTML = `
             <td class="ps-4">
                 <span class="badge bg-primary-subtle text-primary fw-bold font-monospace px-2.5 py-1 rounded-2">
                     ${escapeHtml(orderNo)}
                 </span>
             </td>
-            <td style="max-width: 220px;">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="avatar-circle-sm bg-light text-primary border rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 34px; height: 34px; min-width: 34px; font-size: 0.8rem;">
-                        <i class="bi bi-person-fill"></i>
-                    </div>
-                    <div class="text-truncate">
-                        <div class="fw-semibold text-dark text-truncate" title="${escapeHtml(customerName)}">${escapeHtml(customerName)}</div>
-                        ${customerShopName ? `<div class="text-muted small d-flex align-items-center gap-1 text-truncate" title="${escapeHtml(customerShopName)}"><i class="bi bi-shop small"></i> ${escapeHtml(customerShopName)}</div>` : ''}
+            <td style="min-width: 200px;">
+                <div class="d-flex align-items-center gap-2.5">
+                    ${imageUrl ? `
+                        <a href="${imageUrl}" target="_blank" rel="noopener noreferrer" title="Click to view full photo">
+                            <img src="${imageUrl}" alt="${escapeHtml(customerName)}" class="rounded-circle border shadow-sm" style="width: 38px; height: 38px; object-fit: cover; cursor: pointer;" onerror="this.onerror=null; this.parentElement.outerHTML='<div class=\\'avatar-circle-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold\\' style=\\'width:38px;height:38px;font-size:13px;\\'>${initials}</div>';">
+                        </a>
+                    ` : `
+                        <div class="avatar-circle-sm bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px; min-width: 38px; font-size: 13px;">
+                            ${initials}
+                        </div>
+                    `}
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="fw-bold text-dark">${escapeHtml(customerName)}</span>
+                            ${isSpecial ? `
+                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small px-2 py-0" data-bs-toggle="tooltip" data-bs-placement="top" title="Special Customer" style="font-size: 0.72rem; cursor: help;">
+                                    <i class="bi bi-star-fill text-warning me-1" style="font-size: 0.65rem;"></i>Special
+                                </span>
+                            ` : ''}
+                        </div>
+                        <span class="badge bg-light text-secondary border fw-medium rounded-pill px-2 py-0.5 small" style="font-size: 0.75rem;">
+                            <i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName || 'N/A')}
+                        </span>
                     </div>
                 </div>
             </td>
@@ -672,6 +735,12 @@ function renderCustomerOrdersTable(orders) {
 
         tableBody.appendChild(tr);
     });
+
+    // Initialize tooltips for special customer badges
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        const tooltipTriggerList = [].slice.call(tableBody.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+    }
 }
 
 /**
@@ -876,6 +945,7 @@ window.viewOrderDetails = function(orderIndex) {
     const customerName = order.customerName || order.CustomerName || order.name || order.Name || '—';
     const customerShopName = order.customerShopName || order.CustomerShopName || order.shopName || order.ShopName || '—';
     const customerId = order.customerId || order.CustomerId || '—';
+    const isSpecial = order.isSpecial === true || order.IsSpecial === true;
     const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
     const prevBalance = order.customerPreviousBalance !== undefined ? order.customerPreviousBalance : (order.CustomerPreviousBalance !== undefined ? order.CustomerPreviousBalance : 0);
     const newBalance = order.customerNewBalance !== undefined ? order.customerNewBalance : (order.CustomerNewBalance !== undefined ? order.CustomerNewBalance : (Number(prevBalance) + Number(totalAmount)));
@@ -941,8 +1011,19 @@ window.viewOrderDetails = function(orderIndex) {
                         </div>
                         <h6 class="mb-0 fw-bold text-dark">Customer</h6>
                     </div>
-                    <div class="fw-bold text-dark fs-6">${escapeHtml(customerName)}</div>
-                    <div class="text-muted small mb-1">${customerShopName ? `<i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName)}` : ''}</div>
+                    <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2 mb-1">
+                        <span>${escapeHtml(customerName)}</span>
+                        ${isSpecial ? `
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small px-2 py-0" data-bs-toggle="tooltip" data-bs-placement="top" title="Special Customer" style="font-size: 0.72rem; cursor: help;">
+                                <i class="bi bi-star-fill text-warning me-1" style="font-size: 0.65rem;"></i>Special
+                            </span>
+                        ` : ''}
+                    </div>
+                    <div class="mb-1">
+                        <span class="badge bg-white text-secondary border fw-medium rounded-pill px-2 py-0.5 small" style="font-size: 0.75rem;">
+                            <i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName || 'N/A')}
+                        </span>
+                    </div>
                     <div class="text-muted small">Customer ID: <span class="fw-medium text-dark">#${escapeHtml(customerId)}</span></div>
                 </div>
             </div>
@@ -1038,6 +1119,11 @@ window.viewOrderDetails = function(orderIndex) {
             ? bootstrap.Modal.getOrCreateInstance(modalEl)
             : (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl));
         orderDetailsModalInstance.show();
+
+        if (bootstrap.Tooltip) {
+            const tooltipTriggerList = [].slice.call(modalEl.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(el => new bootstrap.Tooltip(el));
+        }
     }
 };
 
@@ -1063,6 +1149,7 @@ window.printOrderDetails = function(orderParam) {
     const customerShopName = order.customerShopName || order.CustomerShopName || order.shopName || order.ShopName || '';
     const customerMobile = order.customerMobile || order.CustomerMobile || order.mobile || order.Mobile || '';
     const customerId = order.customerId || order.CustomerId || '—';
+    const isSpecial = order.isSpecial === true || order.IsSpecial === true;
     const totalAmount = order.totalAmount !== undefined ? order.totalAmount : (order.TotalAmount !== undefined ? order.TotalAmount : 0);
     const prevBalance = order.customerPreviousBalance !== undefined ? order.customerPreviousBalance : (order.CustomerPreviousBalance !== undefined ? order.CustomerPreviousBalance : 0);
     const newBalance = order.customerNewBalance !== undefined ? order.customerNewBalance : (order.CustomerNewBalance !== undefined ? order.CustomerNewBalance : (Number(prevBalance) + Number(totalAmount)));
@@ -1313,8 +1400,19 @@ window.printOrderDetails = function(orderParam) {
                     <div class="col-4">
                         <div class="meta-card">
                             <div class="meta-card-title"><i class="bi bi-person-fill text-primary"></i> Customer Details</div>
-                            <div class="fw-bold text-dark fs-6">${escapeHtml(customerName)}</div>
-                            ${customerShopName ? `<div class="text-muted small"><i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName)}</div>` : ''}
+                            <div class="fw-bold text-dark fs-6 d-flex align-items-center gap-2 mb-1">
+                                <span>${escapeHtml(customerName)}</span>
+                                ${isSpecial ? `
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill small px-2 py-0" style="font-size: 0.72rem;">
+                                        <i class="bi bi-star-fill text-warning me-1" style="font-size: 0.65rem;"></i>Special
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div class="mb-1">
+                                <span class="badge bg-light text-secondary border fw-medium rounded-pill px-2 py-0.5 small" style="font-size: 0.75rem;">
+                                    <i class="bi bi-shop me-1"></i>${escapeHtml(customerShopName || 'N/A')}
+                                </span>
+                            </div>
                             ${customerMobile ? `<div class="text-muted small"><i class="bi bi-telephone me-1"></i>${escapeHtml(customerMobile)}</div>` : ''}
                             <div class="text-muted small mt-1">Customer ID: <strong class="text-dark">#${escapeHtml(customerId)}</strong></div>
                         </div>
@@ -1539,14 +1637,19 @@ function exportToPdf() {
         }, 0);
 
         const tableHeaders = [['CO Number', 'Customer', 'Shop', 'Order Date', 'Items', 'Total Amount']];
-        const tableRows = ordersList.map(o => [
-            o.orderNo || o.OrderNo || `CO-${o.id}`,
-            o.customerName || o.CustomerName || o.name || '',
-            o.customerShopName || o.CustomerShopName || o.shopName || '',
-            formatDate(o.orderDate || o.OrderDate),
-            `${(o.orderDetails || o.OrderDetails || []).length} items`,
-            `BDT ${formatCurrency(o.totalAmount !== undefined ? o.totalAmount : o.TotalAmount)}`
-        ]);
+        const tableRows = ordersList.map(o => {
+            const isSpecial = o.isSpecial === true || o.IsSpecial === true;
+            const name = o.customerName || o.CustomerName || o.name || '';
+            const custDisplay = isSpecial ? `${name} (Special)` : name;
+            return [
+                o.orderNo || o.OrderNo || `CO-${o.id}`,
+                custDisplay,
+                o.customerShopName || o.CustomerShopName || o.shopName || '',
+                formatDate(o.orderDate || o.OrderDate),
+                `${(o.orderDetails || o.OrderDetails || []).length} items`,
+                `BDT ${formatCurrency(o.totalAmount !== undefined ? o.totalAmount : o.TotalAmount)}`
+            ];
+        });
 
         doc.autoTable({
             head: tableHeaders,
@@ -1603,19 +1706,25 @@ function exportToExcel() {
             return sum + (isNaN(amount) ? 0 : amount);
         }, 0);
 
-        const rows = ordersList.map(o => ({
-            'CO Number': o.orderNo || o.OrderNo || `CO-${o.id}`,
-            'Customer Name': o.customerName || o.CustomerName || o.name || '',
-            'Shop Name': o.customerShopName || o.CustomerShopName || o.shopName || '',
-            'Order Date': formatDate(o.orderDate || o.OrderDate),
-            'Items': `${(o.orderDetails || o.OrderDetails || []).length} items`,
-            'Total Amount': Number(o.totalAmount !== undefined ? o.totalAmount : (o.TotalAmount || 0)),
-            'Notes': o.notes || o.Notes || ''
-        }));
+        const rows = ordersList.map(o => {
+            const isSpecial = o.isSpecial === true || o.IsSpecial === true;
+            const name = o.customerName || o.CustomerName || o.name || '';
+            return {
+                'CO Number': o.orderNo || o.OrderNo || `CO-${o.id}`,
+                'Customer Name': isSpecial ? `${name} (Special)` : name,
+                'Customer Type': isSpecial ? 'Special' : 'Regular',
+                'Shop Name': o.customerShopName || o.CustomerShopName || o.shopName || '',
+                'Order Date': formatDate(o.orderDate || o.OrderDate),
+                'Items': `${(o.orderDetails || o.OrderDetails || []).length} items`,
+                'Total Amount': Number(o.totalAmount !== undefined ? o.totalAmount : (o.TotalAmount || 0)),
+                'Notes': o.notes || o.Notes || ''
+            };
+        });
 
         rows.push({
             'CO Number': 'Total Amount',
             'Customer Name': '',
+            'Customer Type': '',
             'Shop Name': '',
             'Order Date': '',
             'Items': '',
@@ -1627,7 +1736,8 @@ function exportToExcel() {
 
         ws['!cols'] = [
             { wch: 18 }, // CO Number
-            { wch: 22 }, // Customer Name
+            { wch: 24 }, // Customer Name
+            { wch: 15 }, // Customer Type
             { wch: 22 }, // Shop Name
             { wch: 15 }, // Order Date
             { wch: 12 }, // Items
