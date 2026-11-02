@@ -154,6 +154,10 @@
                                 <i class="bi bi-plus-circle-fill"></i>
                                 <span>Create</span>
                             </a>
+                            <a asp-controller="Customer" asp-action="Payment" class="sidebar-sublink @(isCustomersActive && currentAction == "Payment" ? "active" : "")">
+                                <i class="bi bi-cash-stack"></i>
+                                <span>Payment</span>
+                            </a>
                             <a asp-controller="Customer" asp-action="TransactionLog" class="sidebar-sublink @(isCustomersActive && currentAction == "TransactionLog" ? "active" : "")">
                                 <i class="bi bi-clock-history"></i>
                                 <span>Transaction Log</span>
