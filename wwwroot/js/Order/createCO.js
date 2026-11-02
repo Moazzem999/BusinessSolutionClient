@@ -399,6 +399,30 @@ function initOrderItemsTable() {
         btnAddBottom.addEventListener('click', () => addItemRow());
     }
 
+    // Global listener: prevent mouse wheel scrolling on Qty and Price number inputs
+    document.addEventListener('wheel', (e) => {
+        if (e.target && (e.target.classList.contains('item-quantity') || e.target.classList.contains('item-unit-price') || e.target.classList.contains('no-spinner'))) {
+            e.preventDefault();
+            if (document.activeElement === e.target) {
+                e.target.blur();
+            }
+            window.scrollBy({
+                top: e.deltaY,
+                left: e.deltaX,
+                behavior: 'auto'
+            });
+        }
+    }, { passive: false });
+
+    // Global listener: prevent ArrowUp and ArrowDown from stepping/scrolling numbers
+    document.addEventListener('keydown', (e) => {
+        if (e.target && (e.target.classList.contains('item-quantity') || e.target.classList.contains('item-unit-price') || e.target.classList.contains('no-spinner'))) {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+            }
+        }
+    });
+
     // Add first initial row
     addItemRow();
 }
@@ -416,33 +440,42 @@ function addItemRow(initialData = null) {
     tr.className = 'item-row';
     tr.id = `item-row-${currentId}`;
 
+    const defaultProductId = initialData ? initialData.productId : '';
+    const defaultProductName = initialData ? initialData.productName : '';
+    const defaultRemarks = initialData ? initialData.remarks : '';
+    const defaultQty = initialData && initialData.quantity !== undefined ? initialData.quantity : 0;
+    const defaultPrice = initialData && initialData.unitPrice !== undefined ? initialData.unitPrice : 0;
+    const defaultTotal = (defaultQty * defaultPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
     tr.innerHTML = `
-        <td class="ps-4 fw-semibold text-muted item-row-num small text-center" style="width: 45px;">
+        <td class="ps-4 fw-semibold text-secondary row-index-cell" style="width: 45px;">
             ${tbody.children.length + 1}
         </td>
 
         <!-- Product Search Combobox -->
         <td class="position-relative product-search-container" style="min-width: 260px; width: 32%;">
-            <div class="input-group input-group-sm">
+            <div class="input-group">
                 <span class="input-group-text bg-light border-end-0 text-muted ps-2.5">
                     <i class="bi bi-box-seam"></i>
                 </span>
                 <input type="text" 
-                       class="form-control bg-light border-start-0 product-search-input" 
-                       placeholder="Search product (min 2 chars, e.g. 'Jacket')..." 
+                       class="form-control bg-light border-start-0 ps-1 product-search-input" 
+                       placeholder="Search product (e.g. 'hud')..." 
+                       value="${escapeHtml(defaultProductName)}" 
+                       ${defaultProductName ? `data-selected-name="${escapeHtml(defaultProductName)}"` : ''}
                        autocomplete="off" 
                        required>
-                <input type="hidden" class="item-product-id" name="orderDetails[${currentId}].productId">
+                <input type="hidden" class="item-product-id" name="orderDetails[${currentId}].productId" value="${defaultProductId}">
                 <button type="button" 
-                        class="btn btn-light border border-start-0 text-muted btn-clear-product d-none" 
-                        title="Clear selection">
-                    <i class="bi bi-x"></i>
+                        class="btn btn-light border border-start-0 text-muted btn-clear-product ${defaultProductId ? '' : 'd-none'}" 
+                        title="Clear Product">
+                    <i class="bi bi-x-circle-fill"></i>
                 </button>
             </div>
 
             <!-- Autocomplete suggestions menu -->
             <div class="product-suggestions-menu position-absolute start-0 w-100 shadow-lg border border-secondary-subtle rounded-3 p-0 mt-1 overflow-auto bg-white d-none" 
-                 style="max-height: 250px; z-index: 1060; top: 100%;">
+                 style="max-height: 240px; z-index: 1060; top: 100%; min-width: 260px;">
                 <div class="product-suggestions-list list-group list-group-flush small">
                     <!-- Populated dynamically -->
                 </div>
@@ -452,46 +485,47 @@ function addItemRow(initialData = null) {
         <!-- Remarks -->
         <td style="min-width: 200px; width: 25%;">
             <input type="text" 
-                   class="form-control form-control-sm bg-light item-remarks" 
-                   placeholder="e.g. Size L, Blue, Special packaging" 
+                   class="form-control rounded-3 item-remarks" 
+                   placeholder="e.g. Size-L, Color-Blue" 
+                   value="${escapeHtml(defaultRemarks)}"
                    name="orderDetails[${currentId}].remarks">
         </td>
 
         <!-- Quantity -->
         <td style="width: 120px;">
             <input type="number" 
-                   class="form-control form-control-sm text-center item-quantity no-spinner" 
-                   value="${initialData && initialData.quantity ? initialData.quantity : 1}" 
-                   min="1" 
+                   class="form-control text-center rounded-3 item-quantity no-spinner" 
+                   value="${defaultQty}" 
+                   min="0" 
                    step="1" 
                    required>
         </td>
 
         <!-- Price -->
         <td style="width: 150px;">
-            <div class="input-group input-group-sm">
-                <span class="input-group-text bg-light text-muted px-2">৳</span>
+            <div class="input-group">
+                <span class="input-group-text bg-light text-muted small px-2">৳</span>
                 <input type="number" 
-                       class="form-control form-control-sm text-end item-unit-price no-spinner" 
-                       value="${initialData && initialData.unitPrice ? initialData.unitPrice : 0}" 
-                       min="0" 
-                       step="0.01" 
-                       placeholder="0.00" 
-                       required>
+                   class="form-control text-end rounded-end item-unit-price no-spinner" 
+                   value="${defaultPrice}" 
+                   min="0" 
+                   step="0.01" 
+                   placeholder="0.00" 
+                   required>
             </div>
         </td>
 
         <!-- Total -->
-        <td class="text-end" style="width: 160px;">
-            <span class="fw-bold font-monospace text-dark item-line-total">৳ 0.00</span>
+        <td style="width: 160px;">
+            <input type="text" class="form-control text-end fw-bold bg-light rounded-3 item-line-total" value="৳ ${defaultTotal}" readonly>
         </td>
 
         <!-- Action Delete Row -->
         <td class="pe-4 text-center" style="width: 50px;">
             <button type="button" 
                     class="btn btn-outline-danger btn-sm rounded-2 btn-remove-item" 
-                    title="Remove item">
-                <i class="bi bi-trash"></i>
+                    title="Remove Item">
+                <i class="bi bi-trash-fill"></i>
             </button>
         </td>
     `;
@@ -501,10 +535,32 @@ function addItemRow(initialData = null) {
     // Initialize Autocomplete on the new row
     initRowProductAutocomplete(tr);
 
-    // Bind Quantity & Price change events for calculations
+    // Bind Quantity, Price, and Remove event listeners
     const qtyInput = tr.querySelector('.item-quantity');
     const priceInput = tr.querySelector('.item-unit-price');
     const removeBtn = tr.querySelector('.btn-remove-item');
+
+    // Prevent mouse wheel scrolling & Arrow keys on Qty and Price directly on the elements
+    [qtyInput, priceInput].forEach(input => {
+        if (!input) return;
+        input.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (document.activeElement === input) {
+                input.blur();
+            }
+            window.scrollBy({
+                top: e.deltaY,
+                left: e.deltaX,
+                behavior: 'auto'
+            });
+        }, { passive: false });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+            }
+        });
+    });
 
     if (qtyInput) {
         qtyInput.addEventListener('input', () => calculateRowTotal(tr));
@@ -531,7 +587,7 @@ function addItemRow(initialData = null) {
                 }
                 if (hiddenInp) hiddenInp.value = '';
                 if (remarksInp) remarksInp.value = '';
-                if (qtyInput) qtyInput.value = '1';
+                if (qtyInput) qtyInput.value = '0';
                 if (priceInput) priceInput.value = '0';
                 if (clearProductBtn) clearProductBtn.classList.add('d-none');
 
@@ -799,8 +855,8 @@ function reindexRows() {
     const badge = document.getElementById('items-count-text');
 
     rows.forEach((row, idx) => {
-        const numEl = row.querySelector('.item-row-num');
-        if (numEl) numEl.innerText = idx + 1;
+        const numEl = row.querySelector('.row-index-cell, .item-row-num');
+        if (numEl) numEl.textContent = idx + 1;
     });
 
     if (badge) {
@@ -822,7 +878,12 @@ function calculateRowTotal(rowEl) {
     const lineTotal = qty * price;
 
     if (totalEl) {
-        totalEl.innerText = `৳ ${lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const formatted = `৳ ${lineTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        if (totalEl.tagName === 'INPUT') {
+            totalEl.value = formatted;
+        } else {
+            totalEl.innerText = formatted;
+        }
     }
 
     calculateOverallTotals();
