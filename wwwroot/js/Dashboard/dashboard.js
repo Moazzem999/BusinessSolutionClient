@@ -2,9 +2,17 @@
    Business Solution Client - Dashboard Page JavaScript
    ========================================================================== */
 
-let monthlyChartInstance = null;
-let currentChartType = 'bar';
-let cachedDayWiseData = [];
+let trendsChartInstance = null;
+let currentPeriod = 'month'; // 'month' | 'year'
+let currentChartType = 'bar'; // 'bar' | 'line' | 'table'
+
+let cachedMonthWiseData = [];
+let cachedYearWiseData = [];
+
+let totalMonthSales = 0;
+let totalMonthPayment = 0;
+let totalYearSales = 0;
+let totalYearPayment = 0;
 
 document.addEventListener('DOMContentLoaded', () => {
     initDashboard();
@@ -14,12 +22,24 @@ document.addEventListener('DOMContentLoaded', () => {
  * Initializes dashboard event listeners and loads metrics.
  */
 function initDashboard() {
+    // Refresh button handler
     const refreshBtn = document.getElementById('btn-refresh-dashboard');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', (e) => {
             e.preventDefault();
             loadAllDashboardMetrics(true);
         });
+    }
+
+    // Period selector handlers (Month vs Year)
+    const btnPeriodMonth = document.getElementById('btn-period-month');
+    const btnPeriodYear = document.getElementById('btn-period-year');
+
+    if (btnPeriodMonth) {
+        btnPeriodMonth.addEventListener('click', () => switchPeriod('month'));
+    }
+    if (btnPeriodYear) {
+        btnPeriodYear.addEventListener('click', () => switchPeriod('year'));
     }
 
     // Chart & Table view toggle handlers
@@ -38,6 +58,50 @@ function initDashboard() {
     }
 
     loadAllDashboardMetrics();
+}
+
+/**
+ * Switches between 'month' (day-wise) and 'year' (month-wise) period analysis.
+ * @param {'month'|'year'} period
+ */
+function switchPeriod(period) {
+    if (currentPeriod === period) return;
+    currentPeriod = period;
+
+    const btnPeriodMonth = document.getElementById('btn-period-month');
+    const btnPeriodYear = document.getElementById('btn-period-year');
+    const cardTitle = document.getElementById('trend-card-title');
+    const cardSubtitle = document.getElementById('trend-card-subtitle');
+    const thPeriodLabel = document.getElementById('th-period-label');
+    const badgeSalesLabel = document.getElementById('badge-sales-label');
+    const badgePaymentLabel = document.getElementById('badge-payment-label');
+    const badgeSales = document.getElementById('badge-trend-sales');
+    const badgePayment = document.getElementById('badge-trend-payment');
+
+    if (period === 'month') {
+        if (btnPeriodMonth) btnPeriodMonth.classList.add('active');
+        if (btnPeriodYear) btnPeriodYear.classList.remove('active');
+        if (cardTitle) cardTitle.innerText = 'Monthly Sales & Payment Trends';
+        if (cardSubtitle) cardSubtitle.innerText = 'Day-by-day comparison of sales revenue and payment collections for this month';
+        if (thPeriodLabel) thPeriodLabel.innerText = 'Day / Date';
+        if (badgeSalesLabel) badgeSalesLabel.innerText = 'Month Sales';
+        if (badgePaymentLabel) badgePaymentLabel.innerText = 'Month Collections';
+        if (badgeSales) badgeSales.innerText = `৳ ${formatCurrencyString(totalMonthSales)}`;
+        if (badgePayment) badgePayment.innerText = `৳ ${formatCurrencyString(totalMonthPayment)}`;
+    } else {
+        if (btnPeriodYear) btnPeriodYear.classList.add('active');
+        if (btnPeriodMonth) btnPeriodMonth.classList.remove('active');
+        if (cardTitle) cardTitle.innerText = 'Annual Sales & Payment Trends';
+        if (cardSubtitle) cardSubtitle.innerText = 'Month-by-month comparison of sales revenue and payment collections for this year';
+        if (thPeriodLabel) thPeriodLabel.innerText = 'Month';
+        if (badgeSalesLabel) badgeSalesLabel.innerText = 'Year Sales';
+        if (badgePaymentLabel) badgePaymentLabel.innerText = 'Year Collections';
+        if (badgeSales) badgeSales.innerText = `৳ ${formatCurrencyString(totalYearSales)}`;
+        if (badgePayment) badgePayment.innerText = `৳ ${formatCurrencyString(totalYearPayment)}`;
+    }
+
+    renderTrendsChart();
+    renderTrendTable();
 }
 
 /**
@@ -63,7 +127,7 @@ function switchViewMode(mode) {
         if (mode === 'line' && btnLine) btnLine.classList.add('active');
         if (tableContainer) tableContainer.classList.add('d-none');
         if (chartContainer) chartContainer.classList.remove('d-none');
-        renderMonthlyChart();
+        renderTrendsChart();
     }
 }
 
@@ -164,7 +228,7 @@ function animateCurrency(element, targetValue, duration = 600) {
 }
 
 /**
- * Fetches all metrics across Today's Performance, Monthly Trends, and Customer Analytics.
+ * Fetches all metrics across Today, Month, Year, and Customers.
  * @param {boolean} isManualRefresh
  */
 async function loadAllDashboardMetrics(isManualRefresh = false) {
@@ -177,6 +241,7 @@ async function loadAllDashboardMetrics(isManualRefresh = false) {
         await Promise.allSettled([
             fetchTodayMetrics(),
             fetchMonthlyMetrics(),
+            fetchYearlyMetrics(),
             fetchCustomerMetrics()
         ]);
     } finally {
@@ -294,62 +359,153 @@ async function fetchMonthlyMetrics() {
     }
 
     // Calculate Totals for the entire month
-    const totalSalesMonth = salesList.reduce((acc, item) => acc + (parseFloat(item.total) || 0), 0);
-    const totalPaymentMonth = paymentList.reduce((acc, item) => acc + (parseFloat(item.total) || 0), 0);
+    totalMonthSales = salesList.reduce((acc, item) => acc + (parseFloat(item.total) || 0), 0);
+    totalMonthPayment = paymentList.reduce((acc, item) => acc + (parseFloat(item.total) || 0), 0);
 
     // Update Month Metric Cards
     const salesMonthEl = document.getElementById('metric-sales-month');
     const paymentMonthEl = document.getElementById('metric-payment-month');
-    if (salesMonthEl) animateCurrency(salesMonthEl, totalSalesMonth);
-    if (paymentMonthEl) animateCurrency(paymentMonthEl, totalPaymentMonth);
-
-    // Update Trend Badges
-    const badgeSales = document.getElementById('badge-month-sales');
-    const badgePayment = document.getElementById('badge-month-payment');
-    if (badgeSales) badgeSales.innerText = `৳ ${formatCurrencyString(totalSalesMonth)}`;
-    if (badgePayment) badgePayment.innerText = `৳ ${formatCurrencyString(totalPaymentMonth)}`;
+    if (salesMonthEl) animateCurrency(salesMonthEl, totalMonthSales);
+    if (paymentMonthEl) animateCurrency(paymentMonthEl, totalMonthPayment);
 
     // Build Unified Day-wise List
     const dayMap = new Map();
 
     salesList.forEach(item => {
         if (!dayMap.has(item.day)) {
-            dayMap.set(item.day, { day: item.day, sales: 0, payments: 0 });
+            dayMap.set(item.day, { periodLabel: item.day, sales: 0, payments: 0 });
         }
         dayMap.get(item.day).sales = parseFloat(item.total) || 0;
     });
 
     paymentList.forEach(item => {
         if (!dayMap.has(item.day)) {
-            dayMap.set(item.day, { day: item.day, sales: 0, payments: 0 });
+            dayMap.set(item.day, { periodLabel: item.day, sales: 0, payments: 0 });
         }
         dayMap.get(item.day).payments = parseFloat(item.total) || 0;
     });
 
-    cachedDayWiseData = Array.from(dayMap.values()).map(x => ({
+    cachedMonthWiseData = Array.from(dayMap.values()).map(x => ({
         ...x,
         net: x.payments - x.sales
     }));
 
-    // Render Chart and Table
-    renderMonthlyChart();
-    renderDayWiseTable();
+    // Update current view if Month is active
+    if (currentPeriod === 'month') {
+        const badgeSales = document.getElementById('badge-trend-sales');
+        const badgePayment = document.getElementById('badge-trend-payment');
+        if (badgeSales) badgeSales.innerText = `৳ ${formatCurrencyString(totalMonthSales)}`;
+        if (badgePayment) badgePayment.innerText = `৳ ${formatCurrencyString(totalMonthPayment)}`;
+
+        renderTrendsChart();
+        renderTrendTable();
+    }
 }
 
 /**
- * Renders or updates the Monthly Trends Chart using Chart.js.
+ * Fetches TotalSalesThisYear and TotalPaymentReceivedThisYear from Dashboard API,
+ * updates year metric cards, and prepares annual trends chart & table.
  */
-function renderMonthlyChart() {
-    const canvas = document.getElementById('monthlyTrendsChart');
+async function fetchYearlyMetrics() {
+    const baseUrl = getApiBaseUrl();
+    const token = getAuthToken();
+
+    const headers = { 'Accept': 'application/json' };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const yearSalesEndpoint = `${baseUrl}/Dashboard/TotalSalesThisYear`;
+    const yearPaymentEndpoint = `${baseUrl}/Dashboard/TotalPaymentReceivedThisYear`;
+
+    let salesList = [];
+    let paymentList = [];
+
+    // 1. Fetch Month-wise Sales This Year
+    try {
+        const resSales = await fetch(yearSalesEndpoint, { headers });
+        if (resSales.ok) {
+            const data = await resSales.json();
+            if (data && data.succeeded && Array.isArray(data.data)) {
+                salesList = data.data;
+            }
+        }
+    } catch (err) {
+        console.warn('Could not fetch TotalSalesThisYear:', err);
+    }
+
+    // 2. Fetch Month-wise Payments Received This Year
+    try {
+        const resPayment = await fetch(yearPaymentEndpoint, { headers });
+        if (resPayment.ok) {
+            const data = await resPayment.json();
+            if (data && data.succeeded && Array.isArray(data.data)) {
+                paymentList = data.data;
+            }
+        }
+    } catch (err) {
+        console.warn('Could not fetch TotalPaymentReceivedThisYear:', err);
+    }
+
+    // Calculate Totals for the entire year
+    totalYearSales = salesList.reduce((acc, item) => acc + (parseFloat(item.total) || 0), 0);
+    totalYearPayment = paymentList.reduce((acc, item) => acc + (parseFloat(item.total) || 0), 0);
+
+    // Update Year Metric Cards
+    const salesYearEl = document.getElementById('metric-sales-year');
+    const paymentYearEl = document.getElementById('metric-payment-year');
+    if (salesYearEl) animateCurrency(salesYearEl, totalYearSales);
+    if (paymentYearEl) animateCurrency(paymentYearEl, totalYearPayment);
+
+    // Build Unified Month-wise List (in calendar order January - December)
+    const monthMap = new Map();
+
+    salesList.forEach(item => {
+        if (!monthMap.has(item.month)) {
+            monthMap.set(item.month, { periodLabel: item.month, sales: 0, payments: 0 });
+        }
+        monthMap.get(item.month).sales = parseFloat(item.total) || 0;
+    });
+
+    paymentList.forEach(item => {
+        if (!monthMap.has(item.month)) {
+            monthMap.set(item.month, { periodLabel: item.month, sales: 0, payments: 0 });
+        }
+        monthMap.get(item.month).payments = parseFloat(item.total) || 0;
+    });
+
+    cachedYearWiseData = Array.from(monthMap.values()).map(x => ({
+        ...x,
+        net: x.payments - x.sales
+    }));
+
+    // Update current view if Year is active
+    if (currentPeriod === 'year') {
+        const badgeSales = document.getElementById('badge-trend-sales');
+        const badgePayment = document.getElementById('badge-trend-payment');
+        if (badgeSales) badgeSales.innerText = `৳ ${formatCurrencyString(totalYearSales)}`;
+        if (badgePayment) badgePayment.innerText = `৳ ${formatCurrencyString(totalYearPayment)}`;
+
+        renderTrendsChart();
+        renderTrendTable();
+    }
+}
+
+/**
+ * Renders or updates the Trends Chart using Chart.js based on active period.
+ */
+function renderTrendsChart() {
+    const canvas = document.getElementById('trendsChart');
     if (!canvas || typeof Chart === 'undefined') return;
 
-    const labels = cachedDayWiseData.map(item => item.day);
-    const salesData = cachedDayWiseData.map(item => item.sales);
-    const paymentData = cachedDayWiseData.map(item => item.payments);
+    const activeData = currentPeriod === 'month' ? cachedMonthWiseData : cachedYearWiseData;
+    const labels = activeData.map(item => item.periodLabel);
+    const salesData = activeData.map(item => item.sales);
+    const paymentData = activeData.map(item => item.payments);
 
-    if (monthlyChartInstance) {
-        monthlyChartInstance.destroy();
-        monthlyChartInstance = null;
+    if (trendsChartInstance) {
+        trendsChartInstance.destroy();
+        trendsChartInstance = null;
     }
 
     const ctx = canvas.getContext('2d');
@@ -383,7 +539,7 @@ function renderMonthlyChart() {
         }
     ];
 
-    monthlyChartInstance = new Chart(ctx, {
+    trendsChartInstance = new Chart(ctx, {
         type: currentChartType,
         data: {
             labels: labels.length > 0 ? labels : ['No Data'],
@@ -468,17 +624,19 @@ function renderMonthlyChart() {
 }
 
 /**
- * Renders the day-wise breakdown table for the current month.
+ * Renders the day-wise or month-wise breakdown table based on active period.
  */
-function renderDayWiseTable() {
-    const tbody = document.getElementById('month-data-table-body');
+function renderTrendTable() {
+    const tbody = document.getElementById('trend-data-table-body');
     if (!tbody) return;
 
-    if (!cachedDayWiseData || cachedDayWiseData.length === 0) {
+    const activeData = currentPeriod === 'month' ? cachedMonthWiseData : cachedYearWiseData;
+
+    if (!activeData || activeData.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="4" class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-4 d-block mb-1"></i> No day-wise records recorded for this month.
+                    <i class="bi bi-inbox fs-4 d-block mb-1"></i> No records available for this ${currentPeriod}.
                 </td>
             </tr>
         `;
@@ -486,13 +644,15 @@ function renderDayWiseTable() {
     }
 
     let html = '';
-    cachedDayWiseData.forEach(item => {
+    activeData.forEach(item => {
         const netColor = item.net >= 0 ? 'text-success' : 'text-danger';
         const netPrefix = item.net > 0 ? '+' : '';
+        const icon = currentPeriod === 'month' ? 'bi-calendar2-day' : 'bi-calendar3';
+
         html += `
             <tr>
                 <td class="ps-3 fw-semibold text-dark">
-                    <i class="bi bi-calendar2-day text-muted me-2"></i>${item.day}
+                    <i class="bi ${icon} text-muted me-2"></i>${item.periodLabel}
                 </td>
                 <td class="text-end fw-semibold text-primary">
                     ৳ ${formatCurrencyString(item.sales)}
