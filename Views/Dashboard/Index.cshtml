@@ -4,41 +4,185 @@
 }
 
 <!-- Page Header Row -->
-<div class="page-header-row">
+<div class="page-header-row mb-4 flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
     <div>
-        <h1 class="page-title">Analytics Dashboard</h1>
+        <h1 class="page-title d-flex align-items-center gap-2">
+            <i class="bi bi-grid-fill text-primary"></i> Analytics Dashboard
+        </h1>
+        <p class="page-subtitle text-muted mb-0">Live analytics and overview of customer accounts and business metrics.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <button type="button" id="btn-refresh-dashboard" class="btn btn-outline-secondary rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm" title="Refresh live analytics">
+            <i class="bi bi-arrow-clockwise" id="refresh-icon"></i>
+            <span>Refresh</span>
+        </button>
+        <a asp-controller="Customer" asp-action="List" class="btn btn-primary rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+            <i class="bi bi-person-lines-fill"></i>
+            <span>Customer List</span>
+        </a>
+        <a asp-controller="Customer" asp-action="Create" class="btn btn-outline-primary rounded-3 px-3 py-2 fw-semibold d-inline-flex align-items-center gap-2 shadow-sm">
+            <i class="bi bi-person-plus-fill"></i>
+            <span>Add Customer</span>
+        </a>
     </div>
 </div>
 
-<!-- Metrics Cards Grid -->
-<div class="metrics-grid">
-    <div class="metric-card">
-        <div class="metric-icon-box metric-icon-blue">
-            <i class="bi bi-person-fill"></i>
+<!-- Customer Analytics Section -->
+<div class="mb-5">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-people-fill text-primary me-1"></i> Customer Analytics
+            </h5>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1 small">Real-time</span>
         </div>
-        <div class="metric-info">
-            <div class="metric-label">Total<br>Employees</div>
-            <div class="metric-value" id="metric-total-emp">0</div>
-        </div>
+        <a asp-controller="Customer" asp-action="List" class="btn btn-sm btn-link text-decoration-none text-muted fw-semibold p-0 d-inline-flex align-items-center gap-1">
+            <span>Manage All Customers</span>
+            <i class="bi bi-chevron-right small"></i>
+        </a>
     </div>
 
-    <div class="metric-card">
-        <div class="metric-icon-box metric-icon-green">
-            <i class="bi bi-plus-lg"></i>
-        </div>
-        <div class="metric-info">
-            <div class="metric-label">New Hires<br>(This Month)</div>
-            <div class="metric-value" id="metric-new-hires">12</div>
-        </div>
+    <!-- Customer Metrics Cards Grid -->
+    <div class="metrics-grid">
+        <!-- Total Customers Card -->
+        <a asp-controller="Customer" asp-action="List" class="metric-card" title="View all customers">
+            <div class="metric-icon-box metric-icon-blue">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">Total<br>Customers</div>
+                <div class="metric-value" id="metric-total-customers">
+                    <span class="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true"></span>
+                </div>
+            </div>
+        </a>
+
+        <!-- Total Special Customers Card -->
+        <a asp-controller="Customer" asp-action="List" asp-route-isSpecial="true" class="metric-card" title="View special customers">
+            <div class="metric-icon-box metric-icon-purple">
+                <i class="bi bi-star-fill"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">Special<br>Customers</div>
+                <div class="metric-value" id="metric-special-customers">
+                    <span class="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true"></span>
+                </div>
+            </div>
+        </a>
+
+        <!-- Total Regular Customers Card -->
+        <a asp-controller="Customer" asp-action="List" asp-route-isSpecial="false" class="metric-card" title="View regular customers">
+            <div class="metric-icon-box metric-icon-cyan">
+                <i class="bi bi-person-check-fill"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">Regular<br>Customers</div>
+                <div class="metric-value" id="metric-regular-customers">
+                    <span class="spinner-border spinner-border-sm text-secondary" role="status" aria-hidden="true"></span>
+                </div>
+            </div>
+        </a>
     </div>
 
-    <div class="metric-card">
-        <div class="metric-icon-box metric-icon-amber">
-            <i class="bi bi-building-fill"></i>
+    <!-- Customer Breakdown & Distribution Card -->
+    <div class="card border-0 shadow-sm rounded-4 p-4" style="background: #ffffff; border: 1px solid var(--border-color) !important;">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
+            <div>
+                <h6 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                    <i class="bi bi-pie-chart-fill text-primary"></i> Customer Portfolio Breakdown
+                </h6>
+                <p class="text-muted small mb-0">Distribution between special (VIP) accounts and regular retail customers</p>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="d-flex align-items-center gap-2 small fw-semibold text-muted">
+                    <span class="d-inline-block rounded-circle" style="width: 10px; height: 10px; background-color: #0891b2;"></span>
+                    Regular: <span id="label-reg-pct" class="text-dark fw-bold">0%</span>
+                </span>
+                <span class="d-flex align-items-center gap-2 small fw-semibold text-muted">
+                    <span class="d-inline-block rounded-circle" style="width: 10px; height: 10px; background-color: #7c3aed;"></span>
+                    Special: <span id="label-special-pct" class="text-dark fw-bold">0%</span>
+                </span>
+            </div>
         </div>
-        <div class="metric-info">
-            <div class="metric-label">Open<br>Roles</div>
-            <div class="metric-value" id="metric-open-roles">8</div>
+
+        <!-- Distribution Progress Bar -->
+        <div class="progress rounded-pill mb-3" style="height: 12px; background-color: #f1f5f9; overflow: hidden;">
+            <div id="bar-regular" class="progress-bar" role="progressbar" style="width: 0%; background-color: #0891b2; transition: width 0.6s ease;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" title="Regular Customers"></div>
+            <div id="bar-special" class="progress-bar" role="progressbar" style="width: 0%; background-color: #7c3aed; transition: width 0.6s ease;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" title="Special Customers"></div>
+        </div>
+
+        <!-- Quick Summary Metrics Row -->
+        <div class="row g-3 text-center text-md-start pt-2 border-top">
+            <div class="col-6 col-md-3">
+                <div class="text-muted small">Special Ratio</div>
+                <div class="fw-bold fs-6 text-dark mt-1" id="stat-special-ratio">0%</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted small">Regular Ratio</div>
+                <div class="fw-bold fs-6 text-dark mt-1" id="stat-regular-ratio">0%</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted small">Account Category</div>
+                <div class="fw-bold fs-6 text-dark mt-1">
+                    <span class="badge rounded-pill px-2.5 py-1" style="background-color: #f5f3ff; color: #7c3aed; border: 1px solid #ddd6fe;">
+                        <i class="bi bi-star-fill text-warning me-1"></i> Special & Regular
+                    </span>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted small">Customer Management</div>
+                <div class="mt-1">
+                    <a asp-controller="Customer" asp-action="List" class="btn btn-sm btn-link text-primary p-0 fw-semibold text-decoration-none">
+                        Browse Customers <i class="bi bi-arrow-right small"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Workforce & Operations Section -->
+<div class="mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h5 class="fw-bold mb-0 text-dark d-flex align-items-center gap-2">
+            <i class="bi bi-building-fill text-secondary"></i> Workforce & Operations
+        </h5>
+        <a asp-controller="Employee" asp-action="List" class="btn btn-sm btn-link text-decoration-none text-muted fw-semibold p-0 d-inline-flex align-items-center gap-1">
+            <span>Manage Employees</span>
+            <i class="bi bi-chevron-right small"></i>
+        </a>
+    </div>
+
+    <!-- Metrics Cards Grid -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon-box metric-icon-blue">
+                <i class="bi bi-person-fill"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">Total<br>Employees</div>
+                <div class="metric-value" id="metric-total-emp">0</div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon-box metric-icon-green">
+                <i class="bi bi-plus-lg"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">New Hires<br>(This Month)</div>
+                <div class="metric-value" id="metric-new-hires">12</div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon-box metric-icon-amber">
+                <i class="bi bi-building-fill"></i>
+            </div>
+            <div class="metric-info">
+                <div class="metric-label">Open<br>Roles</div>
+                <div class="metric-value" id="metric-open-roles">8</div>
+            </div>
         </div>
     </div>
 </div>

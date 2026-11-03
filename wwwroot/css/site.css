@@ -348,10 +348,12 @@ html, body {
   color: #16a34a;
 }
 
-.metric-icon-amber {
-  background-color: #fffbeb;
-  color: #d97706;
-}
+.metric-icon-amber { background-color: #fffbeb; color: #d97706; }
+.metric-icon-purple { background-color: #f5f3ff; color: #7c3aed; }
+.metric-icon-cyan { background-color: #ecfeff; color: #0891b2; }
+.metric-icon-indigo { background-color: #e0e7ff; color: #4f46e5; }
+a.metric-card { text-decoration: none; color: inherit; cursor: pointer; }
+a.metric-card:hover { text-decoration: none; color: inherit; }
 
 .metric-info .metric-label {
   font-size: 0.88rem;
@@ -764,4 +766,16 @@ html, body {
 .no-spinner {
   -moz-appearance: textfield;
   appearance: textfield;
-}
+}
+
+
+/* Dashboard Spin Animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-animation {
+  animation: spin 0.75s linear infinite;
+  display: inline-block;
+}

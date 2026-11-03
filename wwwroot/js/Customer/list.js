@@ -80,6 +80,17 @@ const SAMPLE_CUSTOMERS = [
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('isSpecial')) {
+        const specialParam = urlParams.get('isSpecial');
+        if (specialParam === 'true' || specialParam === 'false') {
+            isSpecialFilter = specialParam;
+            const specialSelect = document.getElementById('filter-is-special');
+            if (specialSelect) {
+                specialSelect.value = specialParam;
+            }
+        }
+    }
     initCustomerListEvents();
     loadCustomers();
 });
