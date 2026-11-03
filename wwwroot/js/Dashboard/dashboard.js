@@ -51,7 +51,7 @@ function getAuthToken() {
 }
 
 /**
- * Animates a numeric element from current value to target value.
+ * Animates a numeric integer element from current value to target value.
  */
 function animateCounter(element, targetValue, duration = 600) {
     if (!element) return;
@@ -76,7 +76,39 @@ function animateCounter(element, targetValue, duration = 600) {
 }
 
 /**
- * Fetches Customer Analytics metrics.
+ * Animates a currency/decimal element to target value with 2 decimal places.
+ */
+function animateCurrency(element, targetValue, duration = 600) {
+    if (!element) return;
+    const target = parseFloat(targetValue) || 0;
+    if (target === 0) {
+        element.innerText = '0.00';
+        return;
+    }
+
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const current = progress * target;
+        element.innerText = current.toLocaleString('en-BD', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        } else {
+            element.innerText = target.toLocaleString('en-BD', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
+/**
+ * Fetches all metrics across Today's Performance and Customer Analytics.
  * @param {boolean} isManualRefresh
  */
 async function loadAllDashboardMetrics(isManualRefresh = false) {
@@ -86,7 +118,10 @@ async function loadAllDashboardMetrics(isManualRefresh = false) {
     }
 
     try {
-        await fetchCustomerMetrics();
+        await Promise.allSettled([
+            fetchTodayMetrics(),
+            fetchCustomerMetrics()
+        ]);
     } finally {
         if (refreshIcon) {
             setTimeout(() => {
@@ -94,6 +129,66 @@ async function loadAllDashboardMetrics(isManualRefresh = false) {
             }, 400);
         }
     }
+}
+
+/**
+ * Fetches TotalSalesToday and TotalPaymentReceivedToday from Dashboard API.
+ */
+async function fetchTodayMetrics() {
+    const baseUrl = getApiBaseUrl();
+    const token = getAuthToken();
+
+    const headers = { 'Accept': 'application/json' };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const salesEndpoint = `${baseUrl}/Dashboard/TotalSalesToday`;
+    const paymentEndpoint = `${baseUrl}/Dashboard/TotalPaymentReceivedToday`;
+
+    let totalSales = null;
+    let totalPayment = null;
+
+    // 1. Fetch Total Sales Today
+    try {
+        const resSales = await fetch(salesEndpoint, { headers });
+        if (resSales.ok) {
+            const data = await resSales.json();
+            if (data && data.succeeded) {
+                if (typeof data.data === 'number') {
+                    totalSales = data.data;
+                } else if (data.data && typeof data.data.totalAmount === 'number') {
+                    totalSales = data.data.totalAmount;
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('Could not fetch Total Sales Today:', err);
+    }
+
+    // 2. Fetch Total Payment Received Today
+    try {
+        const resPayment = await fetch(paymentEndpoint, { headers });
+        if (resPayment.ok) {
+            const data = await resPayment.json();
+            if (data && data.succeeded) {
+                if (typeof data.data === 'number') {
+                    totalPayment = data.data;
+                } else if (data.data && typeof data.data.totalAmount === 'number') {
+                    totalPayment = data.data.totalAmount;
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('Could not fetch Total Payment Received Today:', err);
+    }
+
+    // Update Sales & Payment Elements
+    const salesEl = document.getElementById('metric-sales-today');
+    const paymentEl = document.getElementById('metric-payment-today');
+
+    if (salesEl) animateCurrency(salesEl, totalSales !== null ? totalSales : 0);
+    if (paymentEl) animateCurrency(paymentEl, totalPayment !== null ? totalPayment : 0);
 }
 
 /**
