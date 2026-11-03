@@ -76,7 +76,7 @@ function animateCounter(element, targetValue, duration = 600) {
 }
 
 /**
- * Fetches all metrics (Customer Analytics and Workforce/Employee data).
+ * Fetches Customer Analytics metrics.
  * @param {boolean} isManualRefresh
  */
 async function loadAllDashboardMetrics(isManualRefresh = false) {
@@ -86,10 +86,7 @@ async function loadAllDashboardMetrics(isManualRefresh = false) {
     }
 
     try {
-        await Promise.allSettled([
-            fetchCustomerMetrics(),
-            fetchEmployeeMetrics()
-        ]);
+        await fetchCustomerMetrics();
     } finally {
         if (refreshIcon) {
             setTimeout(() => {
@@ -101,7 +98,7 @@ async function loadAllDashboardMetrics(isManualRefresh = false) {
 
 /**
  * Fetches TotalSpecialCustomerCount and TotalRegularCustomerCount from Dashboard API
- * and updates customer analytics cards and distribution bars.
+ * and updates customer analytics cards.
  */
 async function fetchCustomerMetrics() {
     const baseUrl = getApiBaseUrl();
@@ -165,76 +162,4 @@ async function fetchCustomerMetrics() {
     if (specialEl) animateCounter(specialEl, resolvedSpecial);
     if (regularEl) animateCounter(regularEl, resolvedRegular);
     if (totalEl) animateCounter(totalEl, totalCustomers);
-
-    // Update Distribution Breakdown
-    updateCustomerDistribution(resolvedRegular, resolvedSpecial, totalCustomers);
-}
-
-/**
- * Updates the visual customer portfolio distribution progress bar and labels.
- */
-function updateCustomerDistribution(regularCount, specialCount, totalCustomers) {
-    let regularPct = 0;
-    let specialPct = 0;
-
-    if (totalCustomers > 0) {
-        specialPct = Math.round((specialCount / totalCustomers) * 100);
-        regularPct = 100 - specialPct;
-    }
-
-    // Update Progress Bars
-    const barRegular = document.getElementById('bar-regular');
-    const barSpecial = document.getElementById('bar-special');
-
-    if (barRegular) {
-        barRegular.style.width = `${regularPct}%`;
-        barRegular.setAttribute('aria-valuenow', regularPct);
-    }
-    if (barSpecial) {
-        barSpecial.style.width = `${specialPct}%`;
-        barSpecial.setAttribute('aria-valuenow', specialPct);
-    }
-
-    // Update Header Labels
-    const labelRegPct = document.getElementById('label-reg-pct');
-    const labelSpecialPct = document.getElementById('label-special-pct');
-
-    if (labelRegPct) labelRegPct.innerText = `${regularPct}% (${regularCount})`;
-    if (labelSpecialPct) labelSpecialPct.innerText = `${specialPct}% (${specialCount})`;
-
-    // Update Summary Row Ratios
-    const statSpecialRatio = document.getElementById('stat-special-ratio');
-    const statRegularRatio = document.getElementById('stat-regular-ratio');
-
-    if (statSpecialRatio) statSpecialRatio.innerText = `${specialPct}%`;
-    if (statRegularRatio) statRegularRatio.innerText = `${regularPct}%`;
-}
-
-/**
- * Fetches employee count metrics from API and updates workforce metric cards.
- */
-async function fetchEmployeeMetrics() {
-    const token = getAuthToken();
-    const baseUrl = getApiBaseUrl();
-    const endpoint = `${baseUrl}/Employees/GetAll?pageNumber=1&pageSize=1`;
-
-    const headers = { 'Accept': 'application/json' };
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    try {
-        const response = await fetch(endpoint, { headers });
-        if (response.ok) {
-            const res = await response.json();
-            if (res.succeeded && res.data && typeof res.data.totalCount === 'number') {
-                const totalEmpEl = document.getElementById('metric-total-emp');
-                if (totalEmpEl) {
-                    animateCounter(totalEmpEl, res.data.totalCount);
-                }
-            }
-        }
-    } catch (e) {
-        // Keeps fallback count if live backend is offline
-    }
 }
