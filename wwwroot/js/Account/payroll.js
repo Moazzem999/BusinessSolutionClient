@@ -296,18 +296,18 @@ function renderSalaryRows(items) {
                 <td class="text-info-emphasis">${formatCurrency(item.othersBill)}</td>
                 <td class="fw-bold text-primary fs-6">${formatCurrency(item.total)}</td>
                 <td class="pe-4 text-end">
-                    <div class="d-flex align-items-center justify-content-end gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-primary rounded-2 px-2 py-1" onclick="printPayslip(${item.id})" title="Print Salary Receipt">
-                            <i class="bi bi-printer-fill"></i>
+                    <div class="d-inline-flex gap-1 justify-content-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5" onclick="openDetailsModal(${item.id})" title="View Payslip">
+                            <i class="bi bi-eye"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-info rounded-2 px-2 py-1" onclick="openDetailsModal(${item.id})" title="View Payslip">
-                            <i class="bi bi-eye-fill"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-warning rounded-2 px-2 py-1" onclick="openUpdateModal(${item.id})" title="Edit Record">
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-3 px-2.5 py-1.5" onclick="openUpdateModal(${item.id})" title="Edit Record">
                             <i class="bi bi-pencil-square"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-2 px-2 py-1" onclick="confirmDeleteSalary(${item.id}, '${escapeHtml(employeeName)}', '${escapeHtml(item.paySlipFor || '')}')" title="Delete Record">
-                            <i class="bi bi-trash-fill"></i>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2.5 py-1.5" onclick="printPayslip(${item.id})" title="Print Salary Receipt">
+                            <i class="bi bi-printer"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5" onclick="confirmDeleteSalary(${item.id}, '${escapeHtml(employeeName)}', '${escapeHtml(item.paySlipFor || '')}')" title="Delete Record">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </td>

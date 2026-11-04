@@ -710,16 +710,16 @@ function renderCustomerOrdersTable(orders) {
                 </div>
             </td>
             <td class="pe-4 text-end">
-                <div class="btn-group btn-group-sm">
-                    <button type="button" class="btn btn-outline-primary rounded-2 me-1" onclick="printOrderDetails(${index})" title="Print Order">
-                        <i class="bi bi-printer-fill"></i>
+                <div class="d-inline-flex gap-1 justify-content-end">
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5" onclick="viewOrderDetails(${index})" title="View Details">
+                        <i class="bi bi-eye"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-info rounded-2 ${canDelete ? 'me-1' : ''}" onclick="viewOrderDetails(${index})" title="View Details">
-                        <i class="bi bi-eye-fill"></i>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-3 px-2.5 py-1.5" onclick="printOrderDetails(${index})" title="Print Order">
+                        <i class="bi bi-printer"></i>
                     </button>
                     ${canDelete ? `
-                    <button type="button" class="btn btn-outline-danger rounded-2" onclick="confirmDeleteOrder('${escapeHtml(orderId)}', '${escapeHtml(orderNo)}')" title="Delete Order">
-                        <i class="bi bi-trash-fill"></i>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5" onclick="confirmDeleteOrder('${escapeHtml(orderId)}', '${escapeHtml(orderNo)}')" title="Delete Order">
+                        <i class="bi bi-trash"></i>
                     </button>
                     ` : ''}
                 </div>

@@ -347,15 +347,15 @@ function renderCustomerTable(data) {
                     </span>
                 </td>
                 <td class="pe-4 text-end">
-                    <div class="d-inline-flex align-items-center gap-1">
-                        <button type="button" class="btn btn-outline-info rounded-2 btn-view-customer px-2 py-1" data-id="${id}" title="View Details">
-                            <i class="bi bi-eye-fill"></i>
+                    <div class="d-inline-flex gap-1 justify-content-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5 btn-view-customer" data-id="${id}" title="View Details">
+                            <i class="bi bi-eye"></i>
                         </button>
-                        <button type="button" class="btn btn-outline-primary rounded-2 btn-edit-customer px-2 py-1" data-id="${id}" title="Edit Customer">
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-3 px-2.5 py-1.5 btn-edit-customer" data-id="${id}" title="Edit Customer">
                             <i class="bi bi-pencil-square"></i>
                         </button>
-                        <button type="button" class="btn btn-outline-danger rounded-2 btn-delete-customer px-2 py-1" data-id="${id}" data-name="${escapeHtml(name)}" title="Delete Customer">
-                            <i class="bi bi-trash-fill"></i>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5 btn-delete-customer" data-id="${id}" data-name="${escapeHtml(name)}" title="Delete Customer">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </td>

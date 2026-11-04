@@ -1133,13 +1133,13 @@ function renderPaymentsTable(items) {
 
                 <!-- Actions -->
                 <td class="pe-4 text-end">
-                    <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-info rounded-2 ${canDelete ? 'me-1' : ''}" onclick="viewPaymentDetails(${index})" title="View Voucher">
-                            <i class="bi bi-eye-fill"></i>
+                    <div class="d-inline-flex gap-1 justify-content-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5" onclick="viewPaymentDetails(${index})" title="View Voucher">
+                            <i class="bi bi-eye"></i>
                         </button>
                         ${canDelete ? `
-                        <button type="button" class="btn btn-outline-danger rounded-2" onclick="confirmDeletePayment(${id}, '${escapeHtml(transNo)}')" title="Delete Payment (within 2 days)">
-                            <i class="bi bi-trash-fill"></i>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5" onclick="confirmDeletePayment(${id}, '${escapeHtml(transNo)}')" title="Delete Payment (within 2 days)">
+                            <i class="bi bi-trash"></i>
                         </button>
                         ` : ''}
                     </div>
