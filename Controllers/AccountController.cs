@@ -31,5 +31,12 @@ namespace BusinessSolutionClient.Controllers
             ViewBag.ApiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7148/api";
             return View();
         }
+
+        [HttpGet]
+        public IActionResult ChangePassword()
+        {
+            ViewBag.ApiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7148/api";
+            return View("~/Views/Settings/ChangePassword.cshtml");
+        }
     }
 }
