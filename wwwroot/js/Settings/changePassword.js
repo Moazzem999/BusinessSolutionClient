@@ -58,37 +58,50 @@ function initChangePasswordForm() {
         const confirmPassword = confirmPasswordInput.value;
 
         // 1. Client-Side Validations
-        let isValid = true;
+        const validationErrors = [];
         clearValidationState();
 
         if (!currentPassword) {
-            markInvalid(currentPasswordInput, 'current-password-feedback', 'Current password is required.');
-            isValid = false;
+            const err = 'Current password is required.';
+            validationErrors.push(err);
+            markInvalid(currentPasswordInput, 'current-password-feedback', err);
         }
 
         if (!newPassword) {
-            markInvalid(newPasswordInput, 'new-password-feedback', 'New password is required.');
-            isValid = false;
+            const err = 'New password is required.';
+            validationErrors.push(err);
+            markInvalid(newPasswordInput, 'new-password-feedback', err);
         } else if (newPassword.length < 6) {
-            markInvalid(newPasswordInput, 'new-password-feedback', 'New password must be at least 6 characters long.');
-            isValid = false;
+            const err = 'New password must be at least 6 characters long.';
+            validationErrors.push(err);
+            markInvalid(newPasswordInput, 'new-password-feedback', err);
         }
 
         if (!confirmPassword) {
-            markInvalid(confirmPasswordInput, 'confirm-password-feedback', 'Please confirm your new password.');
-            isValid = false;
-        } else if (newPassword !== confirmPassword) {
-            markInvalid(confirmPasswordInput, 'confirm-password-feedback', 'Passwords do not match.');
-            isValid = false;
+            const err = 'Please confirm your new password.';
+            validationErrors.push(err);
+            markInvalid(confirmPasswordInput, 'confirm-password-feedback', err);
+        } else if (newPassword && confirmPassword && newPassword !== confirmPassword) {
+            const err = 'New password and Confirm password do not match.';
+            validationErrors.push(err);
+            markInvalid(confirmPasswordInput, 'confirm-password-feedback', err);
         }
 
         if (currentPassword && newPassword && currentPassword === newPassword) {
-            markInvalid(newPasswordInput, 'new-password-feedback', 'New password cannot be the same as current password.');
-            isValid = false;
+            const err = 'New password cannot be the same as current password.';
+            validationErrors.push(err);
+            markInvalid(newPasswordInput, 'new-password-feedback', err);
         }
 
-        if (!isValid) {
-            showToast('Please fix the errors in the form before submitting.', 'danger');
+        // If there are validation errors, display actual errors in top-right toast and alert
+        if (validationErrors.length > 0) {
+            const errorHtml = validationErrors.length === 1
+                ? validationErrors[0]
+                : validationErrors.map(item => `<div>• ${item}</div>`).join('');
+
+            if (errorMessage) errorMessage.innerHTML = errorHtml;
+            if (errorAlert) errorAlert.classList.remove('d-none');
+            showToast(errorHtml, 'danger');
             return;
         }
 
@@ -140,7 +153,7 @@ function initChangePasswordForm() {
             if (response.ok && (resData?.succeeded === true || resData?.statusCode === 200 || resData?.data === true)) {
                 const successMsg = resData?.message || 'Password changed successfully.';
                 
-                // Show Success Alert & Toast
+                // Show Success Alert & Top-Right Toast
                 if (successMessage) {
                     successMessage.innerText = `${successMsg} Stopping current session and redirecting to login...`;
                 }
@@ -164,21 +177,10 @@ function initChangePasswordForm() {
                 }, 1500);
 
             } else {
-                // Determine error message from response
-                let errorMsg = 'Failed to change password.';
-                if (resData) {
-                    if (resData.message) {
-                        errorMsg = resData.message;
-                    } else if (resData.errors && typeof resData.errors === 'object') {
-                        errorMsg = Object.values(resData.errors).flat().join(' ');
-                    } else if (resData.title) {
-                        errorMsg = resData.title;
-                    }
-                } else {
-                    errorMsg = `Server returned status ${response.status} (${response.statusText})`;
-                }
+                // Extract actual error message from backend response
+                const errorMsg = extractActualError(resData, response);
 
-                if (errorMessage) errorMessage.innerText = errorMsg;
+                if (errorMessage) errorMessage.innerHTML = errorMsg;
                 if (errorAlert) errorAlert.classList.remove('d-none');
                 showToast(errorMsg, 'danger');
 
@@ -191,7 +193,9 @@ function initChangePasswordForm() {
 
         } catch (netErr) {
             console.error('Network or CORS error during ChangePassword:', netErr);
-            const errStr = 'Network error: Unable to connect to server. Please try again.';
+            const errStr = (netErr && netErr.message)
+                ? `Connection error: ${netErr.message}`
+                : 'Network error: Unable to connect to server. Please try again.';
             if (errorMessage) errorMessage.innerText = errStr;
             if (errorAlert) errorAlert.classList.remove('d-none');
             showToast(errStr, 'danger');
@@ -252,6 +256,61 @@ function initChangePasswordForm() {
 }
 
 /**
+ * Extracts actual human-readable error messages from backend response
+ */
+function extractActualError(resData, response) {
+    if (!resData) {
+        if (response && response.status === 401) {
+            return 'Your session has expired. Please log in again.';
+        }
+        return `Server returned status ${response?.status || 'Error'} (${response?.statusText || 'Failed to change password'})`;
+    }
+
+    // 1. Array of error messages: e.g. ["Password must contain an uppercase letter.", "..."]
+    if (Array.isArray(resData.errors) && resData.errors.length > 0) {
+        return resData.errors.length === 1
+            ? resData.errors[0]
+            : resData.errors.map(err => `<div>• ${err}</div>`).join('');
+    }
+
+    // 2. Object dictionary of errors (ASP.NET Core Validation ProblemDetails)
+    if (resData.errors && typeof resData.errors === 'object') {
+        const errorList = [];
+        for (const field in resData.errors) {
+            const fieldErrors = resData.errors[field];
+            if (Array.isArray(fieldErrors)) {
+                errorList.push(...fieldErrors);
+            } else if (typeof fieldErrors === 'string') {
+                errorList.push(fieldErrors);
+            }
+        }
+        if (errorList.length > 0) {
+            return errorList.length === 1
+                ? errorList[0]
+                : errorList.map(err => `<div>• ${err}</div>`).join('');
+        }
+    }
+
+    // 3. Direct message string: e.g. { message: "Current password is incorrect." }
+    if (resData.message && typeof resData.message === 'string' && resData.message.trim() !== '') {
+        return resData.message;
+    }
+
+    // 4. Detail string (RFC 7807 problem details)
+    if (resData.detail && typeof resData.detail === 'string' && resData.detail.trim() !== '') {
+        return resData.detail;
+    }
+
+    // 5. Title string
+    if (resData.title && typeof resData.title === 'string' && resData.title.trim() !== '') {
+        return resData.title;
+    }
+
+    // 6. Fallback
+    return `Server error (${response?.status || 400}): Failed to change password.`;
+}
+
+/**
  * Stops the current user session by clearing auth tokens and cookies
  */
 function stopCurrentSession() {
@@ -304,7 +363,7 @@ function setupToggle(btnId, inputId) {
 }
 
 /**
- * Toast Notification Utility
+ * Toast Notification Utility (Positioned at Top-Right Screen)
  */
 function showToast(message, type = 'info') {
     const toastEl = document.getElementById('app-toast');
@@ -316,23 +375,22 @@ function showToast(message, type = 'info') {
     toastEl.className = 'toast align-items-center text-white border-0 rounded-3 shadow-lg';
     if (type === 'success') {
         toastEl.classList.add('bg-success');
-        if (toastIcon) toastIcon.className = 'bi bi-check-circle-fill fs-5';
+        if (toastIcon) toastIcon.className = 'bi bi-check-circle-fill fs-5 flex-shrink-0';
     } else if (type === 'danger' || type === 'error') {
         toastEl.classList.add('bg-danger');
-        if (toastIcon) toastIcon.className = 'bi bi-exclamation-triangle-fill fs-5';
+        if (toastIcon) toastIcon.className = 'bi bi-exclamation-triangle-fill fs-5 flex-shrink-0';
     } else if (type === 'warning') {
         toastEl.classList.add('bg-warning', 'text-dark');
-        if (toastIcon) toastIcon.className = 'bi bi-exclamation-circle-fill fs-5 text-dark';
+        if (toastIcon) toastIcon.className = 'bi bi-exclamation-circle-fill fs-5 text-dark flex-shrink-0';
     } else {
         toastEl.classList.add('bg-primary');
-        if (toastIcon) toastIcon.className = 'bi bi-info-circle-fill fs-5';
+        if (toastIcon) toastIcon.className = 'bi bi-info-circle-fill fs-5 flex-shrink-0';
     }
 
-    toastMessage.innerText = message;
+    toastMessage.innerHTML = message;
 
     if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-        const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4500 });
+        const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 6000 });
         toast.show();
     }
 }
-
