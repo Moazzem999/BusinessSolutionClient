@@ -213,15 +213,15 @@ function renderSupplierTable(data) {
                     </span>
                 </td>
                 <td class="pe-4 text-end">
-                    <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-info rounded-2 me-1 btn-view-supplier" data-id="${id}" title="View Details">
-                            <i class="bi bi-eye-fill"></i>
+                    <div class="d-inline-flex gap-1 justify-content-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5 btn-view-supplier" data-id="${id}" title="View Details">
+                            <i class="bi bi-eye"></i>
                         </button>
-                        <button type="button" class="btn btn-outline-primary rounded-2 me-1 btn-edit-supplier" data-id="${id}" title="Edit Supplier">
+                        <button type="button" class="btn btn-sm btn-outline-warning rounded-3 px-2.5 py-1.5 btn-edit-supplier" data-id="${id}" title="Edit Supplier">
                             <i class="bi bi-pencil-square"></i>
                         </button>
-                        <button type="button" class="btn btn-outline-danger rounded-2 btn-delete-supplier" data-id="${id}" data-name="${escapeHtml(name)}" title="Delete Supplier">
-                            <i class="bi bi-trash-fill"></i>
+                        <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5 btn-delete-supplier" data-id="${id}" data-name="${escapeHtml(name)}" title="Delete Supplier">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
                 </td>

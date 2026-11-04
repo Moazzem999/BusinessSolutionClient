@@ -1526,13 +1526,13 @@ function renderPaymentsTable(items) {
 
                 <!-- Action (Preview + Delete icon only within 2 days) -->
                 <td class="pe-4 text-end">
-                    <div class="d-inline-flex align-items-center justify-content-end gap-1">
-                        <button type="button" class="btn btn-outline-primary btn-sm rounded-2 d-inline-flex align-items-center gap-1 px-2 py-1 btn-preview-payment" onclick="viewPaymentDetails(${id})" title="Preview Payment Voucher">
-                            <i class="bi bi-eye-fill"></i>
+                    <div class="d-inline-flex gap-1 justify-content-end">
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-3 px-2.5 py-1.5 btn-preview-payment" onclick="viewPaymentDetails(${id})" title="Preview Payment Voucher">
+                            <i class="bi bi-eye"></i>
                         </button>
                         ${canDelete ? `
-                            <button type="button" class="btn btn-outline-danger btn-sm rounded-2 px-2 py-1 d-inline-flex align-items-center justify-content-center btn-delete-payment" onclick="confirmDeletePayment(${id}, '${escapeHtml(transNo)}')" title="Delete Payment">
-                                <i class="bi bi-trash-fill"></i>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-3 px-2.5 py-1.5 btn-delete-payment" onclick="confirmDeletePayment(${id}, '${escapeHtml(transNo)}')" title="Delete Payment">
+                                <i class="bi bi-trash"></i>
                             </button>
                         ` : ''}
                     </div>
