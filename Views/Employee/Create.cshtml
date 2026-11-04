@@ -16,17 +16,6 @@
     </div>
 </div>
 
-<!-- Alert Boxes -->
-<div id="create-error-alert" class="alert alert-danger d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
-    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
-    <span id="create-error-message">Error saving employee data.</span>
-</div>
-
-<div id="create-success-alert" class="alert alert-success d-none rounded-3 mb-4 shadow-sm align-items-center gap-2" role="alert">
-    <i class="bi bi-check-circle-fill fs-5"></i>
-    <span id="create-success-message">Employee created successfully! Redirecting...</span>
-</div>
-
 <!-- Main Create Form Card -->
 <div class="card border-0 shadow-sm rounded-4 mb-5" style="background: #ffffff;">
     <div class="card-body p-4 p-md-5">
@@ -160,6 +149,19 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
+    <div id="app-toast" class="toast align-items-center text-white border-0 rounded-3 shadow-lg" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center gap-2 py-3 px-3 fs-6">
+                <i id="toast-icon" class="bi fs-5"></i>
+                <span id="toast-message"></span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
     </div>
 </div>
 

@@ -9,6 +9,39 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
+ * Toast Notification Utility
+ */
+function showToast(message, type = 'info') {
+    const toastEl = document.getElementById('app-toast');
+    const toastMessage = document.getElementById('toast-message');
+    const toastIcon = document.getElementById('toast-icon');
+
+    if (!toastEl || !toastMessage) return;
+
+    toastEl.className = 'toast align-items-center text-white border-0 rounded-3 shadow-lg';
+    if (type === 'success') {
+        toastEl.classList.add('bg-success');
+        if (toastIcon) toastIcon.className = 'bi bi-check-circle-fill fs-5';
+    } else if (type === 'danger' || type === 'error') {
+        toastEl.classList.add('bg-danger');
+        if (toastIcon) toastIcon.className = 'bi bi-exclamation-triangle-fill fs-5';
+    } else if (type === 'warning') {
+        toastEl.classList.add('bg-warning', 'text-dark');
+        if (toastIcon) toastIcon.className = 'bi bi-exclamation-circle-fill fs-5 text-dark';
+    } else {
+        toastEl.classList.add('bg-primary');
+        if (toastIcon) toastIcon.className = 'bi bi-info-circle-fill fs-5';
+    }
+
+    toastMessage.innerText = message;
+
+    if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+        const toast = bootstrap.Toast.getOrCreateInstance(toastEl, { delay: 4000 });
+        toast.show();
+    }
+}
+
+/**
  * Fetches Marital Status options dynamically from API: /api/Dropdown/GetAllMaritalStatus
  */
 async function loadMaritalStatusDropdown() {
@@ -88,12 +121,15 @@ function initCreateEmployeePage() {
         const btnSave = document.getElementById('btn-save-employee');
         const btnText = document.getElementById('btn-save-text');
         const btnSpinner = document.getElementById('save-spinner');
-        const errorAlert = document.getElementById('create-error-alert');
-        const errorMsg = document.getElementById('create-error-message');
-        const successAlert = document.getElementById('create-success-alert');
 
-        errorAlert.classList.add('d-none');
-        successAlert.classList.add('d-none');
+        // Client-side validation for Salary
+        const salaryVal = parseFloat(document.getElementById('Salary').value);
+        if (isNaN(salaryVal) || salaryVal <= 0) {
+            showToast('Salary is required.', 'danger');
+            document.getElementById('Salary').focus();
+            return;
+        }
+
         btnSave.disabled = true;
         btnText.innerText = 'Saving Employee...';
         btnSpinner.classList.remove('d-none');
@@ -125,7 +161,7 @@ function initCreateEmployeePage() {
             formData.append('JoiningDate', new Date(joiningInput).toISOString());
         }
 
-        formData.append('Salary', parseFloat(document.getElementById('Salary').value) || 0);
+        formData.append('Salary', salaryVal);
         formData.append('PresentAddress', document.getElementById('PresentAddress').value.trim());
         formData.append('PermanentAddress', document.getElementById('PermanentAddress').value.trim());
 
@@ -157,22 +193,20 @@ function initCreateEmployeePage() {
             console.log('Create Employee API Response:', resData);
 
             if (response.ok && resData && (resData.succeeded === true || resData.statusCode === 200 || resData.statusCode === 201)) {
-                successAlert.classList.remove('d-none');
+                showToast(resData.message || 'Employee created successfully!', 'success');
                 setTimeout(() => {
                     window.location.href = '/Employee/List';
-                }, 800);
+                }, 1000);
             } else {
                 const message = (resData && resData.message) ? resData.message : `Failed to create employee (Status ${response.status})`;
-                errorMsg.innerText = message;
-                errorAlert.classList.remove('d-none');
+                showToast(message, 'danger');
             }
         } catch (err) {
             console.error('Error creating employee:', err);
-            errorMsg.innerText = 'Could not connect to API at ' + endpoint + '. Ensure backend server is active.';
-            errorAlert.classList.remove('d-none');
+            showToast('Could not connect to API server. Ensure backend server is active.', 'danger');
         } finally {
             btnSave.disabled = false;
-            btnText.innerText = 'Save Employee';
+            btnText.innerText = 'Save';
             btnSpinner.classList.add('d-none');
         }
     });
